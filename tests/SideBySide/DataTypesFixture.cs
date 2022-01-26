@@ -175,10 +175,10 @@ create table datatypes_times(
 insert into datatypes_times(`Date`, `DateTime`, `Timestamp`, `Time`, `TimeOnly`, `Year`)
 values
   (null, null, null, null, null, null),
-  (date '1000-01-01', timestamp '1000-01-01 00:00:00', timestamp '1970-01-01 00:00:01', time '-838:59:59' , time '00:00:00', 1901),
-  (date '9999-12-31', timestamp '9999-12-31 23:59:59.999999', '2038-01-18 03:14:07.999999', time '838:59:59.000', time '23:59:59.999999', 2155), -- not actually maximum Timestamp value, due to TZ conversion
-  (null, null, null, time '00:00:00', time '00:00:00', 0),
-  (date '2016-04-05', timestamp '2016-04-05 14:03:04.56789', timestamp '2016-04-05 14:03:04.56789', time '14:03:04.56789', time '14:03:04.56789', 2016);
+  ('1000-01-01', '1000-01-01 00:00:00', '1970-01-01 00:00:01', '-838:59:59' , '00:00:00', 1901),
+  ('9999-12-31', '9999-12-31 23:59:59.999999', '2038-01-18 03:14:07.999999', '838:59:59.000', '23:59:59.999999', 2155), -- not actually maximum Timestamp value, due to TZ conversion
+  (null, null, null, '00:00:00', '00:00:00', 0),
+  ('2016-04-05', '2016-04-05 14:03:04.56789', '2016-04-05 14:03:04.56789', '14:03:04.56789', '14:03:04.56789', 2016);
 
 drop table if exists datatypes_guids;
 create table datatypes_guids (
@@ -201,22 +201,16 @@ values
 drop table if exists datatypes_geometry;
 create table datatypes_geometry (
   rowid integer not null primary key auto_increment,
-  `Geometry` geometry null,
-  `Point` point null,
-  `LineString` linestring null,
-  `Polygon` polygon null,
-  `MultiPoint` multipoint null,
-  `MultiLineString` multilinestring null,
-  `MultiPolygon` multipolygon null,
-  `GeometryCollection` geometrycollection null
+  `Geometry` geography null,
+  `Point` geographypoint null,
+  `LineString` geography null,
+  `Polygon` geography null
 );
 
-insert into datatypes_geometry (`Geometry`, `Point`, `LineString`, `Polygon`, `MultiPoint`, `MultiLineString`, `MultiPolygon`, `GeometryCollection`)
+insert into datatypes_geometry (`Geometry`, `Point`, `LineString`, `Polygon`)
 values
-  (null, null, null, null, null, null, null, null),
-  (ST_GeomFromText('POINT(1 1)'), ST_PointFromText('POINT(1 1)'), ST_LineFromText('LINESTRING(0 0,1 1,2 2)'), ST_PolyFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))'),
-   ST_GeomFromText('MULTIPOINT(1 1, 2 2, 3 3)'), ST_GeomFromText('MULTILINESTRING((10 10, 20 20), (15 15, 30 15))'), ST_GeomFromText('MULTIPOLYGON(((0 0,10 0,10 10,0 10,0 0)),((5 5,7 5,7 7,5 7, 5 5)))'),
-   ST_GeomCollFromText('GEOMETRYCOLLECTION(POINT(10 10), POINT(30 30), LINESTRING(15 15, 20 20))'));
+  (null, null, null, null),
+  ('POINT(1 1)', 'POINT(1 1)', 'LINESTRING(0 0,1 1,2 2)', 'POLYGON((0 0,1 0,1 1,0 1,0 0))');
 ");
 
 		if (AppConfig.SupportsJson)
