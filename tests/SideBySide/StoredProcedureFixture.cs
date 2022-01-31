@@ -5,70 +5,71 @@ public class StoredProcedureFixture : DatabaseFixture
 	public StoredProcedureFixture()
 	{
 		Connection.Open();
-		Connection.Execute(@"DROP FUNCTION IF EXISTS echof;
-			CREATE FUNCTION echof(
+		Connection.Execute(@"CREATE OR REPLACE FUNCTION echof(
 				name VARCHAR(63)
-			) RETURNS VARCHAR(63)
+			) RETURNS VARCHAR(63) AS
 			BEGIN
 				RETURN name;
 			END;
+		");
 
-			DROP FUNCTION IF EXISTS failing_function;
-			CREATE FUNCTION failing_function()
-			RETURNS DECIMAL(10,5)
+		Connection.Execute(@"CREATE OR REPLACE FUNCTION failing_function()
+			RETURNS DECIMAL(10,5) AS
+			DECLARE v1 DECIMAL(10,5);
 			BEGIN
-				DECLARE v1 DECIMAL(10,5);
-				SELECT c1 FROM table_that_does_not_exist INTO v1;
+				v1 = 1/0;
 				RETURN v1;
 			END;
+		");
 
-			DROP PROCEDURE IF EXISTS echop;
-			CREATE PROCEDURE echop(
-				IN name VARCHAR(63)
-			)
+		Connection.Execute(@"CREATE OR REPLACE PROCEDURE echop(
+				name VARCHAR(63)
+			) AS
 			BEGIN
-				SELECT name;
+				ECHO SELECT name;
 			END;
+		");
 
-			DROP PROCEDURE IF EXISTS circle;
-			CREATE PROCEDURE circle(
-				IN radius DOUBLE,
-				IN height DOUBLE,
-				IN name VARCHAR(63),
-				OUT diameter DOUBLE,
-				OUT circumference DOUBLE,
-				OUT area DOUBLE,
-				OUT volume DOUBLE,
-				OUT shape VARCHAR(63)
-			)
+		Connection.Execute(@"CREATE OR REPLACE PROCEDURE circle(
+				radius DOUBLE,
+				height DOUBLE,
+				name VARCHAR(63)
+			) AS
+			DECLARE
+				diameter DOUBLE;
+				circumference DOUBLE;
+				area DOUBLE;
+				volume DOUBLE;
+				shape VARCHAR(63);
 			BEGIN
-				SELECT radius * 2 INTO diameter;
-				SELECT diameter * PI() INTO circumference;
-				SELECT PI() * POW(radius, 2) INTO area;
-				SELECT area * height INTO volume;
-				SELECT 'circle' INTO shape;
-				SELECT CONCAT(name, shape);
+				diameter = radius * 2;
+				circumference = diameter * PI();
+				area = PI() * POW(radius, 2);
+				volume = area * height;
+				shape = 'circle';
+				ECHO SELECT CONCAT(name, shape), diameter, circumference, area, volume, shape;
 			END;
+		");
 
-			DROP PROCEDURE IF EXISTS out_string;
-			CREATE PROCEDURE out_string(
-				OUT value VARCHAR(100)
-			)
+		Connection.Execute(@"CREATE OR REPLACE PROCEDURE out_string() AS
+			DECLARE value VARCHAR(100);
 			BEGIN
-				SELECT 'test value' INTO value;
+				value = 'test value';
 			END;
+		");
 
-			DROP PROCEDURE IF EXISTS out_null;
-			CREATE PROCEDURE out_null(
-				OUT string_value VARCHAR(100),
-				OUT int_value INT
-			)
+		Connection.Execute(@"CREATE OR REPLACE PROCEDURE echo_null() AS
+			DECLARE
+				string_value VARCHAR(100);
+				int_value INT;
 			BEGIN
-				SELECT NULL INTO string_value;
-				SELECT NULL INTO int_value;
+				string_value = NULL;
+				int_value = NULL;
+				ECHO SELECT string_value, int_value;
 			END;
+		");
 
-			drop table if exists sproc_multiple_rows;
+		Connection.Execute(@"drop table if exists sproc_multiple_rows;
 			create table sproc_multiple_rows (
 				value integer not null primary key auto_increment,
 				name text not null
@@ -83,62 +84,60 @@ public class StoredProcedureFixture : DatabaseFixture
 			(7, 'seven'),
 			(8, 'eight');
 
-			drop procedure if exists number_multiples;
-			create procedure number_multiples (in factor int)
+			create or replace procedure number_multiples (factor int) as
 			begin
-				select name from sproc_multiple_rows
+				echo select name from sproc_multiple_rows
 				where mod(value, factor) = 0
 				order by name;
 			end;
+		");
 
-			drop procedure if exists multiple_result_sets;
-			create procedure multiple_result_sets (in pivot int)
+		Connection.Execute(@"create or replace procedure multiple_result_sets (pivot int) as
 			begin
-				select name from sproc_multiple_rows where value < pivot order by name;
-				select name from sproc_multiple_rows where value > pivot order by name;
+				echo select name from sproc_multiple_rows where value < pivot order by name;
+				echo select name from sproc_multiple_rows where value > pivot order by name;
 			end;
+		");
 
-			drop procedure if exists number_lister;
-			create procedure number_lister (inout high int)
+		Connection.Execute(@"create or replace procedure number_lister (high int) returns int as
+			declare
+			  i int = 1;
 			begin
-				DECLARE i int;
-				SET i = 1;
-				WHILE (i <= high) DO
-					select value, name from sproc_multiple_rows
-					where value <= high
-					order by value;
-					SET i = i + 1;
-				END WHILE;
-				SET high = high + 1;
+			  WHILE (i <= high) LOOP
+				echo select value, name from sproc_multiple_rows
+				where value <= high
+				order by value;
+				i = i + 1;
+			  END LOOP;
+			  RETURN high + 1;
 			end;
+		");
 
-			drop procedure if exists `dotted.name`;
-			create procedure `dotted.name`()
+		Connection.Execute(@"create or replace procedure `dotted.name`() as
 			begin
-				select 1, 2, 3;
+				echo select 1, 2, 3;
 			end;
+		");
 
-			DROP PROCEDURE IF EXISTS `GetTime`;
-			CREATE PROCEDURE `GetTime`(OUT OutTime TIME)
+		Connection.Execute(@"CREATE OR REPLACE PROCEDURE `GetTime`() AS
 			BEGIN
-				SET OutTime = CURTIME();
+				ECHO SELECT CURTIME();
 			END;
+		");
 
-			DROP PROCEDURE IF EXISTS EnumProcedure;
-			CREATE PROCEDURE EnumProcedure(IN input enum ('One', 'Two', 'Three'))
+		Connection.Execute(@"CREATE OR REPLACE PROCEDURE EnumProcedure(input enum ('One', 'Two', 'Three')) as
 			BEGIN
-				SELECT input;
+				ECHO SELECT input;
 			END;
-");
+		");
 
 		if (AppConfig.SupportsJson)
 		{
-			Connection.Execute(@"drop procedure if exists SetJson;
-CREATE PROCEDURE `SetJson`(vJson JSON)
-BEGIN
-	SELECT vJson;
-END
-");
+			Connection.Execute(@"CREATE OR REPLACE PROCEDURE `SetJson`(vJson JSON) as
+				BEGIN
+					ECHO SELECT vJson;
+				END
+			");
 		}
 	}
 }

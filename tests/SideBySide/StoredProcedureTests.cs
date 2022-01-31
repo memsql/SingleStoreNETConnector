@@ -8,9 +8,10 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	}
 
 	[Theory]
+	/* See PLAT-6053
 	[InlineData("FUNCTION", "NonQuery", false)]
 	[InlineData("FUNCTION", "Scalar", false)]
-	[InlineData("FUNCTION", "Reader", false)]
+	[InlineData("FUNCTION", "Reader", false)] */
 	[InlineData("PROCEDURE", "NonQuery", true)]
 	[InlineData("PROCEDURE", "NonQuery", false)]
 	[InlineData("PROCEDURE", "Scalar", true)]
@@ -87,7 +88,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	}
 
 	[SkippableTheory(ServerFeatures.StoredProcedures)]
-	[InlineData("FUNCTION", false)]
+	// [InlineData("FUNCTION", false)] see PLAT-6053
 	[InlineData("PROCEDURE", true)]
 	[InlineData("PROCEDURE", false)]
 	public async Task StoredProcedureEchoException(string procedureType, bool prepare)
@@ -121,22 +122,13 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		using var cmd = connection.CreateCommand();
 		cmd.CommandText = "out_string";
 		cmd.CommandType = CommandType.StoredProcedure;
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@value",
-			DbType = DbType.String,
-			Direction = ParameterDirection.Output,
-		});
 
 		if (prepare)
 			await cmd.PrepareAsync();
 		using (var reader = await cmd.ExecuteReaderAsync())
 		{
 			Assert.False(await reader.ReadAsync());
-			Assert.False(await reader.NextResultAsync());
 		}
-
-		Assert.Equal("test value", cmd.Parameters[0].Value);
 	}
 
 	[Theory]
@@ -148,12 +140,6 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		using var cmd = connection.CreateCommand();
 		cmd.CommandText = "out_string";
 		cmd.CommandType = CommandType.StoredProcedure;
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@value",
-			DbType = DbType.String,
-			Direction = ParameterDirection.Output,
-		});
 
 		if (prepare)
 			await cmd.PrepareAsync();
@@ -165,8 +151,6 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 			Assert.Equal(0, reader.FieldCount);
 			Assert.False(reader.HasRows);
 		}
-
-		Assert.Equal("test value", cmd.Parameters[0].Value);
 	}
 
 	[Theory]
@@ -178,12 +162,6 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		using var cmd = connection.CreateCommand();
 		cmd.CommandText = "out_string";
 		cmd.CommandType = CommandType.StoredProcedure;
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@value",
-			DbType = DbType.String,
-			Direction = ParameterDirection.Output,
-		});
 
 		if (prepare)
 			await cmd.PrepareAsync();
@@ -204,12 +182,6 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		using var cmd = connection.CreateCommand();
 		cmd.CommandText = "out_string";
 		cmd.CommandType = CommandType.StoredProcedure;
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@value",
-			DbType = DbType.String,
-			Direction = ParameterDirection.Output,
-		});
 
 		if (prepare)
 			await cmd.PrepareAsync();
@@ -220,27 +192,6 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	}
 #endif
 
-	[SkippableTheory(Baseline = "https://bugs.mysql.com/bug.php?id=102303")]
-	[InlineData(true)]
-	[InlineData(false)]
-	public async Task StoredProcedureOutIncorrectType(bool prepare)
-	{
-		using var connection = CreateOpenConnection();
-		using var cmd = connection.CreateCommand();
-		cmd.CommandText = "out_string";
-		cmd.CommandType = CommandType.StoredProcedure;
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@value",
-			DbType = DbType.Double,
-			Direction = ParameterDirection.Output,
-		});
-
-		if (prepare)
-			await cmd.PrepareAsync();
-		await Assert.ThrowsAsync<FormatException>(async () => await cmd.ExecuteNonQueryAsync());
-	}
-
 	[Theory]
 	[InlineData(true)]
 	[InlineData(false)]
@@ -248,31 +199,16 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	{
 		using var connection = CreateOpenConnection();
 		using var cmd = connection.CreateCommand();
-		cmd.CommandText = "out_null";
+		cmd.CommandText = "echo_null";
 		cmd.CommandType = CommandType.StoredProcedure;
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@string_value",
-			DbType = DbType.String,
-			Direction = ParameterDirection.Output,
-			IsNullable = true,
-			Value = "non null",
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@int_value",
-			DbType = DbType.Int32,
-			Direction = ParameterDirection.Output,
-			IsNullable = true,
-			Value = "123",
-		});
 
 		if (prepare)
 			await cmd.PrepareAsync();
-		await cmd.ExecuteNonQueryAsync();
-
-		Assert.Equal(DBNull.Value, cmd.Parameters["@string_value"].Value);
-		Assert.Equal(DBNull.Value, cmd.Parameters["@int_value"].Value);
+		var reader = (SingleStoreDataReader) await cmd.ExecuteReaderAsync();
+		var result = await reader.ReadAsync();
+		Assert.True(result);
+        Assert.Equal(DBNull.Value, reader.GetValue(0));
+        Assert.Equal(DBNull.Value, reader.GetValue(1));
 	}
 
 	[Theory]
@@ -308,36 +244,6 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 			DbType = DbType.String,
 			Direction = ParameterDirection.Input,
 			Value = "awesome",
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@diameter",
-			DbType = DbType.Double,
-			Direction = ParameterDirection.Output,
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@circumference",
-			DbType = DbType.Double,
-			Direction = ParameterDirection.Output,
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@area",
-			DbType = DbType.Double,
-			Direction = ParameterDirection.Output,
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@volume",
-			DbType = DbType.Double,
-			Direction = ParameterDirection.Output,
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@shape",
-			DbType = DbType.String,
-			Direction = ParameterDirection.Output,
 		});
 
 		if (prepare)
@@ -380,45 +286,10 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		});
 		cmd.Parameters.Add(new()
 		{
-			ParameterName = "@shape",
-#if BASELINE
-			Direction = ParameterDirection.Output,
-#endif
-		});
-		cmd.Parameters.Add(new()
-		{
 			ParameterName = "@height",
 			Value = 2.0,
 #if BASELINE
 			Direction = ParameterDirection.Input,
-#endif
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@diameter",
-#if BASELINE
-			Direction = ParameterDirection.Output,
-#endif
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@area",
-#if BASELINE
-			Direction = ParameterDirection.Output,
-#endif
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@volume",
-#if BASELINE
-			Direction = ParameterDirection.Output,
-#endif
-		});
-		cmd.Parameters.Add(new()
-		{
-			ParameterName = "@circumference",
-#if BASELINE
-			Direction = ParameterDirection.Output,
 #endif
 		});
 
@@ -429,14 +300,20 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 
 	private async Task CircleAssertions(DbCommand cmd, string executorType)
 	{
-		var result = await ExecuteCommandAsync(cmd, executorType);
-		if (executorType != "NonQuery")
-			Assert.Equal((string) cmd.Parameters["@name"].Value + (string) cmd.Parameters["@shape"].Value, result);
-
-		Assert.Equal(2 * (double) cmd.Parameters["@radius"].Value, cmd.Parameters["@diameter"].Value);
-		Assert.Equal(2.0 * Math.PI * (double) cmd.Parameters["@radius"].Value, cmd.Parameters["@circumference"].Value);
-		Assert.Equal(Math.PI * Math.Pow((double) cmd.Parameters["@radius"].Value, 2), cmd.Parameters["@area"].Value);
-		Assert.Equal((double) cmd.Parameters["@area"].Value * (double) cmd.Parameters["@height"].Value, cmd.Parameters["@volume"].Value);
+		if (executorType == "Reader")
+		{
+		    var reader = (SingleStoreDataReader) await cmd.ExecuteReaderAsync();
+		    var result = await reader.ReadAsync();
+		    Assert.True(result);
+			Assert.Equal(2 * (double) cmd.Parameters["@radius"].Value, reader.GetDouble("diameter"));
+			Assert.Equal(2.0 * Math.PI * (double) cmd.Parameters["@radius"].Value, reader.GetDouble("circumference"));
+			Assert.Equal(Math.PI * Math.Pow((double) cmd.Parameters["@radius"].Value, 2), reader.GetDouble("area"));
+			Assert.Equal(reader.GetDouble("area") * (double) cmd.Parameters["@height"].Value, reader.GetDouble("volume"));
+		} else {
+			var result = await ExecuteCommandAsync(cmd, executorType);
+			if (executorType != "NonQuery")
+				Assert.Equal((string) cmd.Parameters["@name"].Value + "circle", result);
+		}
 	}
 
 	private async Task<object> ExecuteCommandAsync(DbCommand cmd, string executorType)
@@ -524,14 +401,14 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	[Theory]
 	[InlineData(true)]
 	[InlineData(false)]
-	public async Task InOut(bool prepare)
+	public async Task ParameterLoop(bool prepare)
 	{
 		using var connection = CreateOpenConnection();
 		var parameter = new SingleStoreParameter
 		{
 			ParameterName = "high",
 			DbType = DbType.Int32,
-			Direction = ParameterDirection.InputOutput,
+			Direction = ParameterDirection.Input,
 			Value = 1
 		};
 		while ((int) parameter.Value < 8)
@@ -553,7 +430,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 				}
 				await reader.NextResultAsync();
 			}
-			Assert.Equal(nextValue, parameter.Value);
+			parameter.Value = nextValue;
 		}
 	}
 
@@ -590,12 +467,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		Assert.Collection(cmd.Parameters.Cast<SingleStoreParameter>(),
 			AssertParameter("@radius", ParameterDirection.Input, SingleStoreDbType.Double),
 			AssertParameter("@height", ParameterDirection.Input, SingleStoreDbType.Double),
-			AssertParameter("@name", ParameterDirection.Input, SingleStoreDbType.VarChar),
-			AssertParameter("@diameter", ParameterDirection.Output, SingleStoreDbType.Double),
-			AssertParameter("@circumference", ParameterDirection.Output, SingleStoreDbType.Double),
-			AssertParameter("@area", ParameterDirection.Output, SingleStoreDbType.Double),
-			AssertParameter("@volume", ParameterDirection.Output, SingleStoreDbType.Double),
-			AssertParameter("@shape", ParameterDirection.Output, SingleStoreDbType.VarChar));
+			AssertParameter("@name", ParameterDirection.Input, SingleStoreDbType.VarChar));
 	}
 
 	[Fact]
@@ -606,7 +478,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		SingleStoreCommandBuilder.DeriveParameters(cmd);
 
 		Assert.Collection(cmd.Parameters.Cast<SingleStoreParameter>(),
-			AssertParameter("@high", ParameterDirection.InputOutput, SingleStoreDbType.Int32));
+			AssertParameter("@high", ParameterDirection.Input, SingleStoreDbType.Int32));
 	}
 
 	[Fact]
@@ -620,7 +492,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 
 		SingleStoreCommandBuilder.DeriveParameters(cmd);
 		Assert.Collection(cmd.Parameters.Cast<SingleStoreParameter>(),
-			AssertParameter("@high", ParameterDirection.InputOutput, SingleStoreDbType.Int32));
+			AssertParameter("@high", ParameterDirection.Input, SingleStoreDbType.Int32));
 	}
 
 	[Fact]
@@ -643,11 +515,10 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 			Assert.Throws<SingleStoreException>(() => SingleStoreCommandBuilder.DeriveParameters(cmd));
 		}
 
-		using (var cmd = new SingleStoreCommand(@"create procedure xx_does_not_exist_2(
-				IN param1 INT,
-				OUT param2 VARCHAR(100))
+		using (var cmd = new SingleStoreCommand(@"create procedure xx_does_not_exist_2(param1 INT) AS
+			DECLARE param2 VARCHAR(100);
 			BEGIN
-				SELECT 'test' INTO param2;
+				param2 = 'test';
 			END", m_database.Connection))
 		{
 			cmd.ExecuteNonQuery();
@@ -658,8 +529,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 			cmd.CommandType = CommandType.StoredProcedure;
 			SingleStoreCommandBuilder.DeriveParameters(cmd);
 			Assert.Collection(cmd.Parameters.Cast<SingleStoreParameter>(),
-				AssertParameter("@param1", ParameterDirection.Input, SingleStoreDbType.Int32),
-				AssertParameter("@param2", ParameterDirection.Output, SingleStoreDbType.VarChar));
+				AssertParameter("@param1", ParameterDirection.Input, SingleStoreDbType.Int32));
 		}
 	}
 
@@ -698,9 +568,9 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	}
 
 	[Theory]
-	[InlineData("echof", "FUNCTION", "varchar(63)", "BEGIN RETURN name; END", "NO", "CONTAINS SQL")]
-	[InlineData("echop", "PROCEDURE", null, "BEGIN SELECT name; END", "NO", "CONTAINS SQL")]
-	[InlineData("failing_function", "FUNCTION", "decimal(10,5)", "BEGIN DECLARE v1 DECIMAL(10,5); SELECT c1 FROM table_that_does_not_exist INTO v1; RETURN v1; END", "NO", "CONTAINS SQL")]
+	[InlineData("echof", "FUNCTION", "varchar(63)", " BEGIN RETURN name; END", "", "")]
+	[InlineData("echop", "PROCEDURE", "void", " BEGIN ECHO SELECT name; END", "", "")]
+	[InlineData("failing_function", "FUNCTION", "decimal(10,5)", " DECLARE v1 DECIMAL(10,5); BEGIN v1 = 1/0; RETURN v1; END", "", "")]
 	public void ProceduresSchema(string procedureName, string procedureType, string dtdIdentifier, string routineDefinition, string isDeterministic, string dataAccess)
 	{
 		var dataTable = m_database.Connection.GetSchema("Procedures");
@@ -709,10 +579,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 
 		Assert.Equal(procedureName, row["SPECIFIC_NAME"]);
 		Assert.Equal(procedureType, row["ROUTINE_TYPE"]);
-		if (dtdIdentifier is null)
-			Assert.Equal(DBNull.Value, row["DTD_IDENTIFIER"]);
-		else
-			Assert.Equal(dtdIdentifier, ((string) row["DTD_IDENTIFIER"]).Split(' ')[0]);
+		Assert.Equal(dtdIdentifier, ((string) row["DTD_IDENTIFIER"]).Split(' ')[0]);
 		Assert.Equal(routineDefinition, NormalizeSpaces((string) row["ROUTINE_DEFINITION"]));
 		Assert.Equal(isDeterministic, row["IS_DETERMINISTIC"]);
 		Assert.Equal(dataAccess, ((string) row["SQL_DATA_ACCESS"]).Replace('_', ' '));
@@ -738,20 +605,17 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	[Theory]
 	[InlineData(true)]
 	[InlineData(false)]
-	public void OutputTimeParameter(bool prepare)
+	public void ReturnTimeParameter(bool prepare)
 	{
 		using var connection = CreateOpenConnection();
 		using var command = new SingleStoreCommand("GetTime", connection);
 		command.CommandType = CommandType.StoredProcedure;
 		var parameter = command.CreateParameter();
-		parameter.ParameterName = "OutTime";
-		parameter.Direction = ParameterDirection.Output;
-		command.Parameters.Add(parameter);
 
 		if (prepare)
 			command.Prepare();
-		command.ExecuteNonQuery();
-		Assert.IsType<TimeSpan>(parameter.Value);
+		var result = command.ExecuteScalar();
+		Assert.IsType<TimeSpan>(result);
 	}
 
 	[Theory]
@@ -780,10 +644,9 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	{
 		using var connection = CreateOpenConnection();
 
-		using (var command = new SingleStoreCommand($@"DROP PROCEDURE IF EXISTS {sprocName};
-CREATE PROCEDURE {sprocName} ()
+		using (var command = new SingleStoreCommand($@"CREATE OR REPLACE PROCEDURE {sprocName} () AS
 BEGIN
-	SELECT 'test' AS Result;
+	ECHO SELECT 'test' AS Result;
 END;", connection))
 		{
 			command.ExecuteNonQuery();
