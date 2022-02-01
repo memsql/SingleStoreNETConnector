@@ -1738,13 +1738,13 @@ end;";
 			p.Value = expected.Last();
 			cmd.Parameters.Add(p);
 			var result = cmd.ExecuteScalar();
-			Assert.Equal(Array.IndexOf(expected, p.Value) + 1, result);
+			Assert.Equal((System.Int64) Array.IndexOf(expected, p.Value) + 1, result);
 
 			if (!omitWherePrepareTest)
 			{
 				cmd.Prepare();
 				result = cmd.ExecuteScalar();
-				Assert.Equal(Array.IndexOf(expected, p.Value) + 1, result);
+				Assert.Equal((System.Int64) Array.IndexOf(expected, p.Value) + 1, result);
 			}
 		}
 	}
