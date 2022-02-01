@@ -1390,74 +1390,69 @@ create table schema_table({createColumn});");
 #endif
 
 	[Theory]
-	[InlineData("Bit1", "datatypes_bits", SingleStoreDbType.Bit, "BIT", typeof(ulong), 3, 1ul)]
-	[InlineData("Bit32", "datatypes_bits", SingleStoreDbType.Bit, "BIT", typeof(ulong), 3, 1ul)]
-	[InlineData("Bit64", "datatypes_bits", SingleStoreDbType.Bit, "BIT", typeof(ulong), 3, 1ul)]
-	[InlineData("Binary", "datatypes_blobs", SingleStoreDbType.Binary, "BINARY(100)", typeof(byte[]), 2, null)]
-	[InlineData("VarBinary", "datatypes_blobs", SingleStoreDbType.VarBinary, "VARBINARY(100)", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
-	[InlineData("TinyBlob", "datatypes_blobs", SingleStoreDbType.TinyBlob, "TINYBLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
-	[InlineData("Blob", "datatypes_blobs", SingleStoreDbType.Blob, "BLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
-	[InlineData("MediumBlob", "datatypes_blobs", SingleStoreDbType.MediumBlob, "MEDIUMBLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
-	[InlineData("LongBlob", "datatypes_blobs", SingleStoreDbType.LongBlob, "LONGBLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
-	[InlineData("guidbin", "datatypes_blobs", SingleStoreDbType.Binary, "BINARY(16)", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
+	[InlineData("Bit1", "datatypes_bits", "BIT", typeof(ulong), 3, 1ul)]
+	[InlineData("Bit32", "datatypes_bits", "BIT", typeof(ulong), 3, 1ul)]
+	[InlineData("Bit64", "datatypes_bits", "BIT", typeof(ulong), 3, 1ul)]
+	[InlineData("Binary", "datatypes_blobs", "BINARY(100)", typeof(byte[]), 2, null)]
+	[InlineData("VarBinary", "datatypes_blobs", "VARBINARY(100)", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
+	[InlineData("TinyBlob", "datatypes_blobs", "TINYBLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
+	[InlineData("Blob", "datatypes_blobs", "BLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
+	[InlineData("MediumBlob", "datatypes_blobs", "MEDIUMBLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
+	[InlineData("LongBlob", "datatypes_blobs", "LONGBLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
+	[InlineData("guidbin", "datatypes_blobs", "BINARY(16)", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
 #if BASELINE
-	[InlineData("Boolean", "datatypes_bools", SingleStoreDbType.Byte, "BOOL", typeof(sbyte), 3, (sbyte) 1)]
-	[InlineData("TinyInt1", "datatypes_bools", SingleStoreDbType.Byte, "TINYINT(1)", typeof(sbyte), 3, (sbyte) 1)]
+	[InlineData("Boolean", "datatypes_bools", "BOOL", typeof(sbyte), 3, (sbyte) 1)]
+	[InlineData("TinyInt1", "datatypes_bools", "TINYINT(1)", typeof(sbyte), 3, (sbyte) 1)]
 #else
-	[InlineData("Boolean", "datatypes_bools", SingleStoreDbType.Bool, "BOOL", typeof(bool), 3, true)]
-	[InlineData("TinyInt1", "datatypes_bools", SingleStoreDbType.Bool, "TINYINT(1)", typeof(bool), 3, true)]
+	[InlineData("Boolean", "datatypes_bools", "BOOL", typeof(bool), 3, true)]
+	[InlineData("TinyInt1", "datatypes_bools", "TINYINT(1)", typeof(bool), 3, true)]
 #endif
-	[InlineData("TinyInt1U", "datatypes_bools", SingleStoreDbType.UByte, "TINYINT(1) UNSIGNED", typeof(byte), 3, (byte) 1)]
-	[InlineData("char38", "datatypes_guids", SingleStoreDbType.String, "CHAR(38)", typeof(string), 2, "0")]
-	[InlineData("char38bin", "datatypes_guids", SingleStoreDbType.String, "CHAR(38)", typeof(string), 2, "0")]
-	[InlineData("SByte", "datatypes_integers", SingleStoreDbType.Byte, "TINYINT", typeof(sbyte), 4, (sbyte) 127)]
-	[InlineData("Byte", "datatypes_integers", SingleStoreDbType.UByte, "TINYINT UNSIGNED", typeof(byte), 4, (byte) 255)]
-	[InlineData("Int16", "datatypes_integers", SingleStoreDbType.Int16, "SMALLINT", typeof(short), 4, (short) 32767)]
-	[InlineData("UInt16", "datatypes_integers", SingleStoreDbType.UInt16, "SMALLINT UNSIGNED", typeof(ushort), 4, (ushort) 65535)]
-	[InlineData("Int24", "datatypes_integers", SingleStoreDbType.Int24, "MEDIUMINT", typeof(int), 4, 8388607)]
-	[InlineData("UInt24", "datatypes_integers", SingleStoreDbType.UInt24, "MEDIUMINT UNSIGNED", typeof(uint), 4, 16777215u)]
-	[InlineData("Int32", "datatypes_integers", SingleStoreDbType.Int32, "INT", typeof(int), 4, 2147483647)]
-	[InlineData("UInt32", "datatypes_integers", SingleStoreDbType.UInt32, "INT UNSIGNED", typeof(uint), 4, 4294967295u)]
-	[InlineData("Int64", "datatypes_integers", SingleStoreDbType.Int64, "BIGINT", typeof(long), 4, 9223372036854775807L)]
-	[InlineData("UInt64", "datatypes_integers", SingleStoreDbType.UInt64, "BIGINT UNSIGNED", typeof(ulong), 4, 18446744073709551615ul)]
-	[InlineData("Single", "datatypes_reals", SingleStoreDbType.Float, "FLOAT", typeof(float), 3, -3.40282e38f)]
-	[InlineData("Double", "datatypes_reals", SingleStoreDbType.Double, "DOUBLE", typeof(double), 3, -1.7976931348623157e308)]
-	[InlineData("SmallDecimal", "datatypes_reals", SingleStoreDbType.NewDecimal, "DECIMAL(5,2)", typeof(decimal), 3, null)]
-	[InlineData("MediumDecimal", "datatypes_reals", SingleStoreDbType.NewDecimal, "DECIMAL(28,8)", typeof(decimal), 3, null)]
-	[InlineData("BigDecimal", "datatypes_reals", SingleStoreDbType.NewDecimal, "DECIMAL(50,30)", typeof(decimal), 3, null)]
-	[InlineData("utf8", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR(300)", typeof(string), 3, "ASCII")]
-	[InlineData("latin1", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR(300)", typeof(string), 3, "ASCII")]
-	[InlineData("Date", "datatypes_times", SingleStoreDbType.Date, "DATE", typeof(DateTime), 2, null)]
-	[InlineData("DateTime", "datatypes_times", SingleStoreDbType.DateTime, "DATETIME", typeof(DateTime), 2, null)]
-	[InlineData("Timestamp", "datatypes_times", SingleStoreDbType.Timestamp, "TIMESTAMP", typeof(DateTime), 2, null)]
-	[InlineData("Time", "datatypes_times", SingleStoreDbType.Time, "TIME", typeof(TimeSpan), 2, null)]
+	[InlineData("TinyInt1U", "datatypes_bools", "TINYINT(1) UNSIGNED", typeof(byte), 3, (byte) 1)]
+	[InlineData("char38", "datatypes_guids",  "CHAR(38)", typeof(string), 2, "0")]
+	[InlineData("char38bin", "datatypes_guids", "CHAR(38)", typeof(string), 2, "0")]
+	[InlineData("SByte", "datatypes_integers", "TINYINT", typeof(sbyte), 4, (sbyte) 127)]
+	[InlineData("Byte", "datatypes_integers", "TINYINT UNSIGNED", typeof(byte), 4, (byte) 255)]
+	[InlineData("Int16", "datatypes_integers", "SMALLINT", typeof(short), 4, (short) 32767)]
+	[InlineData("UInt16", "datatypes_integers", "SMALLINT UNSIGNED", typeof(ushort), 4, (ushort) 65535)]
+	[InlineData("Int24", "datatypes_integers", "MEDIUMINT", typeof(int), 4, 8388607)]
+	[InlineData("UInt24", "datatypes_integers", "MEDIUMINT UNSIGNED", typeof(uint), 4, 16777215u)]
+	[InlineData("Int32", "datatypes_integers", "INT", typeof(int), 4, 2147483647)]
+	[InlineData("UInt32", "datatypes_integers", "INT UNSIGNED", typeof(uint), 4, 4294967295u)]
+	[InlineData("Int64", "datatypes_integers", "BIGINT", typeof(long), 4, 9223372036854775807L)]
+	[InlineData("UInt64", "datatypes_integers", "BIGINT UNSIGNED", typeof(ulong), 4, 18446744073709551615ul)]
+	[InlineData("Single", "datatypes_reals", "FLOAT", typeof(float), 3, -3.40282e38f)]
+	[InlineData("Double", "datatypes_reals", "DOUBLE", typeof(double), 3, -1.7976931348623157e308)]
+	[InlineData("SmallDecimal", "datatypes_reals", "DECIMAL(5,2)", typeof(decimal), 3, null)]
+	[InlineData("MediumDecimal", "datatypes_reals", "DECIMAL(28,8)", typeof(decimal), 3, null)]
+	[InlineData("BigDecimal", "datatypes_reals", "DECIMAL(50,30)", typeof(decimal), 3, null)]
+	[InlineData("utf8", "datatypes_strings", "VARCHAR(300)", typeof(string), 3, "ASCII")]
+	[InlineData("latin1", "datatypes_strings", "VARCHAR(300)", typeof(string), 3, "ASCII")]
+	[InlineData("Date", "datatypes_times", "DATE", typeof(DateTime), 2, null)]
+	[InlineData("DateTime", "datatypes_times", "DATETIME", typeof(DateTime), 2, null)]
+	[InlineData("Timestamp", "datatypes_times", "TIMESTAMP", typeof(DateTime), 2, null)]
+	[InlineData("Time", "datatypes_times", "TIME", typeof(TimeSpan), 2, null)]
 #if BASELINE
-	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, "YEAR", typeof(short), 2, (short) 1901)]
+	[InlineData("Year", "datatypes_times", "YEAR", typeof(short), 2, (short) 1901)]
 #else
-	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, "YEAR", typeof(int), 2, 1901)]
+	[InlineData("Year", "datatypes_times", "YEAR", typeof(int), 2, 1901)]
 #endif
 #if !BASELINE
-	[InlineData("value", "datatypes_json_core", SingleStoreDbType.JSON, "JSON", typeof(string), 4, "[]")]
-	[InlineData("Geometry", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", typeof(byte[]), 2, null)]
-	[InlineData("Point", "datatypes_geometry", SingleStoreDbType.Geometry, "POINT", typeof(byte[]), 2, null)]
-	[InlineData("LineString", "datatypes_geometry", SingleStoreDbType.Geometry, "LINESTRING", typeof(byte[]), 2, null)]
-	[InlineData("Polygon", "datatypes_geometry", SingleStoreDbType.Geometry, "POLYGON", typeof(byte[]), 2, null)]
-	[InlineData("MultiPoint", "datatypes_geometry", SingleStoreDbType.Geometry, "MULTIPOINT", typeof(byte[]), 2, null)]
-	[InlineData("MultiLineString", "datatypes_geometry", SingleStoreDbType.Geometry, "MULTILINESTRING", typeof(byte[]), 2, null)]
-	[InlineData("MultiPolygon", "datatypes_geometry", SingleStoreDbType.Geometry, "MULTIPOLYGON", typeof(byte[]), 2, null)]
-	[InlineData("GeometryCollection", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRYCOLLECTION", typeof(byte[]), 2, null)]
+	[InlineData("value", "datatypes_json_core", "JSON", typeof(string), 4, "[]")]
+	[InlineData("Geometry", "datatypes_geometry", "GEOGRAPHY", typeof(string), 2, null)]
+	[InlineData("Point", "datatypes_geometry", "GEOGRAPHYPOINT", typeof(string), 2, null)]
 #endif
-	public void StoredProcedureOutParameter(string column, string table, SingleStoreDbType mySqlDbType, string dataTypeName, Type dataType, int rowid, object expectedValue)
+	public void StoredProcedureParameter(string column, string table, string dataTypeName, Type dataType, int rowid, object expectedValue)
 	{
 		if (table == "datatypes_json_core" && !AppConfig.SupportsJson)
 			return;
 
 		using (var command = Connection.CreateCommand())
 		{
-			command.CommandText = $@"drop procedure if exists sp_{column};
-create procedure sp_{column} (IN row_id INTEGER, OUT outparam {dataTypeName})
+			command.CommandText = $@"create or replace procedure sp_{column} (row_id INTEGER) as
+declare
+outparam {dataTypeName};
 begin
-SELECT `{column}` INTO outparam FROM {table} WHERE rowid = row_id;
+ECHO SELECT `{column}` as Value FROM {table} WHERE rowid = row_id;
 end;";
 			command.ExecuteNonQuery();
 		}
@@ -1472,17 +1467,14 @@ end;";
 			parameter.Value = rowid;
 			command.Parameters.Add(parameter);
 
-			parameter = command.CreateParameter();
-			parameter.ParameterName = "outparam";
-			parameter.Direction = ParameterDirection.Output;
-			command.Parameters.Add(parameter);
-
-			command.ExecuteNonQuery();
-			Assert.IsType(dataType, parameter.Value);
-			Assert.Equal(mySqlDbType, parameter.SingleStoreDbType);
+			var reader = command.ExecuteReader();
+			var result = reader.Read();
+			Assert.True(result);
+			var value = reader.GetValue(0);
+			Assert.IsType(dataType, value);
 
 			if (expectedValue is not null)
-				Assert.Equal(expectedValue, parameter.Value);
+				Assert.Equal(expectedValue, value);
 		}
 	}
 
