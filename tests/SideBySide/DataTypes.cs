@@ -721,21 +721,11 @@ create table date_time_kind(
 rowid integer not null primary key auto_increment,
 d date,
 dt0 datetime(0),
-dt1 datetime(1),
-dt2 datetime(2),
-dt3 datetime(3),
-dt4 datetime(4),
-dt5 datetime(5),
 dt6 datetime(6));
-insert into date_time_kind(d, dt0, dt1, dt2, dt3, dt4, dt5, dt6) values(?, ?, ?, ?, ?, ?, ?, ?)", connection)
+insert into date_time_kind(d, dt0, dt6) values(?, ?, ?)", connection)
 		{
 			Parameters =
 			{
-				new() { Value = dateTimeIn },
-				new() { Value = dateTimeIn },
-				new() { Value = dateTimeIn },
-				new() { Value = dateTimeIn },
-				new() { Value = dateTimeIn },
 				new() { Value = dateTimeIn },
 				new() { Value = dateTimeIn },
 				new() { Value = dateTimeIn },
@@ -745,19 +735,14 @@ insert into date_time_kind(d, dt0, dt1, dt2, dt3, dt4, dt5, dt6) values(?, ?, ?,
 		{
 			cmd.ExecuteNonQuery();
 			long lastInsertId = cmd.LastInsertedId;
-			cmd.CommandText = $"select d, dt0, dt1, dt2, dt3, dt4, dt5, dt6 from date_time_kind where rowid = {lastInsertId};";
+			cmd.CommandText = $"select d, dt0, dt6 from date_time_kind where rowid = {lastInsertId};";
 
 			using var reader = cmd.ExecuteReader();
 			Assert.True(reader.Read());
 			Assert.Equal(new DateTime(2001, 2, 3), reader.GetValue(0));
-			Assert.Equal(new DateTime(2001, 2, 3, 14, 5, AppConfig.SupportedFeatures.HasFlag(ServerFeatures.RoundDateTime) ? 7 : 6, kindIn), reader.GetValue(1));
-			Assert.Equal(new DateTime(2001, 2, 3, 14, 5, 6, AppConfig.SupportedFeatures.HasFlag(ServerFeatures.RoundDateTime) ? 800 : 700, kindIn), reader.GetValue(2));
-			Assert.Equal(new DateTime(2001, 2, 3, 14, 5, 6, AppConfig.SupportedFeatures.HasFlag(ServerFeatures.RoundDateTime) ? 790 : 780, kindIn), reader.GetValue(3));
-			Assert.Equal(dateTimeIn, reader.GetValue(4));
-			Assert.Equal(dateTimeIn, reader.GetValue(5));
-			Assert.Equal(dateTimeIn, reader.GetValue(6));
-			Assert.Equal(dateTimeIn, reader.GetValue(7));
-			for (int i = 0; i < 7; i++)
+			Assert.Equal(new DateTime(2001, 2, 3, 14, 5, 6, kindIn), reader.GetValue(1));
+			Assert.Equal(dateTimeIn, reader.GetValue(2));
+			for (int i = 0; i < 3; i++)
 				Assert.Equal(kindOption, (SingleStoreDateTimeKind) reader.GetDateTime(i).Kind);
 		}
 		else
@@ -1344,10 +1329,6 @@ create table schema_table({createColumn});");
 	[InlineData("Point", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
 	[InlineData("LineString", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
 	[InlineData("Polygon", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("MultiPoint", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("MultiLineString", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("MultiPolygon", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("GeometryCollection", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
 	public void GetColumnSchema(string column, string table, SingleStoreDbType mySqlDbType, string dataTypeName, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
 		if (table == "datatypes_json_core" && !AppConfig.SupportsJson)
