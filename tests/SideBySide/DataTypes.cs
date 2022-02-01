@@ -1051,10 +1051,6 @@ ORDER BY t.`Key`", Connection);
 	[InlineData("Point", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63 })]
 	[InlineData("LineString", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 64 })]
 	[InlineData("Polygon", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 3, 0, 0, 0, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 })]
-	[InlineData("MultiPoint", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 4, 0, 0, 0, 3, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 64, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 64, 0, 0, 0, 0, 0, 0, 8, 64 })]
-	[InlineData("MultiLineString", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 5, 0, 0, 0, 2, 0, 0, 0, 1, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 52, 64, 0, 0, 0, 0, 0, 0, 52, 64, 1, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 64, 0, 0, 0, 0, 0, 0, 46, 64, 0, 0, 0, 0, 0, 0, 62, 64, 0, 0, 0, 0, 0, 0, 46, 64 })]
-	[InlineData("MultiPolygon", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 6, 0, 0, 0, 2, 0, 0, 0, 1, 3, 0, 0, 0, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 0, 0, 0, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 64, 0, 0, 0, 0, 0, 0, 20, 64, 0, 0, 0, 0, 0, 0, 28, 64, 0, 0, 0, 0, 0, 0, 20, 64, 0, 0, 0, 0, 0, 0, 28, 64, 0, 0, 0, 0, 0, 0, 28, 64, 0, 0, 0, 0, 0, 0, 20, 64, 0, 0, 0, 0, 0, 0, 28, 64, 0, 0, 0, 0, 0, 0, 20, 64, 0, 0, 0, 0, 0, 0, 20, 64 })]
-	[InlineData("GeometryCollection", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 7, 0, 0, 0, 3, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 36, 64, 0, 0, 0, 0, 0, 0, 36, 64, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 64, 0, 0, 0, 0, 0, 0, 62, 64, 1, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 64, 0, 0, 0, 0, 0, 0, 46, 64, 0, 0, 0, 0, 0, 0, 52, 64, 0, 0, 0, 0, 0, 0, 52, 64 })]
 	public void QueryGeometry(string columnName, string dataTypeName, byte[] expected)
 	{
 		var geometryData = new byte[][]
@@ -1161,10 +1157,6 @@ ORDER BY t.`Key`", Connection);
 	[InlineData("Point", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
 	[InlineData("LineString", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
 	[InlineData("Polygon", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("MultiPoint", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("MultiLineString", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("MultiPolygon", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("GeometryCollection", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
 	public void GetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale) =>
 		DoGetSchemaTable(column, table, mySqlDbType, columnSize, dataType, flags, precision, scale);
 
@@ -1719,6 +1711,7 @@ end;";
 			p.Value = expected.Last();
 			cmd.Parameters.Add(p);
 			var result = cmd.ExecuteScalar();
+			// SingleStore uses bigint type for integer primary key with enabled auto_increment, used for rowid
 			Assert.Equal((System.Int64) Array.IndexOf(expected, p.Value) + 1, result);
 
 			if (!omitWherePrepareTest)
