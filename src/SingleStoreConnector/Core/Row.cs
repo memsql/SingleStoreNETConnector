@@ -225,17 +225,6 @@ internal abstract class Row
 			return checked((int) ReadBit(data, columnDefinition));
 
 		var result = GetInt32Core(data, columnDefinition);
-
-		// See GetValueCore() in TextRow.cs for further explanation
-		if (columnDefinition.ColumnType == ColumnType.Tiny &&
-			Connection.TreatTinyAsBoolean &&
-			columnDefinition.ColumnLength == 4 &&
-			(columnDefinition.ColumnFlags & ColumnFlags.Unsigned) == 0 &&
-			result != 0)
-		{
-			// coerce all non-zero TINYINT(1) results to 1, since it represents a BOOL value
-			result = 1;
-		}
 		return result;
 	}
 

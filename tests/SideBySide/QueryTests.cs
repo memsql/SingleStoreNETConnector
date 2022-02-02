@@ -1166,7 +1166,7 @@ create table command_behavior_single_result(id integer not null primary key);");
 			Assert.Equal(1L, await cmd.ExecuteScalarAsync());
 		}
 	}
-	
+
 	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=97067")]
 	public async Task QueryBit()
 	{
@@ -1222,15 +1222,13 @@ FROM query_bit;", connection);
 		Assert.False(await reader.NextResultAsync());
 	}
 
+	// See GetValueCore() in TextRow.cs for further explanation
 	[Theory]
-	[InlineData(false, false)]
-	[InlineData(false, true)]
-	[InlineData(true, false)]
-	[InlineData(true, true)]
-	public void GetIntForTinyInt1(bool treatTinyAsBoolean, bool prepare)
+	[InlineData(false)]
+	[InlineData(true)]
+	public void GetIntForTinyInt1(bool prepare)
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();
-		csb.TreatTinyAsBoolean = treatTinyAsBoolean;
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		connection.Open();
 		connection.Execute(@"drop table if exists datatypes_tinyint1;
@@ -1245,17 +1243,12 @@ insert into datatypes_tinyint1(value) values(0), (1), (2), (-1), (-128), (127);"
 
 		int[] expected = {-128, -1, 0, 1, 2, 127};
 
-		if (treatTinyAsBoolean)
-			expected = expected.Select(x => x == 0 ? 0 : 1).ToArray();
-
 		for (int i = 0; i < expected.Length; i++)
 		{
 			Assert.True(reader.Read());
 #if !BASELINE
 			// https://bugs.mysql.com/bug.php?id=99091
 			Assert.Equal((sbyte) expected[i], reader.GetSByte(0));
-			if (treatTinyAsBoolean)
-				Assert.Equal((byte) expected[i], reader.GetByte(0));
 #endif
 			Assert.Equal((short) expected[i], reader.GetInt16(0));
 			Assert.Equal(expected[i], reader.GetInt32(0));

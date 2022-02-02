@@ -11,6 +11,15 @@ public class GetValueConversionTests : GetValueConversionTestBase<SelectValueFix
 	{
 	}
 
+	/*
+	SingleStore treats BOOLEAN as TINYINT. Furthermore, the metadata provides the same ColumnLength value (4) for both types.
+	That's why:
+	- there is no way to differ BOOLEAN from TINYINT. As a result, we stick to usage of sbyte.
+	- usage of 'TreatTinyAsBoolean' variable is redundant.
+	*/
+	public override void GetValue_for_Boolean() => TestGetValue(DbType.Boolean, ValueKind.One, (sbyte)1);
+	public override void GetFieldType_for_Boolean() => TestGetFieldType(DbType.Boolean, ValueKind.One, typeof(sbyte));
+
 	// GetBoolean allows conversions from any integral type and decimal for backwards compatibility
 	public override void GetBoolean_throws_for_maximum_Byte() => TestGetValue(DbType.Byte, ValueKind.Maximum, x => x.GetBoolean(0), true);
 	public override void GetBoolean_throws_for_maximum_Byte_with_GetFieldValue() => TestGetValue(DbType.Byte, ValueKind.Maximum, x => x.GetFieldValue<bool>(0), true);

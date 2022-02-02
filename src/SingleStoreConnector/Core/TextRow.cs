@@ -44,8 +44,6 @@ internal sealed class TextRow : Row
 		*/
 		case ColumnType.Tiny:
 			var value = ParseInt32(data);
-			if (Connection.TreatTinyAsBoolean && columnDefinition.ColumnLength == 4 && !isUnsigned)
-				return (value == 0)? (sbyte)0 : (sbyte)1;
 			return isUnsigned ? (object) (byte) value : (sbyte) value;
 
 		case ColumnType.Int24:

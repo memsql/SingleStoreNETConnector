@@ -57,7 +57,7 @@ insert into select_value values
 
 	public string CreateSelectSql(byte[] value) => $"SELECT X'{BitConverter.ToString(value).Replace("-", "")}'";
 
-	public string SelectNoRows => "SELECT * FROM mysql.user WHERE 0 = 1;";
+	public string SelectNoRows => "SELECT * FROM information_schema.user_privileges WHERE 0 = 1;";
 
 	public string DeleteNoRows => "DELETE FROM select_value WHERE 0 = 1;";
 
