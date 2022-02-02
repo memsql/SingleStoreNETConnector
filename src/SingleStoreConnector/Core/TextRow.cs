@@ -36,10 +36,16 @@ internal sealed class TextRow : Row
 		var isUnsigned = (columnDefinition.ColumnFlags & ColumnFlags.Unsigned) != 0;
 		switch (columnDefinition.ColumnType)
 		{
+		/*
+		SingleStore treats BOOLEAN as TINYINT. Furthermore, the metadata provides the same ColumnLength value (4) for both types.
+		That's why:
+		- there is no way to differ BOOLEAN from TINYINT. As a result, we stick to usage of sbyte.
+		- usage of 'TreatTinyAsBoolean' variable is redundant.
+		*/
 		case ColumnType.Tiny:
 			var value = ParseInt32(data);
-			if (Connection.TreatTinyAsBoolean && columnDefinition.ColumnLength == 1 && !isUnsigned)
-				return value != 0;
+			if (Connection.TreatTinyAsBoolean && columnDefinition.ColumnLength == 4 && !isUnsigned)
+				return (value == 0)? (sbyte)0 : (sbyte)1;
 			return isUnsigned ? (object) (byte) value : (sbyte) value;
 
 		case ColumnType.Int24:

@@ -33,12 +33,13 @@ CREATE TABLE bug_1096 (
 );
 
 DROP PROCEDURE IF EXISTS sp_bug_1096;
-CREATE PROCEDURE sp_bug_1096 (in pId INT, IN pName VARCHAR(50))
+CREATE PROCEDURE sp_bug_1096 (pId INT, pName VARCHAR(50)) AS
 BEGIN
 UPDATE bug_1096 SET `Name` = pName WHERE (`Id` = pId);
-SELECT 0 AS ResultCode;
-END;
+ECHO SELECT 0 AS ResultCode;
+END;");
 
+		connection.Execute(@"
 INSERT INTO bug_1096 (`Name`) VALUES ('Demo-Name');");
 
 		var sproc = "CALL sp_bug_1096 (1, 'Demo-Name-Updated');";
@@ -154,7 +155,7 @@ INSERT INTO bug_1096 (`Name`) VALUES ('Demo-Name');");
 		connection.Open();
 
 		using var cmd = connection.CreateCommand();
-		cmd.CommandText = "set @var = 1; select @var + 1;";
+		cmd.CommandText = "select 1 into @var; select @var + 1;";
 		Assert.Equal(2L, cmd.ExecuteScalar());
 	}
 
@@ -306,7 +307,7 @@ create table query_invalid_sql(id integer not null primary key auto_increment);"
 		using (cmd2.ExecuteReader())
 		{
 		}
-		Assert.Equal(1, cmd2.ExecuteScalar());
+		Assert.Equal(1L, cmd2.ExecuteScalar());
 	}
 
 	[Fact]
@@ -1165,29 +1166,7 @@ create table command_behavior_single_result(id integer not null primary key);");
 			Assert.Equal(1L, await cmd.ExecuteScalarAsync());
 		}
 	}
-
-#if !BASELINE
-	[Fact]
-	public void NoBackslashEscapes()
-	{
-		var csb = AppConfig.CreateConnectionStringBuilder();
-		csb.NoBackslashEscapes = true;
-		using var connection = new SingleStoreConnection(csb.ConnectionString);
-		connection.Open();
-		connection.Execute("SET @@sql_mode = CONCAT(@@sql_mode, ',NO_BACKSLASH_ESCAPES');");
-		var value = "\\'\"";
-		using var cmd = new SingleStoreCommand("SELECT @param;", connection)
-		{
-			Parameters =
-			{
-				new("@param", value),
-			},
-		};
-		var result = cmd.ExecuteScalar();
-		Assert.Equal(value, result);
-	}
-#endif
-
+	
 	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=97067")]
 	public async Task QueryBit()
 	{
@@ -1258,12 +1237,14 @@ FROM query_bit;", connection);
 create table datatypes_tinyint1(value tinyint(1));
 insert into datatypes_tinyint1(value) values(0), (1), (2), (-1), (-128), (127);");
 
-		using var command = new SingleStoreCommand("select value from datatypes_tinyint1;", connection);
+		using var command = new SingleStoreCommand("select value from datatypes_tinyint1 order by value asc;", connection);
 		if (prepare)
 			command.Prepare();
+
 		using var reader = command.ExecuteReader();
 
-		int[] expected = { 0, 1, 2, -1, -128, 127 };
+		int[] expected = {-128, -1, 0, 1, 2, 127};
+
 		if (treatTinyAsBoolean)
 			expected = expected.Select(x => x == 0 ? 0 : 1).ToArray();
 

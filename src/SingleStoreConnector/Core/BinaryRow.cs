@@ -81,9 +81,10 @@ internal sealed class BinaryRow : Row
 		var isUnsigned = (columnDefinition.ColumnFlags & ColumnFlags.Unsigned) != 0;
 		switch (columnDefinition.ColumnType)
 		{
+		// See GetValueCore() in TextRow.cs for further explanation
 		case ColumnType.Tiny:
-			if (Connection.TreatTinyAsBoolean && columnDefinition.ColumnLength == 1 && !isUnsigned)
-				return data[0] != 0;
+			if (Connection.TreatTinyAsBoolean && columnDefinition.ColumnLength == 4 && !isUnsigned)
+				return (data[0] == 0)? (sbyte)0 : (sbyte)1;
 			return isUnsigned ? (object) data[0] : (sbyte) data[0];
 
 		case ColumnType.Int24:
