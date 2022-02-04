@@ -54,7 +54,7 @@ VALUES ('a'), ('b'), ('c'), ('d'), ('e'), ('f'), ('g'), ('h'), ('i'), ('j');");
 		}
 
 		using var reader = connection.ExecuteReader(@"
-		SET @param = 'B';
+		SELECT 'B' INTO @param;
 		SELECT * FROM mix_collations a WHERE a.test_col = @param");
 		Assert.True(reader.Read());
 	}
@@ -78,7 +78,11 @@ VALUES ('a'), ('b'), ('c'), ('d'), ('e'), ('f'), ('g'), ('h'), ('i'), ('j');");
 		}
 
 		var collation = connection.Query<string>(@"select @@collation_connection;").Single();
-		var expected = connection.ServerVersion.StartsWith("8.0") ? "utf8mb4_0900_ai_ci" : "utf8mb4_general_ci";
+		/*
+		 Default value for @@collation_connection in SingleStore is "utf8_general_ci"
+		 (https://docs.singlestore.com/db/v7.6/en/reference/configuration-reference/engine-variables/list-of-engine-variables.html#collation_connection)
+		 */
+		var expected = "utf8_general_ci";
 		Assert.Equal(expected, collation);
 	}
 
