@@ -464,6 +464,9 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 #endif
 	{
 		var session = Session;
+		if (Session.S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) < 0)
+			throw new InvalidOperationException("Resetting connection is not supported in SingleStore " + Session.S2ServerVersion.OriginalString);
+
 		Log.Debug("Session{0} resetting connection", session.Id);
 		await session.SendAsync(ResetConnectionPayload.Instance, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 		var payload = await session.ReceiveReplyAsync(AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
@@ -496,7 +499,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 
 	public override string DataSource => GetConnectionSettings().ConnectionStringBuilder.Server;
 
-	public override string ServerVersion => Session.ServerVersion.OriginalString;
+	public override string ServerVersion => Session.MySqlCompatVersion.OriginalString;
 
 	/// <summary>
 	/// The connection ID from MySQL Server.

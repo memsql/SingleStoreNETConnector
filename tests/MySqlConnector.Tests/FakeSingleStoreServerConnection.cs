@@ -68,10 +68,18 @@ internal sealed class FakeSingleStoreServerConnection
 						await SendAsync(stream, 1, WriteOk);
 						break;
 
+					case CommandKind.ChangeUser:
+						await SendAsync(stream, 1, WriteOk);
+						break;
+
 					case CommandKind.Query:
 						var query = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
 						Match match;
 						if (query == "SET NAMES utf8mb4;")
+						{
+							await SendAsync(stream, 1, WriteOk);
+						}
+						else if (query == "SET NAMES utf8;")
 						{
 							await SendAsync(stream, 1, WriteOk);
 						}

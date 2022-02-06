@@ -17,3 +17,9 @@ internal static class ServerVersions
 	// https://ocelot.ca/blog/blog/2017/08/22/no-more-mysql-proc-in-mysql-8-0/
 	public static readonly Version RemovesMySqlProcTable = new(8, 0, 0);
 }
+
+internal static class S2Versions
+{
+	public static readonly Version SupportsUtf8Mb4 = new(7, 5, 0);
+	public static readonly Version SupportsResetConnection = new(7, 5, 0);
+}

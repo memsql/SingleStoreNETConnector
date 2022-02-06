@@ -11,49 +11,9 @@ internal sealed class CachedProcedure
 {
 	public static async Task<CachedProcedure?> FillAsync(IOBehavior ioBehavior, SingleStoreConnection connection, string schema, string component, CancellationToken cancellationToken)
 	{
-		// try to use mysql.proc first, as it is much faster
-		if (connection.Session.ServerVersion.Version < ServerVersions.RemovesMySqlProcTable && !connection.Session.ProcAccessDenied)
+		if (connection.Session.MySqlCompatVersion.Version < ServerVersions.SupportsProcedureCache)
 		{
-			try
-			{
-				using var cmd = connection.CreateCommand();
-				cmd.Transaction = connection.CurrentTransaction;
-				cmd.CommandText = @"SELECT param_list, returns FROM mysql.proc WHERE db = @schema AND name = @component";
-				cmd.Parameters.AddWithValue("@schema", schema);
-				cmd.Parameters.AddWithValue("@component", component);
-
-				using var reader = await cmd.ExecuteReaderNoResetTimeoutAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
-				var exists = await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-				if (!exists)
-					return null;
-
-				var parametersSqlBytes = (byte[]) reader.GetValue(0);
-				var returnsSqlBytes = (byte[]) reader.GetValue(1);
-
-				// ASSUME this is UTF-8 encoded; it's possible that the `character_set_client` column would need to be used?
-				var parametersSql = Encoding.UTF8.GetString(parametersSqlBytes);
-				var returnsSql = Encoding.UTF8.GetString(returnsSqlBytes);
-
-				var parsedParameters = ParseParameters(parametersSql);
-				if (returnsSql.Length != 0)
-				{
-					var returnDataType = ParseDataType(returnsSql, out var unsigned, out var length);
-					parsedParameters.Insert(0, CreateCachedParameter(0, null, "", returnDataType, unsigned, length, returnsSql));
-				}
-
-				return new CachedProcedure(schema, component, parsedParameters);
-			}
-			catch (SingleStoreException ex)
-			{
-				Log.Info("Session{0} failed to retrieve metadata for Schema={1} Component={2}; falling back to INFORMATION_SCHEMA. Error: {3}", connection.Session.Id, schema, component, ex.Message);
-				if (ex.ErrorCode == SingleStoreErrorCode.TableAccessDenied)
-					connection.Session.ProcAccessDenied = true;
-			}
-		}
-
-		if (connection.Session.ServerVersion.Version < ServerVersions.SupportsProcedureCache)
-		{
-			Log.Info("Session{0} ServerVersion={1} does not support cached procedures", connection.Session.Id, connection.Session.ServerVersion.OriginalString);
+			Log.Info("Session{0} ServerVersion={1} does not support cached procedures", connection.Session.Id, connection.Session.MySqlCompatVersion.OriginalString);
 			return null;
 		}
 

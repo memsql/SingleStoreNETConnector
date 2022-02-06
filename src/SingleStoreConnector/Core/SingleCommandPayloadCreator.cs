@@ -86,7 +86,7 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 
 		// NOTE: documentation is not updated yet, but due to bugs in MySQL Server 8.0.23-8.0.25, the PARAMETER_COUNT_AVAILABLE (0x08)
 		// flag has to be set in the 'flags' block in order for query attributes to be sent with a prepared statement.
-		var sendQueryAttributes = supportsQueryAttributes && command.Connection.Session.ServerVersion.Version is not { Major: 8, Minor: 0, Build: >= 23 and <= 25 };
+		var sendQueryAttributes = supportsQueryAttributes && command.Connection.Session.MySqlCompatVersion.Version is not { Major: 8, Minor: 0, Build: >= 23 and <= 25 };
 		writer.Write((byte) (sendQueryAttributes ? 8 : 0));
 		writer.Write(1);
 

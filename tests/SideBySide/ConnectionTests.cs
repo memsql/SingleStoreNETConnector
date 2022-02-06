@@ -11,22 +11,18 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
 		connection.Open();
+		var gotError = false;
 
-		var gotEvent = false;
-		connection.InfoMessage += (s, a) =>
+		try
 		{
-			gotEvent = true;
-#if BASELINE
-			Assert.Single(a.errors);
-			Assert.Equal((int) SingleStoreErrorCode.BadTable, a.errors[0].Code);
-#else
-			Assert.Single(a.Errors);
-			Assert.Equal(SingleStoreErrorCode.BadTable, a.Errors[0].ErrorCode);
-#endif
-		};
-
-		connection.Execute(@"drop table if exists table_does_not_exist;");
-		Assert.True(gotEvent);
+			connection.Execute(@"drop table table_does_not_exist");
+		}
+		catch (Exception ex)
+		{
+			Assert.Contains("Unknown table", ex.Message);
+			gotError = true;
+		}
+		Assert.True(gotError);
 	}
 
 	[Fact]
@@ -35,22 +31,18 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
 		connection.Open();
 		using var transaction = connection.BeginTransaction();
+		var gotError = false;
 
-		var gotEvent = false;
-		connection.InfoMessage += (s, a) =>
+		try
 		{
-			gotEvent = true;
-#if BASELINE
-			Assert.Single(a.errors);
-			Assert.Equal((int) SingleStoreErrorCode.BadTable, a.errors[0].Code);
-#else
-			Assert.Single(a.Errors);
-			Assert.Equal(SingleStoreErrorCode.BadTable, a.Errors[0].ErrorCode);
-#endif
-		};
-
-		connection.Execute(@"drop table if exists table_does_not_exist;", transaction: transaction);
-		Assert.True(gotEvent);
+			connection.Execute(@"drop table table_does_not_exist;", transaction: transaction);
+		}
+		catch (Exception ex)
+		{
+			Assert.Contains("Unknown table", ex.Message);
+			gotError = true;
+		}
+		Assert.True(gotError);
 	}
 
 	[Fact]
@@ -282,14 +274,24 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		await connection.OpenAsync();
 
-		connection.Execute("set @temp_var = 1;");
+		connection.Execute("select 1 into @temp_var;");
 		var tempVar = connection.ExecuteScalar<int?>("select @temp_var;");
 		Assert.Equal(1, tempVar);
 
-		await connection.ResetConnectionAsync();
+		try
+		{
+			await connection.ResetConnectionAsync();
+		}
+		catch (InvalidOperationException)
+		{
+		}
 
 		tempVar = connection.ExecuteScalar<int?>("select @temp_var;");
-		Assert.Null(tempVar);
+		Version resetSupportVersion = new(7, 5, 0);
+		if (connection.Session.S2ServerVersion.Version.CompareTo(resetSupportVersion) < 0)
+			Assert.Equal(1, tempVar);
+		else
+			Assert.Null(tempVar);
 	}
 #endif
 }

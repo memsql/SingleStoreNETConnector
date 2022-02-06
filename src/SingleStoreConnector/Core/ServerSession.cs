@@ -32,7 +32,8 @@ internal sealed class ServerSession
 		m_lock = new();
 		m_payloadCache = new();
 		Id = (pool?.Id ?? 0) + "." + id;
-		ServerVersion = ServerVersion.Empty;
+		MySqlCompatVersion = ServerVersion.Empty;
+		S2ServerVersion = ServerVersion.Empty;
 		CreatedTicks = unchecked((uint) Environment.TickCount);
 		Pool = pool;
 		PoolGeneration = poolGeneration;
@@ -46,7 +47,13 @@ internal sealed class ServerSession
 	}
 
 	public string Id { get; }
-	public ServerVersion ServerVersion { get; set; }
+
+	// MySQL version set for compatibility
+	public ServerVersion MySqlCompatVersion { get; set; }
+
+	// SingleStore Server version
+	public ServerVersion S2ServerVersion { get; set; }
+
 	public int ActiveCommandId { get; private set; }
 	public int CancellationTimeout { get; private set; }
 	public int ConnectionId { get; set; }
@@ -455,7 +462,7 @@ internal sealed class ServerSession
 					throw new NotSupportedException("Authentication method '{0}' is not supported.".FormatInvariant(initialHandshake.AuthPluginName));
 				}
 
-				ServerVersion = new(initialHandshake.ServerVersion);
+				MySqlCompatVersion = new(initialHandshake.ServerVersion);
 				ConnectionId = initialHandshake.ConnectionId;
 				AuthPluginData = initialHandshake.AuthPluginData;
 				m_useCompression = cs.UseCompression && (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.Compress) != 0;
@@ -467,13 +474,13 @@ internal sealed class ServerSession
 				SupportsQueryAttributes = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.QueryAttributes) != 0;
 				m_supportsSessionTrack = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.SessionTrack) != 0;
 				var serverSupportsSsl = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.Ssl) != 0;
-				m_characterSet = ServerVersion.Version >= ServerVersions.SupportsUtf8Mb4 ? CharacterSet.Utf8Mb4GeneralCaseInsensitive : CharacterSet.Utf8GeneralCaseInsensitive;
-				m_setNamesPayload = ServerVersion.Version >= ServerVersions.SupportsUtf8Mb4 ?
+				m_characterSet = S2ServerVersion.Version >= S2Versions.SupportsUtf8Mb4 ? CharacterSet.Utf8Mb4GeneralCaseInsensitive : CharacterSet.Utf8GeneralCaseInsensitive;
+				m_setNamesPayload = S2ServerVersion.Version >= S2Versions.SupportsUtf8Mb4 ?
 					(SupportsQueryAttributes ? s_setNamesUtf8mb4WithAttributesPayload : s_setNamesUtf8mb4NoAttributesPayload) :
 					(SupportsQueryAttributes ? s_setNamesUtf8WithAttributesPayload : s_setNamesUtf8NoAttributesPayload);
 
 				// disable pipelining for RDS MySQL 5.7 (assuming Aurora); otherwise take it from the connection string or default to true
-				if (!cs.Pipelining.HasValue && ServerVersion.Version.Major == 5 && ServerVersion.Version.Minor == 7 && HostName.EndsWith(".rds.amazonaws.com", StringComparison.OrdinalIgnoreCase))
+				if (!cs.Pipelining.HasValue && MySqlCompatVersion.Version.Major == 5 && MySqlCompatVersion.Version.Minor == 7 && HostName.EndsWith(".rds.amazonaws.com", StringComparison.OrdinalIgnoreCase))
 				{
 					m_logArguments[1] = HostName;
 					Log.Debug("Session{0} auto-detected Aurora 5.7 at '{1}'; disabling pipelining", m_logArguments);
@@ -500,7 +507,7 @@ internal sealed class ServerSession
 				}
 
 				Log.Debug("Session{0} made connection; ServerVersion={1}; ConnectionId={2}; Compression={3}; Attributes={4}; DeprecateEof={5}; Ssl={6}; SessionTrack={7}; Pipelining={8}; QueryAttributes={9}",
-					m_logArguments[0], ServerVersion.OriginalString, ConnectionId,
+					m_logArguments[0], MySqlCompatVersion.OriginalString, ConnectionId,
 					m_useCompression, m_supportsConnectionAttributes, m_supportsDeprecateEof, serverSupportsSsl, m_supportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
 
 				if (cs.SslMode != SingleStoreSslMode.None && (cs.SslMode != SingleStoreSslMode.Preferred || serverSupportsSsl))
@@ -561,8 +568,7 @@ internal sealed class ServerSession
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
 
-			if (ShouldGetRealServerDetails(cs))
-				await GetRealServerDetailsAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+			await GetRealServerDetailsAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 
 			m_payloadHandler.ByteHandler.RemainingTimeout = Constants.InfiniteTimeout;
 
@@ -596,13 +602,14 @@ internal sealed class ServerSession
 			ClearPreparedStatements();
 
 			PayloadData payload;
-			if (DatabaseOverride is null && (ServerVersion.Version.CompareTo(ServerVersions.SupportsResetConnection) >= 0 || ServerVersion.MariaDbVersion?.CompareTo(ServerVersions.MariaDbSupportsResetConnection) >= 0))
+
+			if (DatabaseOverride is null && S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) >= 0)
 			{
-				m_logArguments[1] = ServerVersion.OriginalString;
+				m_logArguments[1] = S2ServerVersion.OriginalString;
 
 				if (m_supportsPipelining)
 				{
-					Log.Trace("Session{0} ServerVersion={1} supports reset connection and pipelining; sending pipelined reset connection request", m_logArguments);
+					Log.Trace("Session{0} S2ServerVersion={1} supports reset connection and pipelining; sending pipelined reset connection request", m_logArguments);
 
 					// send both packets at once
 					await m_payloadHandler!.ByteHandler.WriteBytesAsync(m_pipelinedResetConnectionBytes!, ioBehavior).ConfigureAwait(false);
@@ -629,8 +636,8 @@ internal sealed class ServerSession
 				// optimistically hash the password with the challenge from the initial handshake (supported by MariaDB; doesn't appear to be supported by MySQL)
 				if (DatabaseOverride is null)
 				{
-					m_logArguments[1] = ServerVersion.OriginalString;
-					Log.Trace("Session{0} ServerVersion={1} doesn't support reset connection; sending change user request", m_logArguments);
+					m_logArguments[1] = S2ServerVersion.OriginalString;
+					Log.Trace("Session{0} S2ServerVersion={1} doesn't support reset connection; sending change user request", m_logArguments);
 				}
 				else
 				{
@@ -673,6 +680,10 @@ internal sealed class ServerSession
 		catch (SocketException ex)
 		{
 			Log.Trace(ex, "Session{0} ignoring SocketException in TryResetConnectionAsync", m_logArguments);
+		}
+		catch (InvalidOperationException ex)
+		{
+			Log.Trace(ex, "Session{0} ignoring InvalidOperationException in TryResetConnectionAsync", m_logArguments);
 		}
 
 		return false;
@@ -1618,7 +1629,7 @@ internal sealed class ServerSession
 	private bool ShouldGetRealServerDetails(ConnectionSettings cs)
 	{
 		// currently hardcoded to the version(s) returned by the Azure Database for MySQL proxy
-		if (ServerVersion.OriginalString is "5.6.47.0" or "5.6.42.0" or "5.6.39.0")
+		if (MySqlCompatVersion.OriginalString is "5.6.47.0" or "5.6.42.0" or "5.6.39.0")
 			return true;
 
 		// detect Azure Database for MySQL DNS suffixes, if a "user@host" user ID is being used
@@ -1634,15 +1645,16 @@ internal sealed class ServerSession
 
 	private async Task GetRealServerDetailsAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		Log.Debug("Session{0} detected proxy; getting CONNECTION_ID(), VERSION() from server", m_logArguments);
+		Log.Debug("Session{0} detected proxy; getting CONNECTION_ID(), VERSION(), S2Version from server", m_logArguments);
 		try
 		{
-			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, "SELECT CONNECTION_ID(), VERSION();"), ioBehavior, cancellationToken).ConfigureAwait(false);
+			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version;"), ioBehavior, cancellationToken).ConfigureAwait(false);
 
-			// column count: 2
+			// column count: 3
 			await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
-			// CONNECTION_ID() and VERSION() columns
+			// CONNECTION_ID(), VERSION() and @@memsql_version columns
+			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 
@@ -1655,15 +1667,19 @@ internal sealed class ServerSession
 
 			// first (and only) row
 			payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-			static void ReadRow(ReadOnlySpan<byte> span, out int? connectionId, out byte[]? serverVersion)
+			static void ReadRow(ReadOnlySpan<byte> span, out int? connectionId, out byte[] serverVersion, out byte[] s2Version)
 			{
 				var reader = new ByteArrayReader(span);
 				var length = reader.ReadLengthEncodedIntegerOrNull();
 				connectionId = (length != -1 && Utf8Parser.TryParse(reader.ReadByteString(length), out int id, out _)) ? id : default(int?);
+
 				length = reader.ReadLengthEncodedIntegerOrNull();
-				serverVersion = length != -1 ? reader.ReadByteString(length).ToArray() : null;
+				serverVersion = length != -1 ? reader.ReadByteString(length).ToArray() : new byte[0];
+
+				length = reader.ReadLengthEncodedIntegerOrNull();
+				s2Version = length != -1 ? reader.ReadByteString(length).ToArray() : new byte[0];
 			}
-			ReadRow(payload.Span, out var connectionId, out var serverVersion);
+			ReadRow(payload.Span, out var connectionId, out var serverVersion, out var s2Version);
 
 			// OK/EOF payload
 			payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
@@ -1672,12 +1688,23 @@ internal sealed class ServerSession
 			else
 				EofPayload.Create(payload.Span);
 
-			if (connectionId.HasValue && serverVersion is not null)
+			if (connectionId.HasValue)
+			{
+				Log.Debug("Session{0} changing ConnectionIdOld {1} to ConnectionId {2}",
+					m_logArguments[0], ConnectionId, connectionId.Value);
+				ConnectionId = connectionId.Value;
+			}
+			if (serverVersion.Length > 0)
 			{
 				var newServerVersion = new ServerVersion(serverVersion);
-				Log.Debug("Session{0} changing ConnectionIdOld {1} to ConnectionId {2} and ServerVersionOld {3} to ServerVersion {4}", m_logArguments[0], ConnectionId, connectionId.Value, ServerVersion.OriginalString, newServerVersion.OriginalString);
-				ConnectionId = connectionId.Value;
-				ServerVersion = newServerVersion;
+				Log.Debug("Session{0} changing ServerVersionOld {1} to ServerVersion {2}", m_logArguments[0], MySqlCompatVersion.OriginalString, newServerVersion.OriginalString);
+				MySqlCompatVersion = newServerVersion;
+			}
+			if (s2Version.Length > 0)
+			{
+				var newS2Version = new ServerVersion(s2Version);
+				Log.Debug("Session{0} S2VersionOld {1} to S2Version {2}", m_logArguments[0], S2ServerVersion.OriginalString, newS2Version.OriginalString);
+				S2ServerVersion = newS2Version;
 			}
 		}
 		catch (SingleStoreException ex)
