@@ -20,8 +20,10 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 			throw new ArgumentException("SingleStoreCommand.CommandText must be set to a stored procedure name", nameof(command));
 		if (command.Connection?.State != ConnectionState.Open)
 			throw new ArgumentException("SingleStoreCommand.Connection must be an open connection.", nameof(command));
-		if (command.Connection.Session.ServerVersion.Version < ServerVersions.SupportsProcedureCache)
-			throw new NotSupportedException("MySQL Server {0} doesn't support INFORMATION_SCHEMA".FormatInvariant(command.Connection.Session.ServerVersion.OriginalString));
+
+		// no-op check as SingleStore reports at least 5.5.58
+		if (command.Connection.Session.MySqlCompatVersion.Version < ServerVersions.SupportsProcedureCache)
+			throw new NotSupportedException("MySQL Server {0} doesn't support INFORMATION_SCHEMA".FormatInvariant(command.Connection.Session.MySqlCompatVersion.OriginalString));
 
 		var cachedProcedure = await command.Connection.GetCachedProcedure(command.CommandText!, revalidateMissing: true, ioBehavior, cancellationToken).ConfigureAwait(false);
 		if (cachedProcedure is null)

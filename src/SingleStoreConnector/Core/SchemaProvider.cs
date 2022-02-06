@@ -81,7 +81,7 @@ internal sealed class SchemaProvider
 		row["CompositeIdentifierSeparatorPattern"] = @"\.";
 		row["DataSourceProductName"] = "MySQL";
 		row["DataSourceProductVersion"] = m_connection.ServerVersion;
-		row["DataSourceProductVersionNormalized"] = GetVersion(m_connection.Session.ServerVersion.Version);
+		row["DataSourceProductVersionNormalized"] = GetVersion(m_connection.Session.MySqlCompatVersion.Version);
 		row["GroupByBehavior"] = GroupByBehavior.Unrelated;
 		row["IdentifierPattern"] = @"(^\[\p{Lo}\p{Lu}\p{Ll}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Nd}@$#_]*$)|(^\[[^\]\0]|\]\]+\]$)|(^\""[^\""\0]|\""\""+\""$)";
 		row["IdentifierCase"] = IdentifierCase.Insensitive;

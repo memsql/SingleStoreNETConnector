@@ -52,7 +52,7 @@ To run the tests against MySqlConnector:
 
 ```
 cd tests\SideBySide
-dotnet test -c Release
+dotnet test -c Release -f net6.0
 ```
 
 To run the tests against MySql.Data:
