@@ -274,24 +274,25 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		await connection.OpenAsync();
 
+		Version resetSupportVersion = new(7, 5, 0);
+		if (connection.Session.S2ServerVersion.Version.CompareTo(resetSupportVersion) < 0)
+			return;
+
 		connection.Execute("select 1 into @temp_var;");
 		var tempVar = connection.ExecuteScalar<int?>("select @temp_var;");
 		Assert.Equal(1, tempVar);
 
+		await connection.ResetConnectionAsync();
+
 		try
 		{
-			await connection.ResetConnectionAsync();
+			tempVar = connection.ExecuteScalar<int?>("select @temp_var;");
 		}
-		catch (InvalidOperationException)
+		catch (SingleStoreConnector.SingleStoreException ex)
 		{
+			// if connection has been reset, select @temp_var results in an error
+			Assert.Contains("Unknown user-defined variable", ex.Message);
 		}
-
-		tempVar = connection.ExecuteScalar<int?>("select @temp_var;");
-		Version resetSupportVersion = new(7, 5, 0);
-		if (connection.Session.S2ServerVersion.Version.CompareTo(resetSupportVersion) < 0)
-			Assert.Equal(1, tempVar);
-		else
-			Assert.Null(tempVar);
 	}
 #endif
 }
