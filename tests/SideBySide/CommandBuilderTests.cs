@@ -81,7 +81,7 @@ create table command_builder_update
 );
 insert into command_builder_update values(1, 'one'), (2, 'two');
 ");
-		using (var dataAdapter = new SingleStoreDataAdapter("select * from command_builder_update", m_database.Connection))
+		using (var dataAdapter = new SingleStoreDataAdapter("select * from command_builder_update order by id", m_database.Connection))
 		using (new SingleStoreCommandBuilder(dataAdapter))
 		{
 			var dataTable = new DataTable();
