@@ -3,16 +3,16 @@ namespace SideBySide;
 public class ConnectionPool : IClassFixture<DatabaseFixture>
 {
 	[Theory]
-	[InlineData(false, 11, 0L)]
-	[InlineData(true, 12, 1L)]
+	[InlineData(false, 11, 0UL)]
+	[InlineData(true, 12, 1UL)]
 #if BASELINE
 	// baseline default behaviour is to not reset the connection, which trades correctness for speed
 	// see bug report at http://bugs.mysql.com/bug.php?id=77421
-	[InlineData(null, 13, 0L)]
+	[InlineData(null, 13, 0UL)]
 #else
-	[InlineData(null, 13, 1L)]
+	[InlineData(null, 13, 1UL)]
 #endif
-	public void ResetConnection(object connectionReset, int poolSize, long expected)
+	public void ResetConnection(object connectionReset, int poolSize, ulong expected)
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();
 		csb.Pooling = true;
@@ -26,7 +26,7 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 			connection.Open();
 			using var command = connection.CreateCommand();
 			command.CommandText = "select @@autocommit;";
-			Assert.Equal(1L, command.ExecuteScalar());
+			Assert.Equal(1UL, command.ExecuteScalar());
 		}
 
 		using (var connection = new SingleStoreConnection(csb.ConnectionString))
@@ -136,46 +136,6 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 	}
 
 	[Fact]
-	public async Task WaitTimeout()
-	{
-		var csb = AppConfig.CreateConnectionStringBuilder();
-		csb.Pooling = true;
-		csb.MinimumPoolSize = 0;
-		csb.MaximumPoolSize = 1;
-		int serverThread;
-
-		using (var connection = new SingleStoreConnection(csb.ConnectionString))
-		{
-			await connection.OpenAsync();
-			using (var cmd = connection.CreateCommand())
-			{
-				cmd.CommandText = "SET @@session.wait_timeout=3";
-				await cmd.ExecuteNonQueryAsync();
-			}
-			serverThread = connection.ServerThread;
-		}
-
-		await Task.Delay(TimeSpan.FromSeconds(5));
-
-		using (var connection = new SingleStoreConnection(csb.ConnectionString))
-		{
-#if !BASELINE
-			try
-#endif
-			{
-				await connection.OpenAsync();
-				Assert.NotEqual(serverThread, connection.ServerThread);
-			}
-#if !BASELINE
-			catch (SingleStoreProtocolException) when (csb.UseCompression)
-			{
-				// workaround for https://bugs.mysql.com/bug.php?id=103412
-			}
-#endif
-		}
-	}
-
-	[Fact]
 	public async Task CharacterSet()
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();
@@ -200,8 +160,12 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 		cmd.CommandText = @"select @@character_set_client, @@character_set_connection";
 		using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
 		Assert.True(await reader.ReadAsync().ConfigureAwait(false));
-		Assert.Equal("utf8mb4", reader.GetString(0));
-		Assert.Equal("utf8mb4", reader.GetString(1));
+		/*
+		These variables exist for backwards compatibility with MySQL and are non-operational in SingleStore DB.
+		https://docs.singlestore.com/db/v7.6/en/reference/configuration-reference/engine-variables/list-of-engine-variables.html#character_set_client
+		*/
+		Assert.Equal("utf8", reader.GetString(0));
+		Assert.Equal("utf8", reader.GetString(1));
 		Assert.False(await reader.ReadAsync().ConfigureAwait(false));
 	}
 
