@@ -455,7 +455,8 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A <c>ValueTask</c> representing the asynchronous operation.</returns>
 	/// <remarks>This is an optional feature of the MySQL protocol and may not be supported by all servers.
-	/// It's known to be supported by MySQL Server 5.7.3 (and later) and MariaDB 10.2.4 (and later).
+	/// It's known to be supported by MySQL Server 5.7.3 (and later), MariaDB 10.2.4 (and later),
+	/// SingleStore 7.5 and later. Calling this for SingleStore resets the connection to no database selected.
 	/// Other MySQL-compatible servers or proxies may not support this command.</remarks>
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 	public async ValueTask ResetConnectionAsync(CancellationToken cancellationToken = default)
@@ -470,6 +471,10 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 		Log.Debug("Session{0} resetting connection", session.Id);
 		await session.SendAsync(ResetConnectionPayload.Instance, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 		var payload = await session.ReceiveReplyAsync(AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+		OkPayload.Create(payload.Span, session.SupportsDeprecateEof, session.SupportsSessionTrack);
+
+		await session.SendAsync(QueryPayload.Create(Session.SupportsQueryAttributes, string.Format("USE {0}", Database)), AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+		payload = await session.ReceiveReplyAsync(AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 		OkPayload.Create(payload.Span, session.SupportsDeprecateEof, session.SupportsSessionTrack);
 	}
 
