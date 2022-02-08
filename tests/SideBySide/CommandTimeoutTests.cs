@@ -61,8 +61,8 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 #else
 			using (var reader = cmd.ExecuteReader())
 			{
-				Assert.True(reader.Read());
-				Assert.Equal(1, reader.GetInt32(0));
+				var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
+				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
 			}
 #endif
 			sw.Stop();
@@ -87,8 +87,8 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 #else
 			using (var reader = await cmd.ExecuteReaderAsync())
 			{
-				Assert.True(await reader.ReadAsync());
-				Assert.Equal(1, reader.GetInt32(0));
+				var ex = await Assert.ThrowsAsync<SingleStoreException>(() => reader.ReadAsync());
+				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
 			}
 #endif
 			sw.Stop();
@@ -104,9 +104,9 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 	public void CommandTimeoutWithStoredProcedureSleepSync(bool pooling)
 	{
 		using (var setupCmd = new SingleStoreCommand(@"drop procedure if exists sleep_sproc;
-create procedure sleep_sproc(IN seconds INT)
+create procedure sleep_sproc(seconds INT) as
 begin
-select sleep(seconds);
+echo select sleep(seconds);
 end;", m_connection))
 		{
 			setupCmd.ExecuteNonQuery();
@@ -128,8 +128,8 @@ end;", m_connection))
 #else
 		using (var reader = cmd.ExecuteReader())
 		{
-			Assert.True(reader.Read());
-			Assert.Equal(1, reader.GetInt32(0));
+			var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
+			Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
 		}
 #endif
 		sw.Stop();
@@ -150,17 +150,14 @@ end;", m_connection))
 			Assert.Equal(1, reader.GetInt32(0));
 			Assert.False(reader.Read());
 
-			// the following call to a public API resets the internal timer
-			sw.Restart();
-
 #if BASELINE
 			var ex = Assert.Throws<SingleStoreException>(() => reader.NextResult());
 			Assert.Contains("fatal error", ex.Message, StringComparison.OrdinalIgnoreCase);
 			connectionState = ConnectionState.Closed;
 #else
 			Assert.True(reader.NextResult());
-			Assert.True(reader.Read());
-			Assert.Equal(1, reader.GetInt32(0));
+			var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
+			Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
 #endif
 
 			sw.Stop();
@@ -183,17 +180,14 @@ end;", m_connection))
 			Assert.Equal(1, reader.GetInt32(0));
 			Assert.False(await reader.ReadAsync());
 
-			// the following call to a public API resets the internal timer
-			sw.Restart();
-
 #if BASELINE
 			var ex = await Assert.ThrowsAsync<SingleStoreException>(async () => await reader.NextResultAsync());
 			Assert.Contains("fatal error", ex.Message, StringComparison.OrdinalIgnoreCase);
 			connectionState = ConnectionState.Closed;
 #else
 			Assert.True(await reader.NextResultAsync());
-			Assert.True(reader.Read());
-			Assert.Equal(1, reader.GetInt32(0));
+			var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
+			Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
 #endif
 
 			sw.Stop();
@@ -262,8 +256,8 @@ end;", m_connection))
 #else
 			using (var reader = cmd.ExecuteReader())
 			{
-				Assert.True(reader.Read());
-				Assert.Equal(1, reader.GetInt32(0));
+				var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
+				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
 			}
 #endif
 			sw.Stop();
@@ -289,8 +283,8 @@ end;", m_connection))
 #else
 			using (var reader = await cmd.ExecuteReaderAsync())
 			{
-				Assert.True(await reader.ReadAsync());
-				Assert.Equal(1, reader.GetInt32(0));
+				var ex = await Assert.ThrowsAsync<SingleStoreException>(() => reader.ReadAsync());
+				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
 			}
 #endif
 			sw.Stop();
