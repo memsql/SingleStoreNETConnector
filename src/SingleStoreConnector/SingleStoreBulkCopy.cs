@@ -266,7 +266,7 @@ public sealed class SingleStoreBulkCopy
 				var destinationColumn = reader.GetName(i);
 				if (schema[i].DataTypeName == "BIT")
 				{
-					AddColumnMapping(columnMappings, addDefaultMappings, i, destinationColumn, $"@`\uE002\bcol{i}`", $"%COL% = CAST(%VAR% AS UNSIGNED)");
+					AddColumnMapping(columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = CAST(%VAR% AS UNSIGNED)");
 				}
 				else if (schema[i].DataTypeName == "YEAR")
 				{
@@ -278,7 +278,7 @@ public sealed class SingleStoreBulkCopy
 					var type = schema[i].DataType;
 					if (type == typeof(byte[]) || (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
 					{
-						AddColumnMapping(columnMappings, addDefaultMappings, i, destinationColumn, $"@`\uE002\bcol{i}`", $"%COL% = UNHEX(%VAR%)");
+						AddColumnMapping(columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = UNHEX(%VAR%)");
 					}
 					else if (addDefaultMappings)
 					{
@@ -296,7 +296,7 @@ public sealed class SingleStoreBulkCopy
 			if (columnMapping is null)
 			{
 				Log.Debug("Ignoring column with SourceOrdinal {0}", i);
-				bulkLoader.Columns.Add("@`\uE002\bignore`");
+				bulkLoader.Columns.Add("@`temporary_column_dotnet_connector_ignore`");
 			}
 			else
 			{
