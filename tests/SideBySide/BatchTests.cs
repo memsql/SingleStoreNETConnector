@@ -170,7 +170,7 @@ public class BatchTests : IClassFixture<DatabaseFixture>
 	[InlineData(";")]
 	[InlineData(";\n")]
 	[InlineData("; -- ")]
-	[InlineData(" -- ")]
+	// [InlineData(" -- ")]  TODO: uncomment if DB-53659 is done
 	[InlineData(" # ")]
 	public void ExecuteBatch(string suffix)
 	{
