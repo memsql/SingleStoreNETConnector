@@ -46,6 +46,26 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 	}
 
 	[Fact]
+	public async void MultipleConnectionsSanity()
+	{
+		for (int i = 0; i < 10; i++)
+		{
+			using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
+			connection.Open();
+
+			using var command = connection.CreateCommand();
+
+			command.CommandText = $"create table if not exists t (a int)";
+			var reader = await command.ExecuteReaderAsync();
+			reader.Close();
+
+			command.CommandText = $"select a from t;";
+			reader = await command.ExecuteReaderAsync();
+			reader.Close();
+		}
+	}
+
+	[Fact]
 	public void NoInfoMessageWhenNotLastStatementInBatch()
 	{
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
@@ -282,6 +302,7 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 		var tempVar = connection.ExecuteScalar<int?>("select @temp_var;");
 		Assert.Equal(1, tempVar);
 
+		bool resetSuccess = false;
 		await connection.ResetConnectionAsync();
 
 		try
@@ -291,8 +312,10 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 		catch (SingleStoreConnector.SingleStoreException ex)
 		{
 			// if connection has been reset, select @temp_var results in an error
+			resetSuccess = true;
 			Assert.Contains("Unknown user-defined variable", ex.Message);
 		}
+		Assert.True(resetSuccess);
 	}
 #endif
 }
