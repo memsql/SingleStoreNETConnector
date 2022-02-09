@@ -15,7 +15,7 @@ public class TransactionScopeTests : IClassFixture<DatabaseFixture>
 		new object[] { "" },
 #else
 		new object[] { "UseXaTransactions=False" },
-		new object[] { "UseXaTransactions=True" },
+		// new object[] { "UseXaTransactions=True" }, no XA transactions in SingleStore
 #endif
 	};
 
@@ -653,10 +653,20 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 
 		using var command = new SingleStoreCommand("SELECT SLEEP(3) INTO @dummy", connection);
 		using var tokenSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-		await command.ExecuteNonQueryAsync(tokenSource.Token);
+		var interrupted = false;
+		try
+		{
+			await command.ExecuteNonQueryAsync(tokenSource.Token);
+		}
+		catch (OperationCanceledException ex)
+		{
+			Assert.Contains("Query execution was interrupted", ex.Message);
+			interrupted = true;
+		}
+		Assert.True(interrupted);
 	}
 
-	[SkippableFact(Baseline = "Multiple simultaneous connections or connections with different connection strings inside the same transaction are not currently supported.")]
+	[SkippableFact(Skip = "need XA transactions which are not supported in SingleStore", Baseline = "Multiple simultaneous connections or connections with different connection strings inside the same transaction are not currently supported.")]
 	public void CommitTwoTransactions()
 	{
 		m_database.Connection.Execute(@"drop table if exists transaction_scope_test_1;
@@ -683,7 +693,7 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		Assert.Equal(new[] { 3, 4 }, values2);
 	}
 
-	[SkippableFact(Baseline = "Multiple simultaneous connections or connections with different connection strings inside the same transaction are not currently supported.")]
+	[SkippableFact(Skip = "need XA transactions which are not supported in SingleStore", Baseline = "Multiple simultaneous connections or connections with different connection strings inside the same transaction are not currently supported.")]
 	public void RollBackTwoTransactions()
 	{
 		m_database.Connection.Execute(@"drop table if exists transaction_scope_test_1;

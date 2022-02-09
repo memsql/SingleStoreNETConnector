@@ -137,14 +137,10 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 
 		var isolationLevelValue = isolationLevel switch
 		{
-			IsolationLevel.ReadUncommitted => "read uncommitted",
 			IsolationLevel.ReadCommitted => "read committed",
-			IsolationLevel.RepeatableRead => "repeatable read",
-			IsolationLevel.Serializable => "serializable",
-			IsolationLevel.Snapshot => "repeatable read",
 
-			// "In terms of the SQL:1992 transaction isolation levels, the default InnoDB level is REPEATABLE READ." - http://dev.mysql.com/doc/refman/5.7/en/innodb-transaction-model.html
-			IsolationLevel.Unspecified => "repeatable read",
+			// default Isolation Level in SingleStore is read committed
+			IsolationLevel.Unspecified => "read committed",
 
 			_ => throw new NotSupportedException("IsolationLevel.{0} is not supported.".FormatInvariant(isolationLevel)),
 		};

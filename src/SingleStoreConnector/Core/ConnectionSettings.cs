@@ -147,7 +147,7 @@ internal sealed class ConnectionSettings
 		TreatTinyAsBoolean = csb.TreatTinyAsBoolean;
 		UseAffectedRows = csb.UseAffectedRows;
 		UseCompression = csb.UseCompression;
-		UseXaTransactions = csb.UseXaTransactions;
+		UseXaTransactions = false;
 
 		static int ToSigned(uint value) => value >= int.MaxValue ? int.MaxValue : (int) value;
 	}
