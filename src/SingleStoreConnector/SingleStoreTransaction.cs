@@ -146,17 +146,19 @@ public sealed class SingleStoreTransaction : DbTransaction
 	public Task SaveAsync(string savepointName, CancellationToken cancellationToken = default) => ExecuteSavepointAsync("", savepointName, Connection?.AsyncIOBehavior ?? IOBehavior.Asynchronous, cancellationToken);
 #endif
 
-	private async Task ExecuteSavepointAsync(string command, string savepointName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private Task ExecuteSavepointAsync(string command, string savepointName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		VerifyValid();
+		throw new SingleStoreConnector.SingleStoreException("Feature 'SAVEPOINT' is not supported by SingleStore");
 
-		if (savepointName is null)
-			throw new ArgumentNullException(nameof(savepointName));
-		if (savepointName.Length == 0)
-			throw new ArgumentException("savepointName must not be empty", nameof(savepointName));
+		// VerifyValid();
 
-		using var cmd = new SingleStoreCommand(command + "savepoint " + QuoteIdentifier(savepointName), Connection, this) { NoActivity = true };
-		await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+		// if (savepointName is null)
+		// 	throw new ArgumentNullException(nameof(savepointName));
+		// if (savepointName.Length == 0)
+		// 	throw new ArgumentException("savepointName must not be empty", nameof(savepointName));
+
+		// using var cmd = new SingleStoreCommand(command + "savepoint " + QuoteIdentifier(savepointName), Connection, this) { NoActivity = true };
+		// await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 	}
 
 	/// <summary>

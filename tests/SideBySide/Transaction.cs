@@ -121,7 +121,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(new[] { 1, 2 }, results);
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "IsolationLevel.Serializable is not supported")]
 	public void ReadOnlyTransaction()
 	{
 		using var trans = m_connection.BeginTransaction(IsolationLevel.Serializable, isReadOnly: true);
@@ -129,7 +129,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(SingleStoreErrorCode.CannotExecuteInReadOnlyTransaction, exception.ErrorCode);
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "IsolationLevel.Snapshot is not supported")]
 	public void ReadOnlySnapshotTransaction()
 	{
 		using var trans = m_connection.BeginTransaction(IsolationLevel.Snapshot, isReadOnly: true);
@@ -137,7 +137,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(SingleStoreErrorCode.CannotExecuteInReadOnlyTransaction, exception.ErrorCode);
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "SingleStore does not support Serializable isolation level")]
 	public void ReadWriteTransaction()
 	{
 		using (var trans = m_connection.BeginTransaction(IsolationLevel.Serializable, isReadOnly: false))
@@ -149,15 +149,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(new[] { 1, 2 }, results);
 	}
 
-	[Fact]
-	public async Task ReadOnlyTransactionAsync()
-	{
-		using var trans = await m_connection.BeginTransactionAsync(IsolationLevel.Serializable, isReadOnly: true);
-		var exception = await Assert.ThrowsAsync<SingleStoreException>(async () => await m_connection.ExecuteAsync("insert into transactions_test values(1), (2)", transaction: trans));
-		Assert.Equal(SingleStoreErrorCode.CannotExecuteInReadOnlyTransaction, exception.ErrorCode);
-	}
-
-	[Fact]
+	[SkippableFact(Skip = "IsolationLevel.Serializable is not supported")]
 	public async Task ReadWriteTransactionAsync()
 	{
 		using (var trans = await m_connection.BeginTransactionAsync(IsolationLevel.Serializable, isReadOnly: false))
@@ -269,7 +261,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 	}
 
 #if !BASELINE
-	[Fact]
+	[SkippableFact(Skip = "Feature 'SAVEPOINT' is not supported by SingleStore")]
 	public void SavepointNullName()
 	{
 		using var transaction = m_connection.BeginTransaction();
@@ -278,7 +270,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Throws<ArgumentNullException>("savepointName", () => transaction.Rollback(null));
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "Feature 'SAVEPOINT' is not supported by SingleStore")]
 	public void SavepointEmptyName()
 	{
 		using var transaction = m_connection.BeginTransaction();
@@ -287,7 +279,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Throws<ArgumentException>("savepointName", () => transaction.Rollback(""));
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "Feature 'SAVEPOINT' is not supported by SingleStore")]
 	public void SavepointRollbackUnknownName()
 	{
 		using var transaction = m_connection.BeginTransaction();
@@ -295,7 +287,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(SingleStoreErrorCode.StoredProcedureDoesNotExist, ex.ErrorCode);
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "Feature 'SAVEPOINT' is not supported by SingleStore")]
 	public void SavepointReleaseUnknownName()
 	{
 		using var transaction = m_connection.BeginTransaction();
@@ -303,7 +295,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(SingleStoreErrorCode.StoredProcedureDoesNotExist, ex.ErrorCode);
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "Feature 'SAVEPOINT' is not supported by SingleStore")]
 	public void SavepointRollbackReleasedName()
 	{
 		using var transaction = m_connection.BeginTransaction();
@@ -313,7 +305,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(SingleStoreErrorCode.StoredProcedureDoesNotExist, ex.ErrorCode);
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "Feature 'SAVEPOINT' is not supported by SingleStore")]
 	public void RollbackSavepoint()
 	{
 		using (var trans = m_connection.BeginTransaction())
@@ -330,7 +322,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(new int[] { 1, 2 }, results);
 	}
 
-	[Fact]
+	[SkippableFact(Skip = "Feature 'SAVEPOINT' is not supported by SingleStore")]
 	public async Task RollbackSavepointAsync()
 	{
 		using (var trans = await m_connection.BeginTransactionAsync())
@@ -353,7 +345,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		using (var transaction = m_connection.BeginTransaction())
 		{
 			transaction.Rollback();
-			Assert.Throws<InvalidOperationException>(() => transaction.Save("a"));
+			Assert.Throws<SingleStoreConnector.SingleStoreException>(() => transaction.Save("a"));
 		}
 	}
 
@@ -363,7 +355,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		using (var transaction = m_connection.BeginTransaction())
 		{
 			transaction.Commit();
-			Assert.Throws<InvalidOperationException>(() => transaction.Save("a"));
+			Assert.Throws<SingleStoreConnector.SingleStoreException>(() => transaction.Save("a"));
 		}
 	}
 
