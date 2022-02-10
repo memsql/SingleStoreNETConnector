@@ -337,15 +337,6 @@ SELECT data FROM prepared_command_test ORDER BY rowid;", connection);
 		Assert.False(reader.Read());
 	}
 
-	[Fact]
-	public void CannotUse64KParameters()
-	{
-		using var connection = CreateConnection();
-		using var cmd = CreateCommandWithParameters(connection, 65536);
-		var ex = Assert.Throws<SingleStoreException>(cmd.Prepare);
-		Assert.Equal(SingleStoreErrorCode.PreparedStatementManyParameters, (SingleStoreErrorCode) ex.Number);
-	}
-
 	private static SingleStoreCommand CreateCommandWithParameters(SingleStoreConnection connection, int parameterCount)
 	{
 		var cmd = connection.CreateCommand();
@@ -399,7 +390,7 @@ SELECT data FROM prepared_command_test ORDER BY rowid;", connection);
 			yield return new object[] { isPrepared, "ENUM('small', 'medium', 'large')", "medium", SingleStoreDbType.Enum };
 			yield return new object[] { isPrepared, "SET('one','two','four','eight')", "two,eight", SingleStoreDbType.Set };
 #if !BASELINE
-			yield return new object[] { isPrepared, "BOOL", true, SingleStoreDbType.Bool };
+			yield return new object[] { isPrepared, "BOOL", (sbyte)1, SingleStoreDbType.Bool };
 #else
 			yield return new object[] { isPrepared, "BOOL", true, SingleStoreDbType.Int32 };
 #endif
@@ -412,7 +403,7 @@ SELECT data FROM prepared_command_test ORDER BY rowid;", connection);
 
 			if (AppConfig.SupportsJson)
 			{
-				yield return new object[] { isPrepared, "JSON", "{\"test\": true}", SingleStoreDbType.JSON };
+				yield return new object[] { isPrepared, "JSON", "{\"test\":true}", SingleStoreDbType.JSON };
 			}
 		}
 	}

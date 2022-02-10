@@ -369,13 +369,12 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 #if NET6_0_OR_GREATER
 		else if (Value is TimeOnly timeOnlyValue)
 		{
-			writer.Write("time '");
-			writer.Write("{0:HH':'mm':'ss'.'ffffff}'".FormatInvariant(timeOnlyValue));
+			writer.Write("'{0:HH':'mm':'ss'.'ffffff}'".FormatInvariant(timeOnlyValue));
 		}
 #endif
 		else if (Value is TimeSpan ts)
 		{
-			writer.Write("time '");
+			writer.Write("'");
 			if (ts.Ticks < 0)
 			{
 				writer.Write((byte) '-');
