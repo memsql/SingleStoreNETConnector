@@ -182,6 +182,11 @@ internal sealed class TypeMapper
 	public static SingleStoreDbType ConvertToSingleStoreDbType(ColumnDefinitionPayload columnDefinition, bool treatTinyAsBoolean, SingleStoreGuidFormat guidFormat)
 	{
 		var isUnsigned = (columnDefinition.ColumnFlags & ColumnFlags.Unsigned) != 0;
+		if ((columnDefinition.ColumnFlags & ColumnFlags.Enum) != 0)
+			return SingleStoreDbType.Enum;
+		if ((columnDefinition.ColumnFlags & ColumnFlags.Set) != 0)
+			return SingleStoreDbType.Set;
+
 		switch (columnDefinition.ColumnType)
 		{
 		case ColumnType.Tiny:
@@ -205,10 +210,6 @@ internal sealed class TypeMapper
 				return SingleStoreDbType.Guid;
 			if (guidFormat == SingleStoreGuidFormat.Char32 && columnDefinition.ColumnLength / ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet) == 32)
 				return SingleStoreDbType.Guid;
-			if ((columnDefinition.ColumnFlags & ColumnFlags.Enum) != 0)
-				return SingleStoreDbType.Enum;
-			if ((columnDefinition.ColumnFlags & ColumnFlags.Set) != 0)
-				return SingleStoreDbType.Set;
 			goto case ColumnType.VarString;
 
 		case ColumnType.VarChar:

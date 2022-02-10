@@ -8,7 +8,7 @@ public class DataTypesFixture : DatabaseFixture
 		Connection.Execute(@"
 drop table if exists datatypes_bools;
 create table datatypes_bools(
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   Boolean bool null,
   TinyInt1 tinyint(1) null,
   TinyInt1U tinyint(1) unsigned null
@@ -26,7 +26,7 @@ values
 
 drop table if exists datatypes_bits;
 create table datatypes_bits(
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   Bit1 bit(1) null,
   Bit32 bit(32) null,
   Bit64 bit(64) null
@@ -41,7 +41,7 @@ values
 
 drop table if exists datatypes_enums;
 create table datatypes_enums(
-	rowid integer not null primary key auto_increment,
+	rowid bigint not null primary key auto_increment,
 	size enum('x-small', 'small', 'medium', 'large', 'x-large'),
 	color enum('red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet') not null
 );
@@ -54,7 +54,7 @@ values
 
 drop table if exists datatypes_integers;
 create table datatypes_integers (
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   SByte tinyint null,
   Byte tinyint unsigned null,
   Int16 smallint null,
@@ -77,7 +77,7 @@ values
 
 drop table if exists datatypes_reals;
 create table datatypes_reals(
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   Single float null,
   `Double` double null,
   SmallDecimal decimal(5, 2) null,
@@ -96,7 +96,7 @@ values
 
 drop table if exists datatypes_set;
 create table datatypes_set(
-	rowid integer not null primary key auto_increment,
+	rowid bigint not null primary key auto_increment,
 	value set('one', 'two', 'four') null
 );
 
@@ -114,12 +114,12 @@ values
 
 drop table if exists datatypes_strings;
 create table datatypes_strings (
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   utf8 varchar(300) character set 'utf8mb4' null,
   utf8bin varchar(300) character set utf8mb4 collate utf8mb4_bin null,
-  latin1 varchar(300) character set 'latin1' null,
-  latin1bin varchar(300) character set latin1 collate latin1_bin null,
-  cp1251 varchar(300) character set 'cp1251' null,
+  latin1 varchar(300) character set 'utf8' null,
+  latin1bin varchar(300) character set utf8 collate utf8_bin null,
+  cp1251 varchar(300) character set 'utf8' null,
   guid char(36) null,
   guidbin char(36) binary null
 );
@@ -139,7 +139,7 @@ values
 
 drop table if exists datatypes_blobs;
 create table datatypes_blobs(
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   `Binary` binary(100) null,
   `VarBinary` varbinary(100) null,
   `TinyBlob` tinyblob null,
@@ -164,7 +164,7 @@ values
 
 drop table if exists datatypes_times;
 create table datatypes_times(
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   `Date` date null,
   `DateTime` datetime(6) null,
   `Timestamp` timestamp(6) null,
@@ -182,7 +182,7 @@ values
 
 drop table if exists datatypes_guids;
 create table datatypes_guids (
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   char38 char(38) null,
   char38bin char(38) binary null,
   `text` text null,
@@ -199,8 +199,8 @@ values
     '{33221100-5544-7766-8899-aabbccddeeff}', X'00112233445566778899AABBCCDDEEFF');
 
 drop table if exists datatypes_geometry;
-create table datatypes_geometry (
-  rowid integer not null primary key auto_increment,
+create rowstore table datatypes_geometry (
+  rowid bigint not null primary key auto_increment,
   `Geometry` geography null,
   `Point` geographypoint null,
   `LineString` geography null,
@@ -218,7 +218,7 @@ values
 			Connection.Execute(@"
 drop table if exists datatypes_json_core;
 create table datatypes_json_core (
-  rowid integer not null primary key auto_increment,
+  rowid bigint not null primary key auto_increment,
   value json null
 );
 

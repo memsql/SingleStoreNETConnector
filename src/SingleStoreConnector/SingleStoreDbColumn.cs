@@ -49,9 +49,13 @@ namespace SingleStoreConnector
 			var columnTypeMetadata = TypeMapper.Instance.GetColumnTypeMetadata(mySqlDbType);
 
 			var type = columnTypeMetadata.DbTypeMapping.ClrType;
-			var columnSize = type == typeof(string) || type == typeof(Guid) ?
-				column.ColumnLength / ProtocolUtility.GetBytesPerCharacter(column.CharacterSet) :
-				column.ColumnLength;
+
+			if (mySqlDbType == SingleStoreDbType.JSON || mySqlDbType == SingleStoreDbType.LongBlob)
+				ColumnSize = int.MaxValue;
+			else
+				ColumnSize = (int) (column.ColumnLength / ProtocolUtility.GetBytesPerCharacter(column.CharacterSet));
+			if (ColumnSize < 0)
+				ColumnSize = int.MaxValue;
 
 			AllowDBNull = (column.ColumnFlags & ColumnFlags.NotNull) == 0;
 			BaseCatalogName = null;
@@ -60,11 +64,11 @@ namespace SingleStoreConnector
 			BaseTableName = column.PhysicalTable;
 			ColumnName = column.Name;
 			ColumnOrdinal = ordinal;
-			ColumnSize = columnSize > int.MaxValue ? int.MaxValue : unchecked((int) columnSize);
+
 			DataType = (allowZeroDateTime && type == typeof(DateTime)) ? typeof(SingleStoreDateTime) : type;
 			DataTypeName = columnTypeMetadata.SimpleDataTypeName;
 			if (mySqlDbType == SingleStoreDbType.String)
-				DataTypeName += string.Format(CultureInfo.InvariantCulture, "({0})", columnSize);
+				DataTypeName += string.Format(CultureInfo.InvariantCulture, "({0})", ColumnSize);
 			IsAliased = column.PhysicalName != column.Name;
 			IsAutoIncrement = (column.ColumnFlags & ColumnFlags.AutoIncrement) != 0;
 			IsExpression = false;
