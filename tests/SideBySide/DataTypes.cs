@@ -201,10 +201,7 @@ public sealed class DataTypes : IClassFixture<DataTypesFixture>, IDisposable
 	[InlineData("TinyInt1", "BOOL", new object[] { null, false, true, false, true, true, true })]
 	public void QueryBoolean(string column, string dataTypeName, object[] expected)
 	{
-#if BASELINE
-// Connector/NET returns "TINYINT" for "BOOL"
 		dataTypeName = "TINYINT";
-#endif
 		DoQuery<InvalidCastException>("bools", column, dataTypeName, expected, reader => reader.GetBoolean(0));
 	}
 
@@ -329,9 +326,6 @@ public sealed class DataTypes : IClassFixture<DataTypesFixture>, IDisposable
 	[Theory]
 	[InlineData("utf8", new[] { null, "", "ASCII", "Ũńıċōđĕ", c_251ByteString })]
 	[InlineData("utf8bin", new[] { null, "", "ASCII", "Ũńıċōđĕ", c_251ByteString })]
-	[InlineData("latin1", new[] { null, "", "ASCII", "Lãtïñ", c_251ByteString })]
-	[InlineData("latin1bin", new[] { null, "", "ASCII", "Lãtïñ", c_251ByteString })]
-	[InlineData("cp1251", new[] { null, "", "ASCII", "АБВГабвг", c_251ByteString })]
 	public void QueryString(string column, string[] expected)
 	{
 		DoQuery("strings", column, "VARCHAR", expected, reader => reader.GetString(0));
@@ -358,7 +352,6 @@ public sealed class DataTypes : IClassFixture<DataTypesFixture>, IDisposable
 
 	[Theory]
 	[InlineData("utf8", new[] { null, "", "ASCII", "Ũńıċōđĕ", c_251ByteString })]
-	[InlineData("cp1251", new[] { null, "", "ASCII", "АБВГабвг", c_251ByteString })]
 	public void QueryChar(string column, string[] expected)
 	{
 		using var cmd = Connection.CreateCommand();
@@ -1046,7 +1039,8 @@ ORDER BY t.`Key`", Connection);
 #endif
 	}
 
-	[Theory]
+	// TODO: PLAT-6084: replace the tests with Geography and GeographyPoint when they are added
+	[SkippableTheory(Skip = "SingleStore doesn't have Geometry type")]
 	[InlineData("Geometry", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63 })]
 	[InlineData("Point", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63 })]
 	[InlineData("LineString", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 64 })]
@@ -1100,20 +1094,20 @@ ORDER BY t.`Key`", Connection);
 	[InlineData("Bit64", "datatypes_bits", SingleStoreDbType.Bit, 64, typeof(ulong), "N", 0, 0)]
 	[InlineData("Binary", "datatypes_blobs", SingleStoreDbType.Binary, 100, typeof(byte[]), "N", 0, 0)]
 	[InlineData("VarBinary", "datatypes_blobs", SingleStoreDbType.VarBinary, 100, typeof(byte[]), "N", 0, 0)]
-	[InlineData("TinyBlob", "datatypes_blobs", SingleStoreDbType.Blob, 255, typeof(byte[]), "N", 0, 0)]
+	[InlineData("TinyBlob", "datatypes_blobs", SingleStoreDbType.TinyBlob, 255, typeof(byte[]), "N", 0, 0)]
 	[InlineData("Blob", "datatypes_blobs", SingleStoreDbType.Blob, 65535, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("MediumBlob", "datatypes_blobs", SingleStoreDbType.Blob, 16777215, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("LongBlob", "datatypes_blobs", SingleStoreDbType.Blob, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
+	[InlineData("MediumBlob", "datatypes_blobs", SingleStoreDbType.MediumBlob, 16777215, typeof(byte[]), "LN", 0, 0)]
+	[InlineData("LongBlob", "datatypes_blobs", SingleStoreDbType.LongBlob, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
 	[InlineData("guidbin", "datatypes_blobs", SingleStoreDbType.Binary, 16, typeof(byte[]), "N", 0, 0)]
-	[InlineData("rowid", "datatypes_bools", SingleStoreDbType.Int32, 11, typeof(int), "AK", 0, 0)]
+	[InlineData("rowid", "datatypes_bools", SingleStoreDbType.Int64, 20, typeof(long), "AK", 0, 0)]
 #if BASELINE
 	[InlineData("Boolean", "datatypes_bools", SingleStoreDbType.Byte, 1, typeof(bool), "N", 0, 0)]
 	[InlineData("TinyInt1", "datatypes_bools", SingleStoreDbType.Byte, 1, typeof(bool), "N", 0, 0)]
 #else
-	[InlineData("Boolean", "datatypes_bools", SingleStoreDbType.Bool, 1, typeof(bool), "N", 0, 0)]
-	[InlineData("TinyInt1", "datatypes_bools", SingleStoreDbType.Bool, 1, typeof(bool), "N", 0, 0)]
+	[InlineData("Boolean", "datatypes_bools", SingleStoreDbType.Byte, 4, typeof(sbyte), "N", 0, 0)]
+	[InlineData("TinyInt1", "datatypes_bools", SingleStoreDbType.Byte, 4, typeof(sbyte), "N", 0, 0)]
 #endif
-	[InlineData("TinyInt1U", "datatypes_bools", SingleStoreDbType.UByte, 1, typeof(byte), "N", 0, 0)]
+	[InlineData("TinyInt1U", "datatypes_bools", SingleStoreDbType.UByte, 3, typeof(byte), "N", 0, 0)]
 	[InlineData("size", "datatypes_enums", SingleStoreDbType.Enum, 7, typeof(string), "N", 0, 0)]
 	[InlineData("color", "datatypes_enums", SingleStoreDbType.Enum, 6, typeof(string), "", 0, 0)]
 	[InlineData("char38", "datatypes_guids", SingleStoreDbType.String, 38, typeof(string), "N", 0, 0)]
@@ -1139,15 +1133,12 @@ ORDER BY t.`Key`", Connection);
 	[InlineData("value", "datatypes_set", SingleStoreDbType.Set, 12, typeof(string), "N", 0, 0)]
 	[InlineData("utf8", "datatypes_strings", SingleStoreDbType.VarChar, 300, typeof(string), "N", 0, 0)]
 	[InlineData("utf8bin", "datatypes_strings", SingleStoreDbType.VarChar, 300, typeof(string), "N", 0, 0)]
-	[InlineData("latin1", "datatypes_strings", SingleStoreDbType.VarChar, 300, typeof(string), "N", 0, 0)]
-	[InlineData("latin1bin", "datatypes_strings", SingleStoreDbType.VarChar, 300, typeof(string), "N", 0, 0)]
-	[InlineData("cp1251", "datatypes_strings", SingleStoreDbType.VarChar, 300, typeof(string), "N", 0, 0)]
 	[InlineData("guid", "datatypes_strings", SingleStoreDbType.Guid, 36, typeof(Guid), "N", 0, 0)]
 	[InlineData("guidbin", "datatypes_strings", SingleStoreDbType.Guid, 36, typeof(Guid), "N", 0, 0)]
 	[InlineData("Date", "datatypes_times", SingleStoreDbType.Date, 10, typeof(DateTime), "N", 0, 0)]
 	[InlineData("DateTime", "datatypes_times", SingleStoreDbType.DateTime, 26, typeof(DateTime), "N", 0, 6)]
 	[InlineData("Timestamp", "datatypes_times", SingleStoreDbType.Timestamp, 26, typeof(DateTime), "N", 0, 6)]
-	[InlineData("Time", "datatypes_times", SingleStoreDbType.Time, 17, typeof(TimeSpan), "N", 0, 6)]
+	[InlineData("Time", "datatypes_times", SingleStoreDbType.Time, 18, typeof(TimeSpan), "N", 0, 6)]
 #if BASELINE
 	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, 4, typeof(short), "N", 0, 0)]
 #else
@@ -1157,8 +1148,13 @@ ORDER BY t.`Key`", Connection);
 	[InlineData("Point", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
 	[InlineData("LineString", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
 	[InlineData("Polygon", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
-	public void GetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale) =>
+	public void GetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale)
+	{
+		// TODO: PLAT-6084: enable these tests replacing Geometry with Geography
+		if (mySqlDbType == SingleStoreDbType.Geometry)
+			return;
 		DoGetSchemaTable(column, table, mySqlDbType, columnSize, dataType, flags, precision, scale);
+	}
 
 	[Theory]
 	[InlineData("`decimal-type` decimal(10,0) NOT NULL", "decimal-type", SingleStoreDbType.NewDecimal, 11, typeof(decimal), "", 10, 0)]
@@ -1206,14 +1202,19 @@ create table schema_table({createColumn});");
 		if (columnSize != int.MaxValue)
 			Assert.Equal(columnSize, schema["ColumnSize"]);
 #else
-		Assert.Equal(columnSize, schema["ColumnSize"]);
+		// TODO: PLAT-6085 remove this if
+		if (column != "Single" && column != "Double")
+			Assert.Equal(columnSize, schema["ColumnSize"]);
 #endif
 		Assert.Equal(isLong, schema["IsLong"]);
 		Assert.Equal(isAutoIncrement, schema["IsAutoIncrement"]);
 		Assert.Equal(isKey, schema["IsKey"]);
 		Assert.Equal(allowDbNull, schema["AllowDBNull"]);
 		Assert.Equal(precision, schema["NumericPrecision"]);
-		Assert.Equal(scale, schema["NumericScale"]);
+
+		// TODO: PLAT-6087 remove this if
+		if (column != "Date")
+			Assert.Equal(scale, schema["NumericScale"]);
 #if BASELINE
 		if (mySqlDbType == SingleStoreDbType.Enum || mySqlDbType == SingleStoreDbType.Set)
 			mySqlDbType = SingleStoreDbType.String;
@@ -1273,15 +1274,15 @@ create table schema_table({createColumn});");
 	[InlineData("Bit64", "datatypes_bits", SingleStoreDbType.Bit, "BIT", 64, typeof(ulong), "N", -1, 0)]
 	[InlineData("Binary", "datatypes_blobs", SingleStoreDbType.Binary, "BLOB", 100, typeof(byte[]), "N", -1, 0)]
 	[InlineData("VarBinary", "datatypes_blobs", SingleStoreDbType.VarBinary, "BLOB", 100, typeof(byte[]), "N", -1, 0)]
-	[InlineData("TinyBlob", "datatypes_blobs", SingleStoreDbType.Blob, "BLOB", 255, typeof(byte[]), "N", -1, 0)]
+	[InlineData("TinyBlob", "datatypes_blobs", SingleStoreDbType.TinyBlob, "BLOB", 255, typeof(byte[]), "N", -1, 0)]
 	[InlineData("Blob", "datatypes_blobs", SingleStoreDbType.Blob, "BLOB", 65535, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("MediumBlob", "datatypes_blobs", SingleStoreDbType.Blob, "BLOB", 16777215, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("LongBlob", "datatypes_blobs", SingleStoreDbType.Blob, "BLOB", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
+	[InlineData("MediumBlob", "datatypes_blobs", SingleStoreDbType.MediumBlob, "BLOB", 16777215, typeof(byte[]), "LN", -1, 0)]
+	[InlineData("LongBlob", "datatypes_blobs", SingleStoreDbType.LongBlob, "BLOB", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
 	[InlineData("guidbin", "datatypes_blobs", SingleStoreDbType.Binary, "BLOB", 16, typeof(byte[]), "N", -1, 0)]
-	[InlineData("rowid", "datatypes_bools", SingleStoreDbType.Int32, "INT", 11, typeof(int), "AK", -1, 0)]
-	[InlineData("Boolean", "datatypes_bools", SingleStoreDbType.Bool, "BOOL", 1, typeof(bool), "N", -1, 0)]
-	[InlineData("TinyInt1", "datatypes_bools", SingleStoreDbType.Bool, "BOOL", 1, typeof(bool), "N", -1, 0)]
-	[InlineData("TinyInt1U", "datatypes_bools", SingleStoreDbType.UByte, "TINYINT", 1, typeof(byte), "N", -1, 0)]
+	[InlineData("rowid", "datatypes_bools", SingleStoreDbType.Int64, "BIGINT", 20, typeof(long), "AK", -1, 0)]
+	[InlineData("Boolean", "datatypes_bools", SingleStoreDbType.Byte, "TINYINT", 4, typeof(sbyte), "N", -1, 0)]
+	[InlineData("TinyInt1", "datatypes_bools", SingleStoreDbType.Byte, "TINYINT", 4, typeof(sbyte), "N", -1, 0)]
+	[InlineData("TinyInt1U", "datatypes_bools", SingleStoreDbType.UByte, "TINYINT", 3, typeof(byte), "N", -1, 0)]
 	[InlineData("size", "datatypes_enums", SingleStoreDbType.Enum, "ENUM", 7, typeof(string), "N", -1, 0)]
 	[InlineData("color", "datatypes_enums", SingleStoreDbType.Enum, "ENUM", 6, typeof(string), "", -1, 0)]
 	[InlineData("char38", "datatypes_guids", SingleStoreDbType.String, "CHAR(38)", 38, typeof(string), "N", -1, 0)]
@@ -1307,15 +1308,12 @@ create table schema_table({createColumn});");
 	[InlineData("value", "datatypes_set", SingleStoreDbType.Set, "SET", 12, typeof(string), "N", -1, 0)]
 	[InlineData("utf8", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR", 300, typeof(string), "N", -1, 0)]
 	[InlineData("utf8bin", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR", 300, typeof(string), "N", -1, 0)]
-	[InlineData("latin1", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR", 300, typeof(string), "N", -1, 0)]
-	[InlineData("latin1bin", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR", 300, typeof(string), "N", -1, 0)]
-	[InlineData("cp1251", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR", 300, typeof(string), "N", -1, 0)]
 	[InlineData("guid", "datatypes_strings", SingleStoreDbType.Guid, "CHAR(36)", 36, typeof(Guid), "N", -1, 0)]
 	[InlineData("guidbin", "datatypes_strings", SingleStoreDbType.Guid, "CHAR(36)", 36, typeof(Guid), "N", -1, 0)]
 	[InlineData("Date", "datatypes_times", SingleStoreDbType.Date, "DATE", 10, typeof(DateTime), "N", -1, 0)]
 	[InlineData("DateTime", "datatypes_times", SingleStoreDbType.DateTime, "DATETIME", 26, typeof(DateTime), "N", -1, 6)]
 	[InlineData("Timestamp", "datatypes_times", SingleStoreDbType.Timestamp, "TIMESTAMP", 26, typeof(DateTime), "N", -1, 6)]
-	[InlineData("Time", "datatypes_times", SingleStoreDbType.Time, "TIME", 17, typeof(TimeSpan), "N", -1, 6)]
+	[InlineData("Time", "datatypes_times", SingleStoreDbType.Time, "TIME", 18, typeof(TimeSpan), "N", -1, 6)]
 	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, "YEAR", 4, typeof(int), "N", -1, 0)]
 	[InlineData("Geometry", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
 	[InlineData("Point", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
@@ -1323,6 +1321,9 @@ create table schema_table({createColumn});");
 	[InlineData("Polygon", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
 	public void GetColumnSchema(string column, string table, SingleStoreDbType mySqlDbType, string dataTypeName, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
+		// TODO: enable these tests replacing Geometry with Geography
+		if (mySqlDbType == SingleStoreDbType.Geometry)
+			return;
 		if (table == "datatypes_json_core" && !AppConfig.SupportsJson)
 			return;
 
@@ -1347,17 +1348,36 @@ create table schema_table({createColumn});");
 		Assert.Equal(0, schema.ColumnOrdinal);
 		Assert.Equal(dataType, schema.DataType);
 		Assert.Equal(dataTypeName, schema.DataTypeName);
-		Assert.Equal(columnSize, schema.ColumnSize);
+
+		// the condition below accounts for wrong charset reported in SingleStore 7.5 and 7.6
+		// when dealing with utf8mb4 data
+ 		if ( !( (column == "utf8" || column == "utf8bin") &&
+			Connection.Session.S2ServerVersion.Version.CompareTo(new Version(7,5,0)) > 0 &&
+			Connection.Session.S2ServerVersion.Version.CompareTo(new Version(7,8,0)) < 0 ))
+		{
+			// TODO: PLAT-6085: remove this if
+			if (column != "Single" && column != "Double")
+				Assert.Equal(columnSize, schema.ColumnSize);
+		}
 		Assert.False(schema.IsAliased.Value);
 		Assert.Equal(isAutoIncrement, schema.IsAutoIncrement);
 		Assert.False(schema.IsExpression.Value);
 		Assert.False(schema.IsHidden.Value);
-		Assert.Equal(isKey, schema.IsKey);
+
+		// TODO: PLAT-6085: investigate rowid reported non-primary key but unique in columnstore
+		if (column != "rowid")
+			Assert.Equal(isKey, schema.IsKey);
 		Assert.Equal(isLong, schema.IsLong);
 		Assert.False(schema.IsReadOnly.Value);
-		Assert.False(schema.IsUnique.Value);
+
+		// TODO: PLAT-6085
+		if (column != "rowid")
+			Assert.False(schema.IsUnique.Value);
 		Assert.Equal(realPrecision, schema.NumericPrecision);
-		Assert.Equal(scale, schema.NumericScale);
+
+		// TODO: PLAT-6087 remove this if
+		if (column != "Date")
+			Assert.Equal(scale, schema.NumericScale);
 		Assert.Equal(mySqlDbType, schema.ProviderType);
 	}
 #endif
@@ -1373,13 +1393,8 @@ create table schema_table({createColumn});");
 	[InlineData("MediumBlob", "datatypes_blobs", "MEDIUMBLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
 	[InlineData("LongBlob", "datatypes_blobs", "LONGBLOB", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
 	[InlineData("guidbin", "datatypes_blobs", "BINARY(16)", typeof(byte[]), 2, new byte[] { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF })]
-#if BASELINE
-	[InlineData("Boolean", "datatypes_bools", "BOOL", typeof(sbyte), 3, (sbyte) 1)]
-	[InlineData("TinyInt1", "datatypes_bools", "TINYINT(1)", typeof(sbyte), 3, (sbyte) 1)]
-#else
-	[InlineData("Boolean", "datatypes_bools", "BOOL", typeof(bool), 3, true)]
-	[InlineData("TinyInt1", "datatypes_bools", "TINYINT(1)", typeof(bool), 3, true)]
-#endif
+	[InlineData("Boolean", "datatypes_bools", "BOOL", typeof(sbyte), 3, true)]
+	[InlineData("TinyInt1", "datatypes_bools", "TINYINT(1)", typeof(sbyte), 3, true)]
 	[InlineData("TinyInt1U", "datatypes_bools", "TINYINT(1) UNSIGNED", typeof(byte), 3, (byte) 1)]
 	[InlineData("char38", "datatypes_guids",  "CHAR(38)", typeof(string), 2, "0")]
 	[InlineData("char38bin", "datatypes_guids", "CHAR(38)", typeof(string), 2, "0")]
@@ -1399,7 +1414,6 @@ create table schema_table({createColumn});");
 	[InlineData("MediumDecimal", "datatypes_reals", "DECIMAL(28,8)", typeof(decimal), 3, null)]
 	[InlineData("BigDecimal", "datatypes_reals", "DECIMAL(50,30)", typeof(decimal), 3, null)]
 	[InlineData("utf8", "datatypes_strings", "VARCHAR(300)", typeof(string), 3, "ASCII")]
-	[InlineData("latin1", "datatypes_strings", "VARCHAR(300)", typeof(string), 3, "ASCII")]
 	[InlineData("Date", "datatypes_times", "DATE", typeof(DateTime), 2, null)]
 	[InlineData("DateTime", "datatypes_times", "DATETIME", typeof(DateTime), 2, null)]
 	[InlineData("Timestamp", "datatypes_times", "TIMESTAMP", typeof(DateTime), 2, null)]
@@ -1447,7 +1461,12 @@ end;";
 			Assert.IsType(dataType, value);
 
 			if (expectedValue is not null)
-				Assert.Equal(expectedValue, value);
+			{
+				if (expectedValue.GetType() == typeof(bool))
+					Assert.Equal(expectedValue, Convert.ToBoolean(value));
+				else
+					Assert.Equal(expectedValue, value);
+			}
 		}
 	}
 
@@ -1482,14 +1501,12 @@ end;";
 	[InlineData("MediumDecimal", "datatypes_reals", "DECIMAL(28,8)")]
 	[InlineData("BigDecimal", "datatypes_reals", "DECIMAL(50,30)")]
 	[InlineData("utf8", "datatypes_strings", "VARCHAR(300) CHARSET utf8mb4")]
-	[InlineData("latin1", "datatypes_strings", "VARCHAR(300) CHARSET latin1")]
 	[InlineData("Date", "datatypes_times", "DATE")]
 	[InlineData("DateTime", "datatypes_times", "DATETIME(6)")]
 	[InlineData("Timestamp", "datatypes_times", "TIMESTAMP(6)")]
 	[InlineData("Time", "datatypes_times", "TIME(6)")]
 	// [InlineData("Year", "datatypes_times", "YEAR")]
 	[InlineData("value", "datatypes_json_core", "JSON")]
-	[InlineData("Geometry", "datatypes_geometry", "GEOMETRY")]
 	public void BulkCopyDataReader(string column, string table, string dataTypeName)
 	{
 		if (table == "datatypes_json_core" && !AppConfig.SupportsJson)
@@ -1552,15 +1569,16 @@ end;";
 	}
 
 	[SkippableTheory(ServerFeatures.Json)]
-	[InlineData(new object[] { new[] { null, "NULL", "BOOLEAN", "ARRAY", "ARRAY", "ARRAY", "INTEGER", "INTEGER", "OBJECT", "OBJECT" } })]
+	[InlineData(new object[] { new[] { null, "NULL", "BOOLEAN", "ARRAY", "ARRAY", "ARRAY", "DOUBLE", "DOUBLE", "OBJECT", "OBJECT" } })]
 	public void JsonType(string[] expectedTypes)
 	{
-		var types = Connection.Query<string>(@"select JSON_TYPE(value) from datatypes_json_core order by rowid;").ToList();
-		Assert.Equal(expectedTypes, types);
+		var types = Connection.Query<string>(@"select UPPER(JSON_GET_TYPE(value)) from datatypes_json_core order by rowid;").ToList();
+		for (int i = 0; i < expectedTypes.Length; ++i)
+			Assert.Equal(expectedTypes[i], types[i]);
 	}
 
 	[SkippableTheory(ServerFeatures.Json)]
-	[InlineData("value", new[] { null, "null", "true", "[]", "[0]", "[1]", "0", "1", "{}", "{\"a\": \"b\"}" })]
+	[InlineData("value", new[] { null, "null", "true", "[]", "[0]", "[1]", "0", "1", "{}", "{\"a\":\"b\"}" })]
 	public void QueryJson(string column, string[] expected)
 	{
 		string dataTypeName = "JSON";
@@ -1671,9 +1689,17 @@ end;";
 					// test `reader.GetValue` and `reader.GetFieldType` if value matches default type
 					if (matchesDefaultType)
 					{
-						assertEqual(value, reader.GetValue(0));
-						Assert.Equal(value.GetType(), reader.GetFieldType(0));
-						Assert.Equal(value.GetType(), reader.GetFieldType(column.Replace("`", "")));
+						// for bool we store tinyint
+						if (value.GetType() == typeof(bool))
+						{
+							assertEqual(value, Convert.ToBoolean(reader.GetValue(0)));
+						}
+						else
+						{
+							assertEqual(value, reader.GetValue(0));
+							Assert.Equal(value.GetType(), reader.GetFieldType(0));
+							Assert.Equal(value.GetType(), reader.GetFieldType(column.Replace("`", "")));
+						}
 					}
 
 					if (!omitGetFieldValueTest)
@@ -1705,7 +1731,7 @@ end;";
 
 		if (!omitWhereTest)
 		{
-			cmd.CommandText = $"select rowid from datatypes_{table} where {column} = @value";
+			cmd.CommandText = $"select rowid from datatypes_{table} where {column} = @value order by rowid";
 			var p = cmd.CreateParameter();
 			p.ParameterName = "@value";
 			p.Value = expected.Last();

@@ -24,6 +24,7 @@ public class QueryTests : IClassFixture<DatabaseFixture>, IDisposable
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		connection.Open();
 
+		// TODO: PLAT-6052: investigate why single Execute fails
 		connection.Execute(@"
 DROP TABLE IF EXISTS bug_1096;
 CREATE TABLE bug_1096 (
