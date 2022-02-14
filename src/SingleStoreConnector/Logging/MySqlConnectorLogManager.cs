@@ -28,5 +28,8 @@ public static class SingleStoreConnectorLogManager
 	internal static ISingleStoreConnectorLogger CreateLogger(string name) => Provider.CreateLogger(name);
 
 	static ISingleStoreConnectorLoggerProvider s_provider = new NoOpLoggerProvider();
+
+	// comment line above and uncomment below to get tracelogs output to console
+	// static ISingleStoreConnectorLoggerProvider s_provider = new ConsoleLoggerProvider(SingleStoreConnectorLogLevel.Trace);
 	static bool s_providerRetrieved;
 }

@@ -568,6 +568,24 @@ internal sealed class ServerSession
 		return statusInfo;
 	}
 
+	public async Task ResetConnectionAsync(IOBehavior ioBehavior, CancellationToken cancellationToken = default, string targetDatabase = "")
+	{
+		if (S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) < 0)
+			throw new InvalidOperationException("Resetting connection is not supported in SingleStore " + S2ServerVersion.OriginalString);
+
+		Log.Debug("Session{0} resetting connection", Id);
+		await SendAsync(ResetConnectionPayload.Instance, ioBehavior, cancellationToken).ConfigureAwait(false);
+		var payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+		OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+
+		if (targetDatabase.Length > 0)
+		{
+			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, string.Format("USE {0}", targetDatabase)), ioBehavior, cancellationToken).ConfigureAwait(false);
+			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+		}
+	}
+
 	public async Task<bool> TryResetConnectionAsync(ConnectionSettings cs, SingleStoreConnection connection, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		VerifyState(State.Connected);
@@ -584,7 +602,7 @@ internal sealed class ServerSession
 				m_logArguments[1] = S2ServerVersion.OriginalString;
 
 				Log.Trace("Session{0} ServerVersion={1} supports reset connection; sending reset connection request", m_logArguments);
-				await connection.ResetConnectionAsync(cancellationToken);
+				await ResetConnectionAsync(ioBehavior, cancellationToken, connection.Database);
 			}
 			else
 			{
@@ -1600,7 +1618,7 @@ internal sealed class ServerSession
 
 	private async Task GetRealServerDetailsAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		Log.Debug("Session{0} detected proxy; getting CONNECTION_ID(), VERSION(), S2Version from server", m_logArguments);
+		Log.Debug("Session{0} is getting CONNECTION_ID(), VERSION(), S2Version from server", m_logArguments);
 		try
 		{
 			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version;"), ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -1643,22 +1661,22 @@ internal sealed class ServerSession
 			else
 				EofPayload.Create(payload.Span);
 
-			if (connectionId.HasValue)
+			if (connectionId.HasValue && ConnectionId != connectionId.Value)
 			{
-				Log.Debug("Session{0} changing ConnectionIdOld {1} to ConnectionId {2}",
+				Log.Debug("Session{0} changing from {1} to {2}",
 					m_logArguments[0], ConnectionId, connectionId.Value);
 				ConnectionId = connectionId.Value;
 			}
-			if (serverVersion.Length > 0)
+			if (serverVersion.Length > 0 && MySqlCompatVersion.OriginalString != Encoding.ASCII.GetString(serverVersion))
 			{
 				var newServerVersion = new ServerVersion(serverVersion);
-				Log.Debug("Session{0} changing ServerVersionOld {1} to ServerVersion {2}", m_logArguments[0], MySqlCompatVersion.OriginalString, newServerVersion.OriginalString);
+				Log.Debug("Session{0} changing ServerVersion from {1} to {2}", m_logArguments[0], MySqlCompatVersion.OriginalString, newServerVersion.OriginalString);
 				MySqlCompatVersion = newServerVersion;
 			}
 			if (s2Version.Length > 0)
 			{
 				var newS2Version = new ServerVersion(s2Version);
-				Log.Debug("Session{0} S2VersionOld {1} to S2Version {2}", m_logArguments[0], S2ServerVersion.OriginalString, newS2Version.OriginalString);
+				Log.Debug("Session{0} setting S2ServerVersion to {2}", m_logArguments[0], S2ServerVersion.OriginalString, newS2Version.OriginalString);
 				S2ServerVersion = newS2Version;
 			}
 		}

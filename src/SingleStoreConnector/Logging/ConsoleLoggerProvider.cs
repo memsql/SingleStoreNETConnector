@@ -52,13 +52,13 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 				{
 					var oldColor = Console.ForegroundColor;
 					Console.ForegroundColor = s_colors[(int) level];
-					Console.Error.Write(sb.ToString());
+					Console.Write(sb.ToString());
 					Console.ForegroundColor = oldColor;
 				}
 			}
 			else
 			{
-				Console.Error.Write(sb.ToString());
+				Console.Write(sb.ToString());
 			}
 		}
 
