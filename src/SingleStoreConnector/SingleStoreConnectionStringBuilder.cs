@@ -513,7 +513,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	/// Whether invalid <c>DATETIME</c> fields should be converted to <see cref="DateTime.MinValue"/>.
 	/// </summary>
 	[Category("Other")]
-	[DefaultValue(false)]
+	[DefaultValue(true)]
 	[Description("Whether invalid DATETIME fields should be converted to DateTime.MinValue.")]
 	[DisplayName("Convert Zero DateTime")]
 	public bool ConvertZeroDateTime
@@ -1146,7 +1146,7 @@ internal abstract class MySqlConnectionStringOption
 
 		AddOption(ConvertZeroDateTime = new(
 			keys: new[] { "Convert Zero DateTime", "ConvertZeroDateTime" },
-			defaultValue: false));
+			defaultValue: true));
 
 		AddOption(DateTimeKind = new(
 			keys: new[] { "DateTime Kind", "DateTimeKind" },

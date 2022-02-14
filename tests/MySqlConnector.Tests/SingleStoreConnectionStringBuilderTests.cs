@@ -44,7 +44,7 @@ public class SingleStoreConnectionStringBuilderTests
 #pragma warning restore 618
 #endif
 		Assert.Equal(15u, csb.ConnectionTimeout);
-		Assert.False(csb.ConvertZeroDateTime);
+		Assert.True(csb.ConvertZeroDateTime);
 #if !BASELINE
 		Assert.Equal(SingleStoreDateTimeKind.Unspecified, csb.DateTimeKind);
 #endif
