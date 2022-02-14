@@ -345,7 +345,13 @@ public class ConnectSync : IClassFixture<DatabaseFixture>
 		};
 
 		connection.Open();
-		Assert.Equal((int) csb.MinimumPoolSize, invocationCount);
+
+		// if Reset Connection us supported, we don't need to re-authenticate.
+		// Otherwise on Open, a separate password request is sent
+		if (connection.Session.S2ServerVersion.Version >= new Version(7, 5, 0))
+			Assert.Equal((int) csb.MinimumPoolSize, invocationCount);
+		else
+			Assert.Equal((int) csb.MinimumPoolSize + 1, invocationCount);
 	}
 #endif
 
