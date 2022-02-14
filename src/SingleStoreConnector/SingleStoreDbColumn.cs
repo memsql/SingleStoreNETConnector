@@ -53,6 +53,7 @@ namespace SingleStoreConnector
 			if (mySqlDbType == SingleStoreDbType.JSON || mySqlDbType == SingleStoreDbType.LongBlob)
 				ColumnSize = int.MaxValue;
 			else
+
 				// overflow may occur here
 				ColumnSize = (int) (column.ColumnLength / ProtocolUtility.GetBytesPerCharacter(column.CharacterSet));
 
