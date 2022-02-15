@@ -154,37 +154,6 @@ UNLOCK TABLES;", m_database.Connection);
 		}
 	}
 
-	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=97061")]
-	public async Task LastInsertedIdInsertForeignKey()
-	{
-		await m_database.Connection.ExecuteAsync(@"drop table if exists TestTableWithForeignKey;
-drop table if exists TestTable;
-
-Create Table TestTable(
-    id BIGINT NOT NULL AUTO_INCREMENT,
-    column1 CHAR(100),
-    Primary Key(id)
-);
-
-Create Table TestTableWithForeignKey(
-    foreign_id BIGINT NOT NULL,
-    column2 CHAR(100),
-    Foreign Key(foreign_id) REFERENCES TestTable(id)
-);");
-		try
-		{
-			await m_database.Connection.OpenAsync();
-			using var command = new SingleStoreCommand(@"INSERT INTO TestTable(column1) VALUES('hello');
-INSERT INTO TestTableWithForeignKey(foreign_id, column2) VALUES(LAST_INSERT_ID(), 'test');", m_database.Connection);
-			Assert.Equal(2, await command.ExecuteNonQueryAsync());
-			Assert.Equal(1L, command.LastInsertedId);
-		}
-		finally
-		{
-			m_database.Connection.Close();
-		}
-	}
-
 	[Fact]
 	public async Task RowsAffected()
 	{
@@ -199,24 +168,6 @@ INSERT INTO insert_rows_affected (value) VALUES (null);
 INSERT INTO insert_rows_affected (value) VALUES (null);", m_database.Connection);
 			var rowsAffected = await command.ExecuteNonQueryAsync();
 			Assert.Equal(2, rowsAffected);
-		}
-		finally
-		{
-			m_database.Connection.Close();
-		}
-	}
-
-	[Fact]
-	public void LastInsertedIdExplicitStart()
-	{
-		m_database.Connection.Execute(@"drop table if exists insert_ai_2;
-create table insert_ai_2(rowid integer not null primary key auto_increment, text varchar(100) not null) auto_increment = 1234;");
-		try
-		{
-			m_database.Connection.Open();
-			using var command = new SingleStoreCommand("insert into insert_ai_2(text) values('test');", m_database.Connection);
-			command.ExecuteNonQuery();
-			Assert.Equal(1234L, command.LastInsertedId);
 		}
 		finally
 		{
@@ -258,7 +209,10 @@ create table insert_time(value TIME({precision}));");
 			using (var reader = command.ExecuteReader())
 			{
 				Assert.True(reader.Read());
-				Assert.Equal(TimeSpan.FromMilliseconds(10), reader.GetValue(0));
+				if(precision == 0)
+					Assert.Equal(TimeSpan.Zero, reader.GetValue(0));
+				else
+					Assert.Equal(TimeSpan.FromMilliseconds(10), reader.GetValue(0));
 				Assert.False(reader.Read());
 			}
 		}
@@ -361,6 +315,11 @@ create table insert_stream(rowid integer not null primary key auto_increment, st
 	{
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
 		connection.Open();
+
+		Version utf8mb4_binSupportVersion = new(7, 5, 0);
+		if (connection.Session.S2ServerVersion.Version.CompareTo(utf8mb4_binSupportVersion) < 0)
+			return;
+
 		connection.Execute(@"drop table if exists insert_string_builder;
 create table insert_string_builder(rowid integer not null primary key auto_increment, str text collate utf8mb4_bin);");
 
@@ -674,10 +633,10 @@ create table insert_mysql_enums(
 		m_database.Connection.Execute(@"drop table if exists insert_mysql_set;
 create table insert_mysql_set(
 	rowid integer not null primary key auto_increment,
-	value set('one', 'two', 'four', 'eight') null
+	value set('""one""', '""two""', '""four""', '""eight""') null
 );");
-		m_database.Connection.Execute(@"insert into insert_mysql_set(value) values('one'), ('two'), ('one,two'), ('four'), ('four,one'), ('four,two'), ('four,two,one'), ('eight');");
-		Assert.Equal(new[] { "one", "one,two", "one,four", "one,two,four" }, m_database.Connection.Query<string>(@"select value from insert_mysql_set where find_in_set('one', value) order by rowid"));
+		m_database.Connection.Execute(@"insert into insert_mysql_set(value) values('""one""'), ('""two""'), ('""one"",""two""'), ('""four""'), ('""four"",""one""'), ('""four"",""two""'), ('""four"",""two"",""one""'), ('""eight""');");
+		Assert.Equal(new[] { "\"one\"", "\"one\",\"two\"", "\"one\",\"four\"", "\"one\",\"two\",\"four\"" }, m_database.Connection.Query<string>(@"select value from insert_mysql_set where JSON_ARRAY_CONTAINS_STRING(concat('[', value, ']'), 'one') order by rowid"));
 	}
 
 
