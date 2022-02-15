@@ -588,6 +588,7 @@ create table bulk_load_data_table(str varchar(5), number tinyint);", connection)
 		};
 		var result = await bulkCopy.WriteToServerAsync(dataTable);
 		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
 
 		// SingleStore doesn't show warnings on data conversion in LOAD DATA
 		// Assert.Equal(2, result.Warnings.Count);

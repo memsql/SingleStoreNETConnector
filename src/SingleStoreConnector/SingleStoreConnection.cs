@@ -452,7 +452,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	/// <returns>A <c>ValueTask</c> representing the asynchronous operation.</returns>
 	/// <remarks>This is an optional feature of the MySQL protocol and may not be supported by all servers.
 	/// It's known to be supported by MySQL Server 5.7.3 (and later), MariaDB 10.2.4 (and later),
-	/// SingleStore 7.5 and later. Calling this for SingleStore resets the connection to no database selected.
+	/// SingleStore 7.5 and later. Calling this for SingleStore 7.5 and 7.6 resets the connection to no database selected.
 	/// Other MySQL-compatible servers or proxies may not support this command.</remarks>
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 	public async ValueTask ResetConnectionAsync(CancellationToken cancellationToken = default)
@@ -460,18 +460,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	public async Task ResetConnectionAsync(CancellationToken cancellationToken = default)
 #endif
 	{
-		var session = Session;
-		if (Session.S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) < 0)
-			throw new InvalidOperationException("Resetting connection is not supported in SingleStore " + Session.S2ServerVersion.OriginalString);
-
-		Log.Debug("Session{0} resetting connection", session.Id);
-		await session.SendAsync(ResetConnectionPayload.Instance, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
-		var payload = await session.ReceiveReplyAsync(AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
-		OkPayload.Create(payload.Span, session.SupportsDeprecateEof, session.SupportsSessionTrack);
-
-		await session.SendAsync(QueryPayload.Create(Session.SupportsQueryAttributes, string.Format("USE {0}", Database)), AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
-		payload = await session.ReceiveReplyAsync(AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
-		OkPayload.Create(payload.Span, session.SupportsDeprecateEof, session.SupportsSessionTrack);
+		await Session.ResetConnectionAsync(AsyncIOBehavior, cancellationToken, Database);
 	}
 
 	[AllowNull]
@@ -736,7 +725,8 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 		{
 			VerifyNotDisposed();
 			if (m_session is null || State != ConnectionState.Open)
-				throw new InvalidOperationException("Connection must be Open; current state is {0}".FormatInvariant(State));
+				throw new InvalidOperationException(
+					"Connection must be Open; current state is {0}, m_session is {1}".FormatInvariant(State, m_session?.Id));
 			return m_session;
 		}
 	}

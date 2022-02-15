@@ -1522,7 +1522,7 @@ end;";
 			command.ExecuteNonQuery();
 		}
 
-		using (var command = new SingleStoreCommand($@"select `{column}` from `{table}`;", connection1))
+		using (var command = new SingleStoreCommand($@"select `{column}` from `{table}` order by rowid;", connection1))
 		{
 			using var reader = command.ExecuteReader();
 			var csb = AppConfig.CreateConnectionStringBuilder();
@@ -1537,9 +1537,9 @@ end;";
 		using var connection2 = new SingleStoreConnection(AppConfig.ConnectionString);
 		connection2.Open();
 
-		using (var command1 = new SingleStoreCommand($@"select `{column}` from `{table}`;", connection1))
+		using (var command1 = new SingleStoreCommand($@"select `{column}` from `{table}` order by `{column}`;", connection1))
 		using (var reader1 = command1.ExecuteReader())
-		using (var command2 = new SingleStoreCommand($@"select `{column}` from `{bulkCopyTable}`;", connection2))
+		using (var command2 = new SingleStoreCommand($@"select `{column}` from `{bulkCopyTable}` order by `{column}`;", connection2))
 		using (var reader2 = command2.ExecuteReader())
 		{
 			while (reader1.Read())
