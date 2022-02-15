@@ -47,9 +47,9 @@ public class SchemaProviderTests : IClassFixture<DatabaseFixture>, IDisposable
 		AssertHasColumn("IS_NULLABLE", typeof(string));
 		AssertHasColumn("DATA_TYPE", typeof(string));
 		AssertHasColumn("CHARACTER_MAXIMUM_LENGTH", typeof(long));
+		AssertHasColumn("CHARACTER_OCTET_LENGTH", typeof(long));
 		AssertHasColumn("NUMERIC_PRECISION", typeof(ulong));
 		AssertHasColumn("NUMERIC_SCALE", typeof(ulong));
-		AssertHasColumn("DATETIME_PRECISION", typeof(uint));
 		AssertHasColumn("CHARACTER_SET_NAME", typeof(string));
 		AssertHasColumn("COLLATION_NAME", typeof(string));
 		AssertHasColumn("COLUMN_KEY", typeof(string));
@@ -88,16 +88,16 @@ public class SchemaProviderTests : IClassFixture<DatabaseFixture>, IDisposable
 	{
 		var table = await m_database.Connection.GetSchemaAsync("CharacterSets");
 		Assert.Equal(4, table.Columns.Count);
-		Assert.Contains("latin1", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
-		Assert.Contains("ascii", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
+		Assert.Contains("binary", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
+		Assert.Contains("utf8", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
 	}
 
 	[Fact]
 	public void GetCollationsSchema()
 	{
 		var table = m_database.Connection.GetSchema("Collations");
-		Assert.Contains("latin1_general_ci", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
-		Assert.Contains("ascii_bin", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
+		Assert.Contains("utf8_bin", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
+		Assert.Contains("binary", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
 	}
 #endif
 
