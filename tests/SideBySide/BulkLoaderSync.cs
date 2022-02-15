@@ -562,20 +562,38 @@ create table bulk_load_data_table(a int, b longblob);", connection))
 	[InlineData(100)]
 	public void BulkCopyDataTableWithLongData(int rows)
 	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
 		// create a string that will be about 120,000 UTF-8 bytes
+		int codePoints1, codePoints2;
+		string collation;
+		if (connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 5, 0)) > 0)
+		{
+			codePoints1 = 0x2000;
+			codePoints2 = 0x10780;
+			collation = "utf8mb4_bin";
+		}
+		else
+		{
+			codePoints1 = 0x1000;
+			codePoints2 = 0x2000;
+			collation = "utf8_bin";
+		}
+
 		var sb = new StringBuilder { Capacity = 121_000 };
 		for (var j = 0; j < 4; j++)
 		{
-			for (var i = 0x20; i < 0x2000; i++)
+			for (var i = 0x20; i < codePoints1; i++)
 				sb.Append((char) i);
-			for (var i = 0x10000; i < 0x10780; i++)
+			for (var i = 0x10000; i < codePoints2; i++)
 				sb.Append(char.ConvertFromUtf32(i));
 		}
-		var str = sb.ToString();
+		var originalStr = sb.ToString();
 
-		var bytes = new byte[50_000];
+		var originalBytes = new byte[50_000];
 		var random = new Random(1);
-		random.NextBytes(bytes);
+		random.NextBytes(originalBytes);
 
 		var dataTable = new DataTable()
 		{
@@ -586,12 +604,10 @@ create table bulk_load_data_table(a int, b longblob);", connection))
 			},
 		};
 		for (var i = 0; i < rows; i++)
-			dataTable.Rows.Add(str, bytes);
+			dataTable.Rows.Add(originalStr, originalBytes);
 
-		using var connection = new SingleStoreConnection(GetLocalConnectionString());
-		connection.Open();
-		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
-create table bulk_load_data_table(a mediumtext collate utf8mb4_bin, b mediumblob);", connection))
+		using (var cmd = new SingleStoreCommand(@$"drop table if exists bulk_load_data_table;
+create table bulk_load_data_table(a mediumtext collate `{collation}`, b mediumblob);", connection))
 		{
 			cmd.ExecuteNonQuery();
 		}
@@ -612,9 +628,9 @@ create table bulk_load_data_table(a mediumtext collate utf8mb4_bin, b mediumblob
 			while (reader.Read())
 			{
 				readRows++;
-				Assert.Equal(str, reader.GetString(0));
+				Assert.Equal(originalStr, reader.GetString(0));
 				reader.GetBytes(1, 0, readBytes, 0, readBytes.Length);
-				Assert.Equal(bytes, readBytes);
+				Assert.Equal(originalBytes, readBytes);
 			}
 			Assert.Equal(rows, readRows);
 		}
