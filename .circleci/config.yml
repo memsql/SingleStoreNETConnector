@@ -1,14 +1,15 @@
 version: 2.1
+parameters:
+  connector-version:
+    type: string
+    default: "1.0.0"
 
-jobs:
-  test:
-    machine:
-      image: ubuntu-2004:202104-01
-      docker_layer_caching: true
+commands:
+  setup-environment-ubuntu:
+    description: "Setup the linux environment"
     steps:
-      - checkout
       - run:
-          name: install .NET Core 6.0
+          name: Install .NET Core 6.0
           command: |
             wget https://packages.microsoft.com/config/ubuntu/21.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
             sudo dpkg -i packages-microsoft-prod.deb
@@ -19,21 +20,36 @@ jobs:
             sudo apt-get install -y mariadb-client-core-10.3
             sudo apt-get install -y dotnet-sdk-6.0
             dotnet --info
+
+jobs:
+  test-ubuntu:
+    parameters:
+      singlestore_image:
+        type: string
+    machine:
+      image: ubuntu-2004:202104-01
+      docker_layer_caching: true
+    environment:
+      SINGLESTORE_IMAGE: << parameters.singlestore_image >>
+    steps:
+      - checkout
+      - setup-environment-ubuntu
       - run:
-          name: start SingleStore for SideBySide tests
-          command: |
-            ./.circleci/setup_cluster.sh
-      - run:
-          name: copy config file for SideBySide tests
-          command: |
-            cp ./.circleci/SideBySide/config.json tests/SideBySide/config.json
-            sed -i "s|ROOT_PASSWORD|${ROOT_PASSWORD}|g" tests/SideBySide/config.json
-      - run:
-          name: build connector
+          name: Build connector
           command: |
             dotnet build -c Release
       - run:
-          name: unit tests
+          name: Start SingleStore for SideBySide tests
+          command: |
+            ./.circleci/setup_cluster.sh
+      - run:
+          name: Copy config file for SideBySide tests
+          command: |
+            cp ./.circleci/SideBySide/config.json tests/SideBySide/config.json
+            sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
+            sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
+      - run:
+          name: Unit tests
           command: |
             cd tests/MySqlConnector.Tests
             dotnet test -f net6.0 -c Release
@@ -55,4 +71,21 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - test
+      - test-ubuntu:
+          name: Test with cluster-in-a-box 7.6
+          matrix:
+            parameters:
+              singlestore_image:
+                - singlestore/cluster-in-a-box:centos-7.6.9-7d7e13942a-4.0.3-1.13.4
+      - test-ubuntu:
+          name: Test with cluster-in-a-box 7.5
+          matrix:
+            parameters:
+              singlestore_image:
+                - singlestore/cluster-in-a-box:centos-7.5.12-3112a491c2-4.0.0-1.12.5
+      - test-ubuntu:
+          name: Test with cluster-in-a-box 7.3
+          matrix:
+            parameters:
+              singlestore_image:
+                - singlestore/cluster-in-a-box:centos-7.3.13-761e3259b3-3.2.11-1.11.9
