@@ -736,9 +736,12 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		}
 	}
 
-	[Fact]
-	public void SimultaneousConnectionsWithTransactionScopeReadCommittedWithNonXaTransactions()
+	[Theory]
+	[InlineData(true)]
+	[InlineData(false)]
+	public void SimultaneousConnectionsWithTransactionScopeReadCommittedWithNonXaTransactions(bool isRowstore)
 	{
+		string rowstorePart = isRowstore ? "rowstore" : "";
 		var connectionString = AppConfig.ConnectionString;
 #if !BASELINE
 		connectionString += ";UseXaTransactions=False";
@@ -748,8 +751,12 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		using (var connection = new SingleStoreConnection(connectionString))
 		{
 			connection.Open();
-			connection.Execute(@"DROP TABLE IF EXISTS orders;
-				CREATE TABLE `orders`(
+
+			// 7.5 doesn't support SELECT FOR UPDATE in columnstore
+			if (!isRowstore && connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 6, 0)) < 0)
+				return;
+			connection.Execute(@$"DROP TABLE IF EXISTS orders;
+				CREATE {rowstorePart} TABLE `orders`(
 					`id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 					`description` VARCHAR(50),
 					PRIMARY KEY (`id`)

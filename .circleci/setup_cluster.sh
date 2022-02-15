@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -eu
 
-# this script must be run from the top-level of the repo
-cd "$(git rev-parse --show-toplevel)"
-
 DEFAULT_IMAGE_NAME="memsql/cluster-in-a-box:centos-7.3.9-a7abc2ebd4-3.2.8-1.11.4"
 IMAGE_NAME="${SINGLESTORE_IMAGE:-$DEFAULT_IMAGE_NAME}"
 CONTAINER_NAME="singlestore-integration"
@@ -23,7 +20,7 @@ if [[ "${EXISTS}" -eq 0 ]]; then
     docker run -i --init \
         --name ${CONTAINER_NAME} \
         -e LICENSE_KEY=${LICENSE_KEY} \
-        -e ROOT_PASSWORD=${ROOT_PASSWORD} \
+        -e ROOT_PASSWORD=${SQL_USER_PASSWORD} \
         -p 3306:3306 -p 3307:3307 \
         ${IMAGE_NAME}
 fi
@@ -33,7 +30,7 @@ docker start ${CONTAINER_NAME}
 singlestore-wait-start() {
   echo -n "Waiting for SingleStore to start..."
   while true; do
-      if mysql -u root -h 127.0.0.1 -P 3306 -p"${ROOT_PASSWORD}" -e "select 1" >/dev/null 2>/dev/null; then
+      if mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" -e "select 1" >/dev/null 2>/dev/null; then
           break
       fi
       echo -n "."
@@ -47,11 +44,11 @@ singlestore-wait-start
 echo
 echo "Ensuring child nodes are connected using container IP"
 CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CONTAINER_NAME})
-CURRENT_LEAF_IP=$(mysql -u root -h 127.0.0.1 -P 3306 -p"${ROOT_PASSWORD}" --batch -N -e 'select host from information_schema.leaves')
+CURRENT_LEAF_IP=$(mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" --batch -N -e 'select host from information_schema.leaves')
 if [[ ${CONTAINER_IP} != "${CURRENT_LEAF_IP}" ]]; then
     # remove leaf with current ip
-    mysql -u root -h 127.0.0.1 -P 3306 -p"${ROOT_PASSWORD}" --batch -N -e "remove leaf '${CURRENT_LEAF_IP}':3307"
+    mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" --batch -N -e "remove leaf '${CURRENT_LEAF_IP}':3307"
     # add leaf with correct ip
-    mysql -u root -h 127.0.0.1 -P 3306 -p"${ROOT_PASSWORD}" --batch -N -e "add leaf root:'${ROOT_PASSWORD}'@'${CONTAINER_IP}':3307"
+    mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" --batch -N -e "add leaf root:'${SQL_USER_PASSWORD}'@'${CONTAINER_IP}':3307"
 fi
 echo "Done!"

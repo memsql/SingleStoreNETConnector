@@ -1,6 +1,6 @@
 {
     "Data": {
-      "ConnectionString": "server=127.0.0.1;user id=root;password=ROOT_PASSWORD;port=3306;database=singlestoretest",
+      "ConnectionString": "server=127.0.0.1;user id=SQL_USER_NAME;password=SQL_USER_PASSWORD;port=3306;database=singlestoretest",
       "UnsupportedFeatures": "CachingSha2Password,Ed25519,QueryAttributes,Tls11,Tls13,UuidToBin,UnixDomainSocket,Sha256Password,GlobalLog"
     }
 }

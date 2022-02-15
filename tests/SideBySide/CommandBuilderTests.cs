@@ -70,11 +70,18 @@ create table command_builder_insert
 		Assert.Equal("inserted", m_database.Connection.ExecuteScalar<string>("select value from command_builder_insert where id = 1;"));
 	}
 
-	[Fact]
-	public void Update()
+	[Theory]
+	[InlineData(true)]
+	[InlineData(false)]
+	public void Update(bool isRowstore)
 	{
-		m_database.Connection.Execute(@"drop table if exists command_builder_update;
-create table command_builder_update
+		// TODO: PLAT-6086 remove this if
+		if (!isRowstore)
+			return;
+
+		string rowstorePart = isRowstore ? "rowstore" : "";
+		m_database.Connection.Execute(@$"drop table if exists command_builder_update;
+create {rowstorePart} table command_builder_update
 (
 	id int not null primary key,
 	value varchar(100)
@@ -94,11 +101,18 @@ insert into command_builder_update values(1, 'one'), (2, 'two');
 		Assert.Equal("updated", m_database.Connection.ExecuteScalar<string>("select value from command_builder_update where id = 1;"));
 	}
 
-	[Fact]
-	public void Delete()
+	[Theory]
+	[InlineData(true)]
+	[InlineData(false)]
+	public void Delete(bool isRowstore)
 	{
-		m_database.Connection.Execute(@"drop table if exists command_builder_delete;
-create table command_builder_delete
+		// TODO: PLAT-6086 remove this if
+		if (!isRowstore)
+			return;
+
+		string rowstorePart = isRowstore ? "rowstore" : "";
+		m_database.Connection.Execute(@$"drop table if exists command_builder_delete;
+create {rowstorePart} table command_builder_delete
 (
 	id int not null primary key,
 	value varchar(100)

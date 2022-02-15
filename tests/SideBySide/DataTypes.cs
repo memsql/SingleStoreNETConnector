@@ -1204,11 +1204,22 @@ create table schema_table({createColumn});");
 #else
 		// TODO: PLAT-6085 remove this if
 		if (column != "Single" && column != "Double")
-			Assert.Equal(columnSize, schema["ColumnSize"]);
+
+			// this if is here because wrong charset is reported in 7.5 and 7.6 for utf8mb4 fields
+			if ((column == "utf8" || column == "utf8bin") &&
+				Connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 5, 0)) >=0 &&
+				Connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 8, 0)) < 0)
+			{
+			}
+			else
+				Assert.Equal(columnSize, schema["ColumnSize"]);
 #endif
 		Assert.Equal(isLong, schema["IsLong"]);
 		Assert.Equal(isAutoIncrement, schema["IsAutoIncrement"]);
-		Assert.Equal(isKey, schema["IsKey"]);
+
+		// TODO: PLAT-6086: investigate rowid reported non-primary key but unique in columnstore
+		if (column != "rowid")
+			Assert.Equal(isKey, schema["IsKey"]);
 		Assert.Equal(allowDbNull, schema["AllowDBNull"]);
 		Assert.Equal(precision, schema["NumericPrecision"]);
 
@@ -1364,13 +1375,13 @@ create table schema_table({createColumn});");
 		Assert.False(schema.IsExpression.Value);
 		Assert.False(schema.IsHidden.Value);
 
-		// TODO: PLAT-6085: investigate rowid reported non-primary key but unique in columnstore
+		// TODO: PLAT-6086: investigate rowid reported non-primary key but unique in columnstore
 		if (column != "rowid")
 			Assert.Equal(isKey, schema.IsKey);
 		Assert.Equal(isLong, schema.IsLong);
 		Assert.False(schema.IsReadOnly.Value);
 
-		// TODO: PLAT-6085
+		// TODO: PLAT-6086
 		if (column != "rowid")
 			Assert.False(schema.IsUnique.Value);
 		Assert.Equal(realPrecision, schema.NumericPrecision);
