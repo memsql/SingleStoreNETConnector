@@ -7,13 +7,10 @@ public class DataAdapterTests : IClassFixture<DatabaseFixture>, IDisposable
 			m_connection = database.Connection;
 			m_connection.Open();
 
-#if BASELINE
-			// not sure why this is necessary
 			m_connection.Execute("drop table if exists data_adapter;");
-#endif
 
 			m_connection.Execute(@"
-create temporary table data_adapter(
+create rowstore temporary table data_adapter(
 	id bigint not null primary key auto_increment,
 	int_value int null,
 	text_value text null
@@ -75,7 +72,7 @@ insert into data_adapter(int_value, text_value) values
 		[Fact]
 		public void Fill()
 		{
-			using var da = new SingleStoreDataAdapter("select * from data_adapter", m_connection);
+			using var da = new SingleStoreDataAdapter("select * from data_adapter order by id", m_connection);
 			using var ds = new DataSet();
 			da.Fill(ds, "data_adapter");
 
@@ -98,7 +95,7 @@ insert into data_adapter(int_value, text_value) values
 		[Fact]
 		public void LoadDataTable()
 		{
-			using var command = new SingleStoreCommand("SELECT * FROM data_adapter", m_connection);
+			using var command = new SingleStoreCommand("SELECT * FROM data_adapter ORDER BY id", m_connection);
 			using var dr = command.ExecuteReader();
 			var dt = new DataTable();
 			dt.Load(dr);
@@ -151,7 +148,7 @@ insert into data_adapter(int_value, text_value) values
 				ds.AcceptChanges();
 			}
 
-			using var cmd2 = new SingleStoreCommand("SELECT id, int_value, text_value FROM data_adapter", m_connection);
+			using var cmd2 = new SingleStoreCommand("SELECT id, int_value, text_value FROM data_adapter ORDER BY id", m_connection);
 			using var dr2 = cmd2.ExecuteReader();
 			Assert.True(dr2.Read());
 			Assert.Equal(1L, dr2[0]);
@@ -200,7 +197,7 @@ insert into data_adapter(int_value, text_value) values
 				da.Update(ds);
 			}
 
-			Assert.Equal(new[] { "two", "three", "four" }, m_connection.Query<string>("SELECT text_value FROM data_adapter ORDER BY id"));
+			Assert.Equal(new List<string>{ "two", "three", "four" }, m_connection.Query<string>("SELECT text_value FROM data_adapter ORDER BY int_value"));
 		}
 
 
