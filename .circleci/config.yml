@@ -4,9 +4,12 @@ parameters:
     type: string
     default: "1.0.0"
 
+orbs:
+  win: circleci/windows@2.4.0
+
 commands:
   setup-environment-ubuntu:
-    description: "Setup the linux environment"
+    description: Setup Linux environment
     steps:
       - run:
           name: Install .NET Core 6.0
@@ -20,8 +23,52 @@ commands:
             sudo apt-get install -y mariadb-client-core-10.3
             sudo apt-get install -y dotnet-sdk-6.0
             dotnet --info
+  run-tests-win:
+    description: Run tests on Windows
+    parameters:
+      target_framework:
+        type: string
+    steps:
+      - run:
+          name: Unit tests
+          command: |
+            cd tests\MySqlConnector.Tests
+            dotnet.exe test -f << parameters.target_framework >> -c Release --no-build
+            cd ..\..
+      - run:
+          name: Conformance tests
+          command: |
+            cd tests/Conformance.Tests/
+            dotnet.exe test -f << parameters.target_framework >> -c Release --no-build
+            cd ..\..
+      - run:
+          name: SideBySide tests
+          command: |
+            cd tests\SideBySide
+            dotnet.exe test -f << parameters.target_framework >> -c Release --no-build
+            cd ..\..
 
 jobs:
+  test-windows:
+    executor: win/default
+    steps:
+      - checkout
+      - run:
+          name: Build project binaries
+          command: |
+            choco upgrade dotnet-sdk
+            dotnet.exe build -c Release
+      - run:
+          name: Start SingleStore for SideBySide tests
+          command: |
+            pip install pymysql
+            python.exe .circleci\s2ms_cluster.py start singlestoretest
+      - run:
+          name: Fill test config
+          command: python.exe .circleci\fill_test_config.py
+      - run-tests-win:
+          target_framework: net6.0
+
   test-ubuntu:
     parameters:
       singlestore_image:
@@ -46,25 +93,27 @@ jobs:
           name: Copy config file for SideBySide tests
           command: |
             cp ./.circleci/SideBySide/config.json tests/SideBySide/config.json
+            sed -i "s|SINGLESTORE_HOST|127.0.0.1|g" tests/SideBySide/config.json
             sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
             sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
+            cp tests/SideBySide/config.json tests/SideBySide/bin/Release/net6.0/config.json
       - run:
           name: Unit tests
           command: |
             cd tests/MySqlConnector.Tests
-            dotnet test -f net6.0 -c Release
+            dotnet test -f net6.0 -c Release --no-build
             cd ../../
       - run:
           name: Conformance tests
           command: |
             cd tests/Conformance.Tests/
-            dotnet test -f net6.0 -c Release
+            dotnet test -f net6.0 -c Release --no-build
             cd ../../
       - run:
           name: SideBySide tests
           command: |
             cd tests/SideBySide
-            dotnet test -f net6.0 -c Release
+            dotnet test -f net6.0 -c Release --no-build
             cd ../../
 
 workflows:
@@ -89,3 +138,5 @@ workflows:
             parameters:
               singlestore_image:
                 - singlestore/cluster-in-a-box:centos-7.3.13-761e3259b3-3.2.11-1.11.9
+      - test-windows:
+          name: Test S2MS on Windows
