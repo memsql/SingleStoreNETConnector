@@ -32,21 +32,15 @@ commands:
       - run:
           name: Unit tests
           command: |
-            cd tests\MySqlConnector.Tests
-            dotnet.exe test -f << parameters.target_framework >> -c Release --no-build
-            cd ..\..
+            .\.circleci\run-test-windows.ps1 -test_block MySqlConnector.Tests -target_framework << parameters.target_framework >>
       - run:
           name: Conformance tests
           command: |
-            cd tests/Conformance.Tests/
-            dotnet.exe test -f << parameters.target_framework >> -c Release --no-build
-            cd ..\..
+            .\.circleci\run-test-windows.ps1 -test_block Conformance.Tests -target_framework << parameters.target_framework >>
       - run:
           name: SideBySide tests
           command: |
-            cd tests\SideBySide
-            dotnet.exe test -f << parameters.target_framework >> -c Release --no-build
-            cd ..\..
+            .\.circleci\run-test-windows.ps1 -test_block SideBySide -target_framework << parameters.target_framework >>
 
 jobs:
   test-windows:
