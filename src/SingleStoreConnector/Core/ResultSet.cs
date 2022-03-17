@@ -358,7 +358,7 @@ internal sealed class ResultSet
 
 	public SingleStoreDataReader DataReader { get; }
 	public ExceptionDispatchInfo? ReadResultSetHeaderException { get; private set; }
-	public IMySqlCommand Command => DataReader.Command!;
+	public ISingleStoreCommand Command => DataReader.Command!;
 	public SingleStoreConnection Connection => DataReader.Connection!;
 	public ServerSession Session => DataReader.Session!;
 

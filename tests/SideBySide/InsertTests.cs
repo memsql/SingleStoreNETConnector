@@ -536,16 +536,16 @@ create table insert_enum_value2(rowid integer not null primary key auto_incremen
 		{
 			await m_database.Connection.OpenAsync();
 			using var command = new SingleStoreCommand("INSERT INTO insert_enum_value2 (`Varchar`, `String`, `Int`) VALUES (@Varchar, @String, @Int);", m_database.Connection);
-			command.Parameters.Add(new("@String", MySqlColor.Orange)).SingleStoreDbType = SingleStoreDbType.String;
-			command.Parameters.Add(new("@Varchar", MySqlColor.Green)).SingleStoreDbType = SingleStoreDbType.VarChar;
-			command.Parameters.Add(new("@Int", MySqlColor.None));
+			command.Parameters.Add(new("@String", SingleStoreColor.Orange)).SingleStoreDbType = SingleStoreDbType.String;
+			command.Parameters.Add(new("@Varchar", SingleStoreColor.Green)).SingleStoreDbType = SingleStoreDbType.VarChar;
+			command.Parameters.Add(new("@Int", SingleStoreColor.None));
 
 			await command.ExecuteNonQueryAsync();
 			var result = (await m_database.Connection.QueryAsync<ColorEnumValues>(@"select `Varchar`, `String`, `Int` from insert_enum_value2;")).ToArray();
 			Assert.Single(result);
-			Assert.Equal(MySqlColor.Orange.ToString("G"), result[0].String);
-			Assert.Equal(MySqlColor.Green.ToString("G"), result[0].Varchar);
-			Assert.Equal((int) MySqlColor.None, result[0].Int);
+			Assert.Equal(SingleStoreColor.Orange.ToString("G"), result[0].String);
+			Assert.Equal(SingleStoreColor.Green.ToString("G"), result[0].Varchar);
+			Assert.Equal((int) SingleStoreColor.None, result[0].Int);
 		}
 		finally
 		{
@@ -592,7 +592,7 @@ create table insert_enum_value2(rowid integer not null primary key auto_incremen
 	}
 
 	[Fact]
-	public void InsertMySqlEnum()
+	public void InsertSingleStoreEnum()
 	{
 		m_database.Connection.Execute(@"drop table if exists insert_mysql_enums;
 create table insert_mysql_enums(
@@ -600,12 +600,12 @@ create table insert_mysql_enums(
 	size enum('x-small', 'small', 'medium', 'large', 'x-large'),
 	color enum('red', 'orange', 'yellow', 'green', 'blue', 'indigo', 'violet') not null
 );");
-		m_database.Connection.Execute(@"insert into insert_mysql_enums(size, color) values(@size, @color);", new { size = MySqlSize.Large, color = MySqlColor.Blue });
+		m_database.Connection.Execute(@"insert into insert_mysql_enums(size, color) values(@size, @color);", new { size = SingleStoreSize.Large, color = SingleStoreColor.Blue });
 		Assert.Equal(new[] { "large" }, m_database.Connection.Query<string>(@"select size from insert_mysql_enums"));
 		Assert.Equal(new[] { "blue" }, m_database.Connection.Query<string>(@"select color from insert_mysql_enums"));
 	}
 
-	enum MySqlSize
+	enum SingleStoreSize
 	{
 		None,
 		XSmall,
@@ -615,7 +615,7 @@ create table insert_mysql_enums(
 		XLarge
 	}
 
-	enum MySqlColor
+	enum SingleStoreColor
 	{
 		None,
 		Red,
@@ -628,7 +628,7 @@ create table insert_mysql_enums(
 	}
 
 	[Fact]
-	public void InsertMySqlSet()
+	public void InsertSingleStoreSet()
 	{
 		m_database.Connection.Execute(@"drop table if exists insert_mysql_set;
 create table insert_mysql_set(

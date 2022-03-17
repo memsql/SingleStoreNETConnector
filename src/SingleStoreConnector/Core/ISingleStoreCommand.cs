@@ -1,9 +1,9 @@
 namespace SingleStoreConnector.Core;
 
 /// <summary>
-/// <see cref="IMySqlCommand"/> provides an internal abstraction over <see cref="SingleStoreCommand"/> and <see cref="SingleStoreBatchCommand"/>.
+/// <see cref="ISingleStoreCommand"/> provides an internal abstraction over <see cref="SingleStoreCommand"/> and <see cref="SingleStoreBatchCommand"/>.
 /// </summary>
-internal interface IMySqlCommand
+internal interface ISingleStoreCommand
 {
 	string? CommandText { get; }
 	CommandType CommandType { get; }
@@ -20,9 +20,9 @@ internal interface IMySqlCommand
 	ICancellableCommand CancellableCommand { get; }
 }
 
-internal static class IMySqlCommandExtensions
+internal static class ISingleStoreCommandExtensions
 {
-	public static StatementPreparerOptions CreateStatementPreparerOptions(this IMySqlCommand command)
+	public static StatementPreparerOptions CreateStatementPreparerOptions(this ISingleStoreCommand command)
 	{
 		var connection = command.Connection!;
 		var statementPreparerOptions = StatementPreparerOptions.None;

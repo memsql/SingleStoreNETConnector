@@ -31,7 +31,7 @@ internal static class NegotiateStreamConstants
 /// https://winprotocoldoc.blob.core.windows.net/productionwindowsarchives/MS-NNS/[MS-NNS].pdf
 /// We only use Handshake Messages for authentication.
 /// </summary>
-internal class NegotiateToMySqlConverterStream : Stream
+internal class NegotiateToSingleStoreConverterStream : Stream
 {
 	readonly MemoryStream m_writeBuffer;
 	readonly ServerSession m_serverSession;
@@ -42,7 +42,7 @@ internal class NegotiateToMySqlConverterStream : Stream
 	bool m_clientHandshakeDone;
 
 	public PayloadData? MySQLProtocolPayload { get; private set; }
-	public NegotiateToMySqlConverterStream(ServerSession serverSession, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	public NegotiateToSingleStoreConverterStream(ServerSession serverSession, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		m_serverSession = serverSession;
 		m_readBuffer = new();
@@ -211,7 +211,7 @@ internal static class AuthGSSAPI
 	public static async Task<PayloadData> AuthenticateAsync(ConnectionSettings cs, byte[] switchRequestPayloadData,
 		ServerSession session, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		using var innerStream = new NegotiateToMySqlConverterStream(session, ioBehavior, cancellationToken);
+		using var innerStream = new NegotiateToSingleStoreConverterStream(session, ioBehavior, cancellationToken);
 		using var negotiateStream = new NegotiateStream(innerStream);
 		var targetName = cs.ServerSPN.Length == 0 ? GetServicePrincipalName(switchRequestPayloadData) : cs.ServerSPN;
 		if (ioBehavior == IOBehavior.Synchronous)

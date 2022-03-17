@@ -32,7 +32,7 @@ commands:
       - run:
           name: Unit tests
           command: |
-            .\.circleci\run-test-windows.ps1 -test_block MySqlConnector.Tests -target_framework << parameters.target_framework >>
+            .\.circleci\run-test-windows.ps1 -test_block SingleStoreConnector.Tests -target_framework << parameters.target_framework >>
       - run:
           name: Conformance tests
           command: |
@@ -94,7 +94,7 @@ jobs:
       - run:
           name: Unit tests
           command: |
-            cd tests/MySqlConnector.Tests
+            cd tests/SingleStoreConnector.Tests
             dotnet test -f net6.0 -c Release --no-build
             cd ../../
       - run:

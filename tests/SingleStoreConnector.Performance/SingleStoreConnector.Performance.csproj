@@ -3,12 +3,12 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <PreserveCompilationContext>true</PreserveCompilationContext>
-    <AssemblyName>MySqlConnector.Performance</AssemblyName>
     <OutputType>Exe</OutputType>
-    <PackageId>MySqlConnector.Performance</PackageId>
+    <PackageId>SingleStoreConnector.Performance</PackageId>
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <ThreadPoolMinThreads>64</ThreadPoolMinThreads>
+    <RootNamespace>MySqlConnector.Performance</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -32,22 +32,10 @@
   </ItemGroup>
 
   <Target Name="CopyDirsAfterBuild" AfterTargets="Build">
-    <Copy
-      SourceFiles="@(AppConfig)"
-      DestinationFolder="$(OutDir)\%(RecursiveDir)"
-      SkipUnchangedFiles="true"
-      OverwriteReadOnlyFiles="true"
-      Retries="3"
-      RetryDelayMilliseconds="300"/>
+    <Copy SourceFiles="@(AppConfig)" DestinationFolder="$(OutDir)\%(RecursiveDir)" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
   </Target>
   <Target Name="CopyDirsAfterPublish" AfterTargets="Publish">
-    <Copy
-      SourceFiles="@(AppConfig)"
-      DestinationFolder="$(PublishDir)\%(RecursiveDir)"
-      SkipUnchangedFiles="true"
-      OverwriteReadOnlyFiles="true"
-      Retries="3"
-      RetryDelayMilliseconds="300"/>
+    <Copy SourceFiles="@(AppConfig)" DestinationFolder="$(PublishDir)\%(RecursiveDir)" SkipUnchangedFiles="true" OverwriteReadOnlyFiles="true" Retries="3" RetryDelayMilliseconds="300" />
   </Target>
 
 </Project>

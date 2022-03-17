@@ -42,8 +42,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Server")]
 	public string Server
 	{
-		get => MySqlConnectionStringOption.Server.GetValue(this);
-		set => MySqlConnectionStringOption.Server.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.Server.GetValue(this);
+		set => SingleStoreConnectionStringOption.Server.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -55,8 +55,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Port")]
 	public uint Port
 	{
-		get => MySqlConnectionStringOption.Port.GetValue(this);
-		set => MySqlConnectionStringOption.Port.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.Port.GetValue(this);
+		set => SingleStoreConnectionStringOption.Port.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -69,8 +69,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("User ID")]
 	public string UserID
 	{
-		get => MySqlConnectionStringOption.UserID.GetValue(this);
-		set => MySqlConnectionStringOption.UserID.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.UserID.GetValue(this);
+		set => SingleStoreConnectionStringOption.UserID.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -83,8 +83,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Password")]
 	public string Password
 	{
-		get => MySqlConnectionStringOption.Password.GetValue(this);
-		set => MySqlConnectionStringOption.Password.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.Password.GetValue(this);
+		set => SingleStoreConnectionStringOption.Password.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -97,8 +97,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Database")]
 	public string Database
 	{
-		get => MySqlConnectionStringOption.Database.GetValue(this);
-		set => MySqlConnectionStringOption.Database.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.Database.GetValue(this);
+		set => SingleStoreConnectionStringOption.Database.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -110,8 +110,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Load Balance")]
 	public SingleStoreLoadBalance LoadBalance
 	{
-		get => MySqlConnectionStringOption.LoadBalance.GetValue(this);
-		set => MySqlConnectionStringOption.LoadBalance.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.LoadBalance.GetValue(this);
+		set => SingleStoreConnectionStringOption.LoadBalance.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -123,8 +123,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Connection Protocol")]
 	public SingleStoreConnectionProtocol ConnectionProtocol
 	{
-		get => MySqlConnectionStringOption.ConnectionProtocol.GetValue(this);
-		set => MySqlConnectionStringOption.ConnectionProtocol.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ConnectionProtocol.GetValue(this);
+		set => SingleStoreConnectionStringOption.ConnectionProtocol.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -137,8 +137,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Pipe Name")]
 	public string PipeName
 	{
-		get => MySqlConnectionStringOption.PipeName.GetValue(this);
-		set => MySqlConnectionStringOption.PipeName.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.PipeName.GetValue(this);
+		set => SingleStoreConnectionStringOption.PipeName.SetValue(this, value);
 	}
 
 	// SSL/TLS Options
@@ -152,8 +152,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("SSL Mode")]
 	public SingleStoreSslMode SslMode
 	{
-		get => MySqlConnectionStringOption.SslMode.GetValue(this);
-		set => MySqlConnectionStringOption.SslMode.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.SslMode.GetValue(this);
+		set => SingleStoreConnectionStringOption.SslMode.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -166,8 +166,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Certificate File")]
 	public string CertificateFile
 	{
-		get => MySqlConnectionStringOption.CertificateFile.GetValue(this);
-		set => MySqlConnectionStringOption.CertificateFile.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.CertificateFile.GetValue(this);
+		set => SingleStoreConnectionStringOption.CertificateFile.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -180,8 +180,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Certificate Password")]
 	public string CertificatePassword
 	{
-		get => MySqlConnectionStringOption.CertificatePassword.GetValue(this);
-		set => MySqlConnectionStringOption.CertificatePassword.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.CertificatePassword.GetValue(this);
+		set => SingleStoreConnectionStringOption.CertificatePassword.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -194,8 +194,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("SSL Cert")]
 	public string SslCert
 	{
-		get => MySqlConnectionStringOption.SslCert.GetValue(this);
-		set => MySqlConnectionStringOption.SslCert.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.SslCert.GetValue(this);
+		set => SingleStoreConnectionStringOption.SslCert.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -208,8 +208,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("SSL Key")]
 	public string SslKey
 	{
-		get => MySqlConnectionStringOption.SslKey.GetValue(this);
-		set => MySqlConnectionStringOption.SslKey.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.SslKey.GetValue(this);
+		set => SingleStoreConnectionStringOption.SslKey.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -222,8 +222,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Obsolete("Use SslCa instead.")]
 	public string CACertificateFile
 	{
-		get => MySqlConnectionStringOption.SslCa.GetValue(this);
-		set => MySqlConnectionStringOption.SslCa.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.SslCa.GetValue(this);
+		set => SingleStoreConnectionStringOption.SslCa.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -236,8 +236,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("SSL CA")]
 	public string SslCa
 	{
-		get => MySqlConnectionStringOption.SslCa.GetValue(this);
-		set => MySqlConnectionStringOption.SslCa.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.SslCa.GetValue(this);
+		set => SingleStoreConnectionStringOption.SslCa.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -249,8 +249,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Certificate Store Location")]
 	public SingleStoreCertificateStoreLocation CertificateStoreLocation
 	{
-		get => MySqlConnectionStringOption.CertificateStoreLocation.GetValue(this);
-		set => MySqlConnectionStringOption.CertificateStoreLocation.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.CertificateStoreLocation.GetValue(this);
+		set => SingleStoreConnectionStringOption.CertificateStoreLocation.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -263,8 +263,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Description("Specifies which certificate should be used from the certificate store specified in Certificate Store Location")]
 	public string CertificateThumbprint
 	{
-		get => MySqlConnectionStringOption.CertificateThumbprint.GetValue(this);
-		set => MySqlConnectionStringOption.CertificateThumbprint.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.CertificateThumbprint.GetValue(this);
+		set => SingleStoreConnectionStringOption.CertificateThumbprint.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -277,8 +277,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Description("The TLS versions which may be used during TLS negotiation.")]
 	public string TlsVersion
 	{
-		get => MySqlConnectionStringOption.TlsVersion.GetValue(this);
-		set => MySqlConnectionStringOption.TlsVersion.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.TlsVersion.GetValue(this);
+		set => SingleStoreConnectionStringOption.TlsVersion.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -291,8 +291,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("TLS Cipher Suites")]
 	public string TlsCipherSuites
 	{
-		get => MySqlConnectionStringOption.TlsCipherSuites.GetValue(this);
-		set => MySqlConnectionStringOption.TlsCipherSuites.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.TlsCipherSuites.GetValue(this);
+		set => SingleStoreConnectionStringOption.TlsCipherSuites.SetValue(this, value);
 	}
 
 	// Connection Pooling Options
@@ -306,8 +306,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Pooling")]
 	public bool Pooling
 	{
-		get => MySqlConnectionStringOption.Pooling.GetValue(this);
-		set => MySqlConnectionStringOption.Pooling.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.Pooling.GetValue(this);
+		set => SingleStoreConnectionStringOption.Pooling.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -319,8 +319,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Connection Lifetime")]
 	public uint ConnectionLifeTime
 	{
-		get => MySqlConnectionStringOption.ConnectionLifeTime.GetValue(this);
-		set => MySqlConnectionStringOption.ConnectionLifeTime.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ConnectionLifeTime.GetValue(this);
+		set => SingleStoreConnectionStringOption.ConnectionLifeTime.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -332,8 +332,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Connection Reset")]
 	public bool ConnectionReset
 	{
-		get => MySqlConnectionStringOption.ConnectionReset.GetValue(this);
-		set => MySqlConnectionStringOption.ConnectionReset.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ConnectionReset.GetValue(this);
+		set => SingleStoreConnectionStringOption.ConnectionReset.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -345,8 +345,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Obsolete("This option is no longer supported in SingleStoreConnector >= 1.4.0.")]
 	public uint ConnectionIdlePingTime
 	{
-		get => MySqlConnectionStringOption.ConnectionIdlePingTime.GetValue(this);
-		set => MySqlConnectionStringOption.ConnectionIdlePingTime.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ConnectionIdlePingTime.GetValue(this);
+		set => SingleStoreConnectionStringOption.ConnectionIdlePingTime.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -358,8 +358,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Connection Idle Timeout")]
 	public uint ConnectionIdleTimeout
 	{
-		get => MySqlConnectionStringOption.ConnectionIdleTimeout.GetValue(this);
-		set => MySqlConnectionStringOption.ConnectionIdleTimeout.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ConnectionIdleTimeout.GetValue(this);
+		set => SingleStoreConnectionStringOption.ConnectionIdleTimeout.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -371,8 +371,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Obsolete("This option is no longer supported in SingleStoreConnector >= 1.4.0.")]
 	public bool DeferConnectionReset
 	{
-		get => MySqlConnectionStringOption.DeferConnectionReset.GetValue(this);
-		set => MySqlConnectionStringOption.DeferConnectionReset.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.DeferConnectionReset.GetValue(this);
+		set => SingleStoreConnectionStringOption.DeferConnectionReset.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -384,8 +384,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Minimum Pool Size")]
 	public uint MinimumPoolSize
 	{
-		get => MySqlConnectionStringOption.MinimumPoolSize.GetValue(this);
-		set => MySqlConnectionStringOption.MinimumPoolSize.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.MinimumPoolSize.GetValue(this);
+		set => SingleStoreConnectionStringOption.MinimumPoolSize.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -397,8 +397,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Maximum Pool Size")]
 	public uint MaximumPoolSize
 	{
-		get => MySqlConnectionStringOption.MaximumPoolSize.GetValue(this);
-		set => MySqlConnectionStringOption.MaximumPoolSize.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.MaximumPoolSize.GetValue(this);
+		set => SingleStoreConnectionStringOption.MaximumPoolSize.SetValue(this, value);
 	}
 
 	// Other Options
@@ -412,8 +412,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Allow Load Local Infile")]
 	public bool AllowLoadLocalInfile
 	{
-		get => MySqlConnectionStringOption.AllowLoadLocalInfile.GetValue(this);
-		set => MySqlConnectionStringOption.AllowLoadLocalInfile.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.AllowLoadLocalInfile.GetValue(this);
+		set => SingleStoreConnectionStringOption.AllowLoadLocalInfile.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -425,8 +425,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Allow Public Key Retrieval")]
 	public bool AllowPublicKeyRetrieval
 	{
-		get => MySqlConnectionStringOption.AllowPublicKeyRetrieval.GetValue(this);
-		set => MySqlConnectionStringOption.AllowPublicKeyRetrieval.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.AllowPublicKeyRetrieval.GetValue(this);
+		set => SingleStoreConnectionStringOption.AllowPublicKeyRetrieval.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -438,8 +438,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Allow User Variables")]
 	public bool AllowUserVariables
 	{
-		get => MySqlConnectionStringOption.AllowUserVariables.GetValue(this);
-		set => MySqlConnectionStringOption.AllowUserVariables.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.AllowUserVariables.GetValue(this);
+		set => SingleStoreConnectionStringOption.AllowUserVariables.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -451,8 +451,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Allow Zero DateTime")]
 	public bool AllowZeroDateTime
 	{
-		get => MySqlConnectionStringOption.AllowZeroDateTime.GetValue(this);
-		set => MySqlConnectionStringOption.AllowZeroDateTime.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.AllowZeroDateTime.GetValue(this);
+		set => SingleStoreConnectionStringOption.AllowZeroDateTime.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -465,8 +465,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Application Name")]
 	public string ApplicationName
 	{
-		get => MySqlConnectionStringOption.ApplicationName.GetValue(this);
-		set => MySqlConnectionStringOption.ApplicationName.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ApplicationName.GetValue(this);
+		set => SingleStoreConnectionStringOption.ApplicationName.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -478,8 +478,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Auto Enlist")]
 	public bool AutoEnlist
 	{
-		get => MySqlConnectionStringOption.AutoEnlist.GetValue(this);
-		set => MySqlConnectionStringOption.AutoEnlist.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.AutoEnlist.GetValue(this);
+		set => SingleStoreConnectionStringOption.AutoEnlist.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -491,8 +491,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Character Set")]
 	public string CharacterSet
 	{
-		get => MySqlConnectionStringOption.CharacterSet.GetValue(this);
-		set => MySqlConnectionStringOption.CharacterSet.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.CharacterSet.GetValue(this);
+		set => SingleStoreConnectionStringOption.CharacterSet.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -505,8 +505,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Connection Timeout")]
 	public uint ConnectionTimeout
 	{
-		get => MySqlConnectionStringOption.ConnectionTimeout.GetValue(this);
-		set => MySqlConnectionStringOption.ConnectionTimeout.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ConnectionTimeout.GetValue(this);
+		set => SingleStoreConnectionStringOption.ConnectionTimeout.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -518,8 +518,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Convert Zero DateTime")]
 	public bool ConvertZeroDateTime
 	{
-		get => MySqlConnectionStringOption.ConvertZeroDateTime.GetValue(this);
-		set => MySqlConnectionStringOption.ConvertZeroDateTime.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ConvertZeroDateTime.GetValue(this);
+		set => SingleStoreConnectionStringOption.ConvertZeroDateTime.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -531,8 +531,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("DateTime Kind")]
 	public SingleStoreDateTimeKind DateTimeKind
 	{
-		get => MySqlConnectionStringOption.DateTimeKind.GetValue(this);
-		set => MySqlConnectionStringOption.DateTimeKind.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.DateTimeKind.GetValue(this);
+		set => SingleStoreConnectionStringOption.DateTimeKind.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -544,8 +544,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Default Command Timeout")]
 	public uint DefaultCommandTimeout
 	{
-		get => MySqlConnectionStringOption.DefaultCommandTimeout.GetValue(this);
-		set => MySqlConnectionStringOption.DefaultCommandTimeout.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.DefaultCommandTimeout.GetValue(this);
+		set => SingleStoreConnectionStringOption.DefaultCommandTimeout.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -557,8 +557,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Cancellation Timeout")]
 	public int CancellationTimeout
 	{
-		get => MySqlConnectionStringOption.CancellationTimeout.GetValue(this);
-		set => MySqlConnectionStringOption.CancellationTimeout.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.CancellationTimeout.GetValue(this);
+		set => SingleStoreConnectionStringOption.CancellationTimeout.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -570,8 +570,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Force Synchronous")]
 	public bool ForceSynchronous
 	{
-		get => MySqlConnectionStringOption.ForceSynchronous.GetValue(this);
-		set => MySqlConnectionStringOption.ForceSynchronous.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ForceSynchronous.GetValue(this);
+		set => SingleStoreConnectionStringOption.ForceSynchronous.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -583,8 +583,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("GUID Format")]
 	public SingleStoreGuidFormat GuidFormat
 	{
-		get => MySqlConnectionStringOption.GuidFormat.GetValue(this);
-		set => MySqlConnectionStringOption.GuidFormat.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.GuidFormat.GetValue(this);
+		set => SingleStoreConnectionStringOption.GuidFormat.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -596,8 +596,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Ignore Command Transaction")]
 	public bool IgnoreCommandTransaction
 	{
-		get => MySqlConnectionStringOption.IgnoreCommandTransaction.GetValue(this);
-		set => MySqlConnectionStringOption.IgnoreCommandTransaction.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.IgnoreCommandTransaction.GetValue(this);
+		set => SingleStoreConnectionStringOption.IgnoreCommandTransaction.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -609,8 +609,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Ignore Prepare")]
 	public bool IgnorePrepare
 	{
-		get => MySqlConnectionStringOption.IgnorePrepare.GetValue(this);
-		set => MySqlConnectionStringOption.IgnorePrepare.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.IgnorePrepare.GetValue(this);
+		set => SingleStoreConnectionStringOption.IgnorePrepare.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -622,8 +622,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Interactive Session")]
 	public bool InteractiveSession
 	{
-		get => MySqlConnectionStringOption.InteractiveSession.GetValue(this);
-		set => MySqlConnectionStringOption.InteractiveSession.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.InteractiveSession.GetValue(this);
+		set => SingleStoreConnectionStringOption.InteractiveSession.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -635,8 +635,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Keep Alive")]
 	public uint Keepalive
 	{
-		get => MySqlConnectionStringOption.Keepalive.GetValue(this);
-		set => MySqlConnectionStringOption.Keepalive.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.Keepalive.GetValue(this);
+		set => SingleStoreConnectionStringOption.Keepalive.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -648,8 +648,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("No Backslash Escapes")]
 	public bool NoBackslashEscapes
 	{
-		get => MySqlConnectionStringOption.NoBackslashEscapes.GetValue(this);
-		set => MySqlConnectionStringOption.NoBackslashEscapes.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.NoBackslashEscapes.GetValue(this);
+		set => SingleStoreConnectionStringOption.NoBackslashEscapes.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -660,8 +660,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DefaultValue(false)]
 	public bool OldGuids
 	{
-		get => MySqlConnectionStringOption.OldGuids.GetValue(this);
-		set => MySqlConnectionStringOption.OldGuids.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.OldGuids.GetValue(this);
+		set => SingleStoreConnectionStringOption.OldGuids.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -673,8 +673,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Description("Preserves security-sensitive information in the connection string retrieved from any open SingleStoreConnection.")]
 	public bool PersistSecurityInfo
 	{
-		get => MySqlConnectionStringOption.PersistSecurityInfo.GetValue(this);
-		set => MySqlConnectionStringOption.PersistSecurityInfo.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.PersistSecurityInfo.GetValue(this);
+		set => SingleStoreConnectionStringOption.PersistSecurityInfo.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -686,8 +686,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Pipelining")]
 	public bool Pipelining
 	{
-		get => MySqlConnectionStringOption.Pipelining.GetValue(this);
-		set => MySqlConnectionStringOption.Pipelining.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.Pipelining.GetValue(this);
+		set => SingleStoreConnectionStringOption.Pipelining.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -699,8 +699,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Server Redirection Mode")]
 	public SingleStoreServerRedirectionMode ServerRedirectionMode
 	{
-		get => MySqlConnectionStringOption.ServerRedirectionMode.GetValue(this);
-		set => MySqlConnectionStringOption.ServerRedirectionMode.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ServerRedirectionMode.GetValue(this);
+		set => SingleStoreConnectionStringOption.ServerRedirectionMode.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -713,8 +713,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Description("The path to a file containing the server's RSA public key.")]
 	public string ServerRsaPublicKeyFile
 	{
-		get => MySqlConnectionStringOption.ServerRsaPublicKeyFile.GetValue(this);
-		set => MySqlConnectionStringOption.ServerRsaPublicKeyFile.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ServerRsaPublicKeyFile.GetValue(this);
+		set => SingleStoreConnectionStringOption.ServerRsaPublicKeyFile.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -727,8 +727,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Server SPN")]
 	public string ServerSPN
 	{
-		get => MySqlConnectionStringOption.ServerSPN.GetValue(this);
-		set => MySqlConnectionStringOption.ServerSPN.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.ServerSPN.GetValue(this);
+		set => SingleStoreConnectionStringOption.ServerSPN.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -740,8 +740,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Description("Returns TINYINT(1) fields as Boolean values.")]
 	public bool TreatTinyAsBoolean
 	{
-		get => MySqlConnectionStringOption.TreatTinyAsBoolean.GetValue(this);
-		set => MySqlConnectionStringOption.TreatTinyAsBoolean.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.TreatTinyAsBoolean.GetValue(this);
+		set => SingleStoreConnectionStringOption.TreatTinyAsBoolean.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -753,8 +753,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Use Affected Rows")]
 	public bool UseAffectedRows
 	{
-		get => MySqlConnectionStringOption.UseAffectedRows.GetValue(this);
-		set => MySqlConnectionStringOption.UseAffectedRows.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.UseAffectedRows.GetValue(this);
+		set => SingleStoreConnectionStringOption.UseAffectedRows.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -766,8 +766,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Use Compression")]
 	public bool UseCompression
 	{
-		get => MySqlConnectionStringOption.UseCompression.GetValue(this);
-		set => MySqlConnectionStringOption.UseCompression.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.UseCompression.GetValue(this);
+		set => SingleStoreConnectionStringOption.UseCompression.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -779,8 +779,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[DisplayName("Use XA Transactions")]
 	public bool UseXaTransactions
 	{
-		get => MySqlConnectionStringOption.UseXaTransactions.GetValue(this);
-		set => MySqlConnectionStringOption.UseXaTransactions.SetValue(this, value);
+		get => SingleStoreConnectionStringOption.UseXaTransactions.GetValue(this);
+		set => SingleStoreConnectionStringOption.UseXaTransactions.SetValue(this, value);
 	}
 
 	// Other Methods
@@ -792,7 +792,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	/// <returns><c>true</c> if an option with that name is set; otherwise, <c>false</c>.</returns>
 	public override bool ContainsKey(string keyword)
 	{
-		var option = MySqlConnectionStringOption.TryGetOptionForKey(keyword);
+		var option = SingleStoreConnectionStringOption.TryGetOptionForKey(keyword);
 		return option is object && base.ContainsKey(option.Key);
 	}
 
@@ -802,7 +802,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	/// <param name="keyword">The option name.</param>
 	public override bool Remove(string keyword)
 	{
-		var option = MySqlConnectionStringOption.TryGetOptionForKey(keyword);
+		var option = SingleStoreConnectionStringOption.TryGetOptionForKey(keyword);
 		return option is object && base.Remove(option.Key);
 	}
 
@@ -814,10 +814,10 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[AllowNull]
 	public override object this[string key]
 	{
-		get => MySqlConnectionStringOption.GetOptionForKey(key).GetObject(this);
+		get => SingleStoreConnectionStringOption.GetOptionForKey(key).GetObject(this);
 		set
 		{
-			var option = MySqlConnectionStringOption.GetOptionForKey(key);
+			var option = SingleStoreConnectionStringOption.GetOptionForKey(key);
 			if (value is null)
 				base[option.Key] = null;
 			else
@@ -837,7 +837,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 		{
 			var csb = new SingleStoreConnectionStringBuilder(connectionString);
 			foreach (string? key in Keys)
-				foreach (var passwordKey in MySqlConnectionStringOption.Password.Keys)
+				foreach (var passwordKey in SingleStoreConnectionStringOption.Password.Keys)
 					if (string.Equals(key, passwordKey, StringComparison.OrdinalIgnoreCase))
 						csb.Remove(key!);
 			m_cachedConnectionStringWithoutPassword = csb.ConnectionString;
@@ -868,75 +868,75 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	string? m_cachedConnectionStringWithoutPassword;
 }
 
-internal abstract class MySqlConnectionStringOption
+internal abstract class SingleStoreConnectionStringOption
 {
 	// Connection Options
-	public static readonly MySqlConnectionStringReferenceOption<string> Server;
-	public static readonly MySqlConnectionStringValueOption<uint> Port;
-	public static readonly MySqlConnectionStringReferenceOption<string> UserID;
-	public static readonly MySqlConnectionStringReferenceOption<string> Password;
-	public static readonly MySqlConnectionStringReferenceOption<string> Database;
-	public static readonly MySqlConnectionStringValueOption<SingleStoreLoadBalance> LoadBalance;
-	public static readonly MySqlConnectionStringValueOption<SingleStoreConnectionProtocol> ConnectionProtocol;
-	public static readonly MySqlConnectionStringReferenceOption<string> PipeName;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> Server;
+	public static readonly SingleStoreConnectionStringValueOption<uint> Port;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> UserID;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> Password;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> Database;
+	public static readonly SingleStoreConnectionStringValueOption<SingleStoreLoadBalance> LoadBalance;
+	public static readonly SingleStoreConnectionStringValueOption<SingleStoreConnectionProtocol> ConnectionProtocol;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> PipeName;
 
 	// SSL/TLS Options
-	public static readonly MySqlConnectionStringValueOption<SingleStoreSslMode> SslMode;
-	public static readonly MySqlConnectionStringReferenceOption<string> CertificateFile;
-	public static readonly MySqlConnectionStringReferenceOption<string> CertificatePassword;
-	public static readonly MySqlConnectionStringValueOption<SingleStoreCertificateStoreLocation> CertificateStoreLocation;
-	public static readonly MySqlConnectionStringReferenceOption<string> CertificateThumbprint;
-	public static readonly MySqlConnectionStringReferenceOption<string> SslCa;
-	public static readonly MySqlConnectionStringReferenceOption<string> SslCert;
-	public static readonly MySqlConnectionStringReferenceOption<string> SslKey;
-	public static readonly MySqlConnectionStringReferenceOption<string> TlsVersion;
-	public static readonly MySqlConnectionStringReferenceOption<string> TlsCipherSuites;
+	public static readonly SingleStoreConnectionStringValueOption<SingleStoreSslMode> SslMode;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> CertificateFile;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> CertificatePassword;
+	public static readonly SingleStoreConnectionStringValueOption<SingleStoreCertificateStoreLocation> CertificateStoreLocation;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> CertificateThumbprint;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> SslCa;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> SslCert;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> SslKey;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> TlsVersion;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> TlsCipherSuites;
 
 	// Connection Pooling Options
-	public static readonly MySqlConnectionStringValueOption<bool> Pooling;
-	public static readonly MySqlConnectionStringValueOption<uint> ConnectionLifeTime;
-	public static readonly MySqlConnectionStringValueOption<bool> ConnectionReset;
-	public static readonly MySqlConnectionStringValueOption<bool> DeferConnectionReset;
-	public static readonly MySqlConnectionStringValueOption<uint> ConnectionIdlePingTime;
-	public static readonly MySqlConnectionStringValueOption<uint> ConnectionIdleTimeout;
-	public static readonly MySqlConnectionStringValueOption<uint> MinimumPoolSize;
-	public static readonly MySqlConnectionStringValueOption<uint> MaximumPoolSize;
+	public static readonly SingleStoreConnectionStringValueOption<bool> Pooling;
+	public static readonly SingleStoreConnectionStringValueOption<uint> ConnectionLifeTime;
+	public static readonly SingleStoreConnectionStringValueOption<bool> ConnectionReset;
+	public static readonly SingleStoreConnectionStringValueOption<bool> DeferConnectionReset;
+	public static readonly SingleStoreConnectionStringValueOption<uint> ConnectionIdlePingTime;
+	public static readonly SingleStoreConnectionStringValueOption<uint> ConnectionIdleTimeout;
+	public static readonly SingleStoreConnectionStringValueOption<uint> MinimumPoolSize;
+	public static readonly SingleStoreConnectionStringValueOption<uint> MaximumPoolSize;
 
 	// Other Options
-	public static readonly MySqlConnectionStringValueOption<bool> AllowLoadLocalInfile;
-	public static readonly MySqlConnectionStringValueOption<bool> AllowPublicKeyRetrieval;
-	public static readonly MySqlConnectionStringValueOption<bool> AllowUserVariables;
-	public static readonly MySqlConnectionStringValueOption<bool> AllowZeroDateTime;
-	public static readonly MySqlConnectionStringReferenceOption<string> ApplicationName;
-	public static readonly MySqlConnectionStringValueOption<bool> AutoEnlist;
-	public static readonly MySqlConnectionStringValueOption<int> CancellationTimeout;
-	public static readonly MySqlConnectionStringReferenceOption<string> CharacterSet;
-	public static readonly MySqlConnectionStringValueOption<uint> ConnectionTimeout;
-	public static readonly MySqlConnectionStringValueOption<bool> ConvertZeroDateTime;
-	public static readonly MySqlConnectionStringValueOption<SingleStoreDateTimeKind> DateTimeKind;
-	public static readonly MySqlConnectionStringValueOption<uint> DefaultCommandTimeout;
-	public static readonly MySqlConnectionStringValueOption<bool> ForceSynchronous;
-	public static readonly MySqlConnectionStringValueOption<SingleStoreGuidFormat> GuidFormat;
-	public static readonly MySqlConnectionStringValueOption<bool> IgnoreCommandTransaction;
-	public static readonly MySqlConnectionStringValueOption<bool> IgnorePrepare;
-	public static readonly MySqlConnectionStringValueOption<bool> InteractiveSession;
-	public static readonly MySqlConnectionStringValueOption<uint> Keepalive;
-	public static readonly MySqlConnectionStringValueOption<bool> NoBackslashEscapes;
-	public static readonly MySqlConnectionStringValueOption<bool> OldGuids;
-	public static readonly MySqlConnectionStringValueOption<bool> PersistSecurityInfo;
-	public static readonly MySqlConnectionStringValueOption<bool> Pipelining;
-	public static readonly MySqlConnectionStringValueOption<SingleStoreServerRedirectionMode> ServerRedirectionMode;
-	public static readonly MySqlConnectionStringReferenceOption<string> ServerRsaPublicKeyFile;
-	public static readonly MySqlConnectionStringReferenceOption<string> ServerSPN;
-	public static readonly MySqlConnectionStringValueOption<bool> TreatTinyAsBoolean;
-	public static readonly MySqlConnectionStringValueOption<bool> UseAffectedRows;
-	public static readonly MySqlConnectionStringValueOption<bool> UseCompression;
-	public static readonly MySqlConnectionStringValueOption<bool> UseXaTransactions;
+	public static readonly SingleStoreConnectionStringValueOption<bool> AllowLoadLocalInfile;
+	public static readonly SingleStoreConnectionStringValueOption<bool> AllowPublicKeyRetrieval;
+	public static readonly SingleStoreConnectionStringValueOption<bool> AllowUserVariables;
+	public static readonly SingleStoreConnectionStringValueOption<bool> AllowZeroDateTime;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> ApplicationName;
+	public static readonly SingleStoreConnectionStringValueOption<bool> AutoEnlist;
+	public static readonly SingleStoreConnectionStringValueOption<int> CancellationTimeout;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> CharacterSet;
+	public static readonly SingleStoreConnectionStringValueOption<uint> ConnectionTimeout;
+	public static readonly SingleStoreConnectionStringValueOption<bool> ConvertZeroDateTime;
+	public static readonly SingleStoreConnectionStringValueOption<SingleStoreDateTimeKind> DateTimeKind;
+	public static readonly SingleStoreConnectionStringValueOption<uint> DefaultCommandTimeout;
+	public static readonly SingleStoreConnectionStringValueOption<bool> ForceSynchronous;
+	public static readonly SingleStoreConnectionStringValueOption<SingleStoreGuidFormat> GuidFormat;
+	public static readonly SingleStoreConnectionStringValueOption<bool> IgnoreCommandTransaction;
+	public static readonly SingleStoreConnectionStringValueOption<bool> IgnorePrepare;
+	public static readonly SingleStoreConnectionStringValueOption<bool> InteractiveSession;
+	public static readonly SingleStoreConnectionStringValueOption<uint> Keepalive;
+	public static readonly SingleStoreConnectionStringValueOption<bool> NoBackslashEscapes;
+	public static readonly SingleStoreConnectionStringValueOption<bool> OldGuids;
+	public static readonly SingleStoreConnectionStringValueOption<bool> PersistSecurityInfo;
+	public static readonly SingleStoreConnectionStringValueOption<bool> Pipelining;
+	public static readonly SingleStoreConnectionStringValueOption<SingleStoreServerRedirectionMode> ServerRedirectionMode;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> ServerRsaPublicKeyFile;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> ServerSPN;
+	public static readonly SingleStoreConnectionStringValueOption<bool> TreatTinyAsBoolean;
+	public static readonly SingleStoreConnectionStringValueOption<bool> UseAffectedRows;
+	public static readonly SingleStoreConnectionStringValueOption<bool> UseCompression;
+	public static readonly SingleStoreConnectionStringValueOption<bool> UseXaTransactions;
 
-	public static MySqlConnectionStringOption? TryGetOptionForKey(string key) =>
+	public static SingleStoreConnectionStringOption? TryGetOptionForKey(string key) =>
 		s_options.TryGetValue(key, out var option) ? option : null;
 
-	public static MySqlConnectionStringOption GetOptionForKey(string key) =>
+	public static SingleStoreConnectionStringOption GetOptionForKey(string key) =>
 		TryGetOptionForKey(key) ?? throw new ArgumentException("Option '{0}' not supported.".FormatInvariant(key));
 
 	public string Key => m_keys[0];
@@ -945,18 +945,18 @@ internal abstract class MySqlConnectionStringOption
 	public abstract object GetObject(SingleStoreConnectionStringBuilder builder);
 	public abstract void SetObject(SingleStoreConnectionStringBuilder builder, object value);
 
-	protected MySqlConnectionStringOption(IReadOnlyList<string> keys)
+	protected SingleStoreConnectionStringOption(IReadOnlyList<string> keys)
 	{
 		m_keys = keys;
 	}
 
-	private static void AddOption(MySqlConnectionStringOption option)
+	private static void AddOption(SingleStoreConnectionStringOption option)
 	{
 		foreach (string key in option.m_keys)
 			s_options.Add(key, option);
 	}
 
-	static MySqlConnectionStringOption()
+	static SingleStoreConnectionStringOption()
 	{
 		s_options = new(StringComparer.OrdinalIgnoreCase);
 
@@ -1226,15 +1226,15 @@ internal abstract class MySqlConnectionStringOption
 	}
 
 	static readonly Regex s_tlsVersions = new(@"\s*TLS( ?v?(1|1\.?0|1\.?1|1\.?2|1\.?3))?$", RegexOptions.IgnoreCase);
-	static readonly Dictionary<string, MySqlConnectionStringOption> s_options;
+	static readonly Dictionary<string, SingleStoreConnectionStringOption> s_options;
 
 	readonly IReadOnlyList<string> m_keys;
 }
 
-internal sealed class MySqlConnectionStringValueOption<T> : MySqlConnectionStringOption
+internal sealed class SingleStoreConnectionStringValueOption<T> : SingleStoreConnectionStringOption
 	where T : struct
 {
-	public MySqlConnectionStringValueOption(IReadOnlyList<string> keys, T defaultValue, Func<T, T>? coerce = null)
+	public SingleStoreConnectionStringValueOption(IReadOnlyList<string> keys, T defaultValue, Func<T, T>? coerce = null)
 		: base(keys)
 	{
 		m_defaultValue = defaultValue;
@@ -1291,10 +1291,10 @@ internal sealed class MySqlConnectionStringValueOption<T> : MySqlConnectionStrin
 	readonly Func<T, T>? m_coerce;
 }
 
-internal sealed class MySqlConnectionStringReferenceOption<T> : MySqlConnectionStringOption
+internal sealed class SingleStoreConnectionStringReferenceOption<T> : SingleStoreConnectionStringOption
 	where T : class
 {
-	public MySqlConnectionStringReferenceOption(IReadOnlyList<string> keys, T defaultValue, Func<T?, T>? coerce = null)
+	public SingleStoreConnectionStringReferenceOption(IReadOnlyList<string> keys, T defaultValue, Func<T?, T>? coerce = null)
 		: base(keys)
 	{
 		m_defaultValue = defaultValue;

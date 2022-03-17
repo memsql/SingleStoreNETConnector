@@ -440,11 +440,11 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 #endif
 
 	internal Activity? Activity { get; }
-	internal IMySqlCommand? Command { get; private set; }
+	internal ISingleStoreCommand? Command { get; private set; }
 	internal SingleStoreConnection? Connection => Command?.Connection;
 	internal ServerSession? Session => Command?.Connection!.Session;
 
-	internal static async Task<SingleStoreDataReader> CreateAsync(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, IMySqlCommand command, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	internal static async Task<SingleStoreDataReader> CreateAsync(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, ISingleStoreCommand command, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var dataReader = new SingleStoreDataReader(commandListPosition, payloadCreator, cachedProcedures, command, behavior, activity);
 		command.Connection!.SetActiveReader(dataReader);
@@ -564,7 +564,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		return schemaTable;
 	}
 
-	private SingleStoreDataReader(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, IMySqlCommand command, CommandBehavior behavior, Activity? activity)
+	private SingleStoreDataReader(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, ISingleStoreCommand command, CommandBehavior behavior, Activity? activity)
 	{
 		m_commandListPosition = commandListPosition;
 		m_payloadCreator = payloadCreator;
@@ -619,7 +619,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	// If ResultSet.ContainsCommandParameters is true, then this method should be called to read the (single)
 	// row in that result set, which contains the values of "out" parameters from the previous stored procedure
 	// execution. These values will be stored in the parameters of the associated command.
-	private static async Task ReadOutParametersAsync(IMySqlCommand command, ResultSet resultSet, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private static async Task ReadOutParametersAsync(ISingleStoreCommand command, ResultSet resultSet, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		await resultSet.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 

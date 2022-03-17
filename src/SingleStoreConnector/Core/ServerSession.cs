@@ -148,7 +148,7 @@ internal sealed class ServerSession
 
 	public bool IsCancelingQuery => m_state == State.CancelingQuery;
 
-	public async Task PrepareAsync(IMySqlCommand command, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	public async Task PrepareAsync(ISingleStoreCommand command, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		// caller has validated this already
 		var commandText = command.CommandText!;
@@ -973,7 +973,7 @@ internal sealed class ServerSession
 		}
 	}
 
-	public static void ThrowIfStatementContainsDelimiter(SingleStoreException exception, IMySqlCommand command)
+	public static void ThrowIfStatementContainsDelimiter(SingleStoreException exception, ISingleStoreCommand command)
 	{
 		// check if the command used "DELIMITER"
 		if (exception.ErrorCode == SingleStoreErrorCode.ParseError && command.CommandText?.IndexOf("delimiter", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -1893,7 +1893,7 @@ internal sealed class ServerSession
 
 	private sealed class DelimiterSqlParser : SqlParser
 	{
-		public DelimiterSqlParser(IMySqlCommand command)
+		public DelimiterSqlParser(ISingleStoreCommand command)
 			: base(new StatementPreparer(command.CommandText!, null, command.CreateStatementPreparerOptions()))
 		{
 			m_sql = command.CommandText!;

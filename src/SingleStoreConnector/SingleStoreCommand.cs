@@ -10,7 +10,7 @@ namespace SingleStoreConnector;
 /// <see cref="SingleStoreCommand"/> represents a SQL statement or stored procedure name
 /// to execute against a MySQL database.
 /// </summary>
-public sealed class SingleStoreCommand : DbCommand, IMySqlCommand, ICancellableCommand, ICloneable
+public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancellableCommand, ICloneable
 {
 	/// <summary>
 	/// Initializes a new instance of the <see cref="SingleStoreCommand"/> class.
@@ -82,14 +82,14 @@ public sealed class SingleStoreCommand : DbCommand, IMySqlCommand, ICancellableC
 	/// </summary>
 	public new SingleStoreParameterCollection Parameters => m_parameterCollection ??= new();
 
-	SingleStoreParameterCollection? IMySqlCommand.RawParameters => m_parameterCollection;
+	SingleStoreParameterCollection? ISingleStoreCommand.RawParameters => m_parameterCollection;
 
 	/// <summary>
 	/// The collection of <see cref="SingleStoreAttribute"/> objects for this command.
 	/// </summary>
 	public SingleStoreAttributeCollection Attributes => m_attributeCollection ??= new();
 
-	SingleStoreAttributeCollection? IMySqlCommand.RawAttributes => m_attributeCollection;
+	SingleStoreAttributeCollection? ISingleStoreCommand.RawAttributes => m_attributeCollection;
 
 	public new SingleStoreParameter CreateParameter() => (SingleStoreParameter) base.CreateParameter();
 
@@ -145,7 +145,7 @@ public sealed class SingleStoreCommand : DbCommand, IMySqlCommand, ICancellableC
 		return attributes;
 	}
 
-	bool IMySqlCommand.AllowUserVariables => AllowUserVariables;
+	bool ISingleStoreCommand.AllowUserVariables => AllowUserVariables;
 
 	internal bool AllowUserVariables { get; set; }
 	internal bool NoActivity { get; set; }
@@ -201,7 +201,7 @@ public sealed class SingleStoreCommand : DbCommand, IMySqlCommand, ICancellableC
 		}
 	}
 
-	public bool IsPrepared => ((IMySqlCommand) this).TryGetPreparedStatements() is not null;
+	public bool IsPrepared => ((ISingleStoreCommand) this).TryGetPreparedStatements() is not null;
 
 	public new SingleStoreTransaction? Transaction { get; set; }
 
@@ -249,7 +249,7 @@ public sealed class SingleStoreCommand : DbCommand, IMySqlCommand, ICancellableC
 	/// </remarks>
 	public long LastInsertedId { get; private set; }
 
-	void IMySqlCommand.SetLastInsertedId(long lastInsertedId) => LastInsertedId = lastInsertedId;
+	void ISingleStoreCommand.SetLastInsertedId(long lastInsertedId) => LastInsertedId = lastInsertedId;
 
 	protected override DbConnection? DbConnection
 	{
@@ -337,7 +337,7 @@ public sealed class SingleStoreCommand : DbCommand, IMySqlCommand, ICancellableC
 		var activity = NoActivity ? null : Connection!.Session.StartActivity(ActivitySourceHelper.ExecuteActivityName,
 			ActivitySourceHelper.DatabaseStatementTagName, CommandText);
 		m_commandBehavior = behavior;
-		return CommandExecutor.ExecuteReaderAsync(new IMySqlCommand[] { this }, SingleCommandPayloadCreator.Instance, behavior, activity, ioBehavior, cancellationToken);
+		return CommandExecutor.ExecuteReaderAsync(new ISingleStoreCommand[] { this }, SingleCommandPayloadCreator.Instance, behavior, activity, ioBehavior, cancellationToken);
 	}
 
 	public SingleStoreCommand Clone() => new(this);
@@ -398,7 +398,7 @@ public sealed class SingleStoreCommand : DbCommand, IMySqlCommand, ICancellableC
 
 	int ICancellableCommand.CancelAttemptCount { get; set; }
 
-	ICancellableCommand IMySqlCommand.CancellableCommand => this;
+	ICancellableCommand ISingleStoreCommand.CancellableCommand => this;
 
 	private IOBehavior AsyncIOBehavior => Connection?.AsyncIOBehavior ?? IOBehavior.Asynchronous;
 
@@ -424,12 +424,12 @@ public sealed class SingleStoreCommand : DbCommand, IMySqlCommand, ICancellableC
 		return exception is null;
 	}
 
-	PreparedStatements? IMySqlCommand.TryGetPreparedStatements() => CommandType == CommandType.Text && !string.IsNullOrWhiteSpace(CommandText) && m_connection is not null &&
+	PreparedStatements? ISingleStoreCommand.TryGetPreparedStatements() => CommandType == CommandType.Text && !string.IsNullOrWhiteSpace(CommandText) && m_connection is not null &&
 		m_connection.State == ConnectionState.Open ? m_connection.Session.TryGetPreparedStatement(CommandText!) : null;
 
-	CommandBehavior IMySqlCommand.CommandBehavior => m_commandBehavior;
-	SingleStoreParameterCollection? IMySqlCommand.OutParameters { get; set; }
-	SingleStoreParameter? IMySqlCommand.ReturnParameter { get; set; }
+	CommandBehavior ISingleStoreCommand.CommandBehavior => m_commandBehavior;
+	SingleStoreParameterCollection? ISingleStoreCommand.OutParameters { get; set; }
+	SingleStoreParameter? ISingleStoreCommand.ReturnParameter { get; set; }
 
 	static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(SingleStoreCommand));
 

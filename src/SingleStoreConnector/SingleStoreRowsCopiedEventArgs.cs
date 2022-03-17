@@ -18,6 +18,6 @@ public sealed class SingleStoreRowsCopiedEventArgs : EventArgs
 }
 
 /// <summary>
-/// Represents the method that handles the <see cref="SingleStoreBulkCopy.MySqlRowsCopied"/> event of a <see cref="SingleStoreBulkCopy"/>.
+/// Represents the method that handles the <see cref="SingleStoreBulkCopy.SingleStoreRowsCopied"/> event of a <see cref="SingleStoreBulkCopy"/>.
 /// </summary>
 public delegate void SingleStoreRowsCopiedEventHandler(object sender, SingleStoreRowsCopiedEventArgs e);

@@ -367,7 +367,7 @@ public sealed class SingleStoreBatch :
 
 	private async Task DoPrepareAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		foreach (IMySqlCommand batchCommand in BatchCommands)
+		foreach (ISingleStoreCommand batchCommand in BatchCommands)
 		{
 			if (batchCommand.CommandType != CommandType.Text)
 				throw new NotSupportedException("Only CommandType.Text is currently supported by SingleStoreBatch.Prepare");

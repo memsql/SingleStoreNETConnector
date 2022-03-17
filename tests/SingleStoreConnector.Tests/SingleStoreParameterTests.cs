@@ -6,9 +6,9 @@ using SingleStoreConnector.Protocol.Serialization;
 using SingleStoreConnector;
 using Xunit;
 
-namespace MySqlConnector.Tests;
+namespace SingleStoreConnector.Tests;
 
-public class MySqlParameterTests
+public class SingleStoreParameterTests
 {
 	private string EncodeParameterToAscii(SingleStoreParameter parameter, StatementPreparerOptions options = StatementPreparerOptions.None)
 	{

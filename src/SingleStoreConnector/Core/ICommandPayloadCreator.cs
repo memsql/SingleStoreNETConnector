@@ -3,7 +3,7 @@ using SingleStoreConnector.Protocol.Serialization;
 namespace SingleStoreConnector.Core;
 
 /// <summary>
-/// <see cref="ICommandPayloadCreator"/> creates the data for an "execute query" command for one or more <see cref="IMySqlCommand"/> objects in a command list.
+/// <see cref="ICommandPayloadCreator"/> creates the data for an "execute query" command for one or more <see cref="ISingleStoreCommand"/> objects in a command list.
 /// </summary>
 internal interface ICommandPayloadCreator
 {

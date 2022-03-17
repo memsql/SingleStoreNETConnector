@@ -70,10 +70,10 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 	/// <param name="cachedProcedures">The cached procedures.</param>
 	/// <param name="writer">The output writer.</param>
 	/// <returns><c>true</c> if a complete command was written; otherwise, <c>false</c>.</returns>
-	public static bool WriteQueryPayload(IMySqlCommand command, IDictionary<string, CachedProcedure?> cachedProcedures, ByteBufferWriter writer) =>
+	public static bool WriteQueryPayload(ISingleStoreCommand command, IDictionary<string, CachedProcedure?> cachedProcedures, ByteBufferWriter writer) =>
 		(command.CommandType == CommandType.StoredProcedure) ? WriteStoredProcedure(command, cachedProcedures, writer) : WriteCommand(command, writer);
 
-	private static void WritePreparedStatement(IMySqlCommand command, PreparedStatement preparedStatement, ByteBufferWriter writer)
+	private static void WritePreparedStatement(ISingleStoreCommand command, PreparedStatement preparedStatement, ByteBufferWriter writer)
 	{
 		var parameterCollection = command.RawParameters;
 
@@ -129,7 +129,7 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 		}
 	}
 
-	private static void WriteBinaryParameters(ByteBufferWriter writer, SingleStoreParameter[] parameters, IMySqlCommand command, bool supportsQueryAttributes, int parameterCount)
+	private static void WriteBinaryParameters(ByteBufferWriter writer, SingleStoreParameter[] parameters, ISingleStoreCommand command, bool supportsQueryAttributes, int parameterCount)
 	{
 		// write null bitmap
 		byte nullBitmap = 0;
@@ -179,7 +179,7 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 			parameter.AppendBinary(writer, options);
 	}
 
-	private static bool WriteStoredProcedure(IMySqlCommand command, IDictionary<string, CachedProcedure?> cachedProcedures, ByteBufferWriter writer)
+	private static bool WriteStoredProcedure(ISingleStoreCommand command, IDictionary<string, CachedProcedure?> cachedProcedures, ByteBufferWriter writer)
 	{
 		var parameterCollection = command.RawParameters;
 		var cachedProcedure = cachedProcedures[command.CommandText!];
@@ -242,7 +242,7 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 		return preparer.ParseAndBindParameters(writer);
 	}
 
-	private static bool WriteCommand(IMySqlCommand command, ByteBufferWriter writer)
+	private static bool WriteCommand(ISingleStoreCommand command, ByteBufferWriter writer)
 	{
 		var isSchemaOnly = (command.CommandBehavior & CommandBehavior.SchemaOnly) != 0;
 		var isSingleRow = (command.CommandBehavior & CommandBehavior.SingleRow) != 0;

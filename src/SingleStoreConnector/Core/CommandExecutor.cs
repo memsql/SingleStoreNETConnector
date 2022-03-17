@@ -8,7 +8,7 @@ namespace SingleStoreConnector.Core;
 
 internal static class CommandExecutor
 {
-	public static async Task<SingleStoreDataReader> ExecuteReaderAsync(IReadOnlyList<IMySqlCommand> commands, ICommandPayloadCreator payloadCreator, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	public static async Task<SingleStoreDataReader> ExecuteReaderAsync(IReadOnlyList<ISingleStoreCommand> commands, ICommandPayloadCreator payloadCreator, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		try
 		{

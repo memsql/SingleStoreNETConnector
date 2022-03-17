@@ -3,7 +3,7 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector.Core;
 
 /// <summary>
-/// <see cref="IMySqlCommand"/> provides an internal abstraction over operations that can be cancelled: <see cref="SingleStoreCommand"/> and <see cref="SingleStoreBatch"/>.
+/// <see cref="ISingleStoreCommand"/> provides an internal abstraction over operations that can be cancelled: <see cref="SingleStoreCommand"/> and <see cref="SingleStoreBatch"/>.
 /// </summary>
 internal interface ICancellableCommand
 {

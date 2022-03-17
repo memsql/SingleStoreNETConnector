@@ -1,11 +1,11 @@
 namespace SingleStoreConnector.Core;
 
 /// <summary>
-/// <see cref="CommandListPosition"/> encapsulates a list of <see cref="IMySqlCommand"/> and the current position within that list.
+/// <see cref="CommandListPosition"/> encapsulates a list of <see cref="ISingleStoreCommand"/> and the current position within that list.
 /// </summary>
 internal struct CommandListPosition
 {
-	public CommandListPosition(IReadOnlyList<IMySqlCommand> commands)
+	public CommandListPosition(IReadOnlyList<ISingleStoreCommand> commands)
 	{
 		Commands = commands;
 		CommandIndex = 0;
@@ -15,7 +15,7 @@ internal struct CommandListPosition
 	/// <summary>
 	/// The commands in the list.
 	/// </summary>
-	public IReadOnlyList<IMySqlCommand> Commands { get; }
+	public IReadOnlyList<ISingleStoreCommand> Commands { get; }
 
 	/// <summary>
 	/// The index of the current command.

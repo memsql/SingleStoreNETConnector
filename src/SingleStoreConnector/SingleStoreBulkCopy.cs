@@ -77,7 +77,7 @@ public sealed class SingleStoreBulkCopy
 	/// <para>Receipt of a RowsCopied event does not imply that any rows have been sent to the server or committed.</para>
 	/// <para>The <see cref="SingleStoreRowsCopiedEventArgs.Abort"/> property can be set to <c>true</c> by the event handler to abort the copy.</para>
 	/// </remarks>
-	public event SingleStoreRowsCopiedEventHandler? MySqlRowsCopied;
+	public event SingleStoreRowsCopiedEventHandler? SingleStoreRowsCopied;
 
 	/// <summary>
 	/// A collection of <see cref="SingleStoreBulkCopyColumnMapping"/> objects. If the columns being copied from the
@@ -380,7 +380,7 @@ public sealed class SingleStoreBulkCopy
 		// allocate a reusable SingleStoreRowsCopiedEventArgs if event notification is necessary
 		m_rowsCopied = 0;
 		SingleStoreRowsCopiedEventArgs? eventArgs = null;
-		if (NotifyAfter > 0 && MySqlRowsCopied is not null)
+		if (NotifyAfter > 0 && SingleStoreRowsCopied is not null)
 			eventArgs = new();
 
 		try
@@ -418,7 +418,7 @@ public sealed class SingleStoreBulkCopy
 				if (eventArgs is not null && m_rowsCopied % NotifyAfter == 0)
 				{
 					eventArgs.RowsCopied = m_rowsCopied;
-					MySqlRowsCopied!(this, eventArgs);
+					SingleStoreRowsCopied!(this, eventArgs);
 					if (eventArgs.Abort)
 						break;
 				}

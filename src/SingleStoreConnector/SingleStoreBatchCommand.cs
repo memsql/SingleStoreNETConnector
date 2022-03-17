@@ -6,7 +6,7 @@ public sealed class SingleStoreBatchCommand :
 #if NET6_0_OR_GREATER
 	DbBatchCommand,
 #endif
-	IMySqlCommand
+	ISingleStoreCommand
 {
 	public SingleStoreBatchCommand()
 		: this(null)
@@ -47,27 +47,27 @@ public sealed class SingleStoreBatchCommand :
 	protected override DbParameterCollection DbParameterCollection => Parameters;
 #endif
 
-	bool IMySqlCommand.AllowUserVariables => false;
+	bool ISingleStoreCommand.AllowUserVariables => false;
 
-	CommandBehavior IMySqlCommand.CommandBehavior => Batch!.CurrentCommandBehavior;
+	CommandBehavior ISingleStoreCommand.CommandBehavior => Batch!.CurrentCommandBehavior;
 
-	SingleStoreParameterCollection? IMySqlCommand.RawParameters => m_parameterCollection;
+	SingleStoreParameterCollection? ISingleStoreCommand.RawParameters => m_parameterCollection;
 
-	SingleStoreAttributeCollection? IMySqlCommand.RawAttributes => null;
+	SingleStoreAttributeCollection? ISingleStoreCommand.RawAttributes => null;
 
-	SingleStoreConnection? IMySqlCommand.Connection => Batch?.Connection;
+	SingleStoreConnection? ISingleStoreCommand.Connection => Batch?.Connection;
 
-	long IMySqlCommand.LastInsertedId => m_lastInsertedId;
+	long ISingleStoreCommand.LastInsertedId => m_lastInsertedId;
 
-	PreparedStatements? IMySqlCommand.TryGetPreparedStatements() => null;
+	PreparedStatements? ISingleStoreCommand.TryGetPreparedStatements() => null;
 
-	void IMySqlCommand.SetLastInsertedId(long lastInsertedId) => m_lastInsertedId = lastInsertedId;
+	void ISingleStoreCommand.SetLastInsertedId(long lastInsertedId) => m_lastInsertedId = lastInsertedId;
 
-	SingleStoreParameterCollection? IMySqlCommand.OutParameters { get; set; }
+	SingleStoreParameterCollection? ISingleStoreCommand.OutParameters { get; set; }
 
-	SingleStoreParameter? IMySqlCommand.ReturnParameter { get; set; }
+	SingleStoreParameter? ISingleStoreCommand.ReturnParameter { get; set; }
 
-	ICancellableCommand IMySqlCommand.CancellableCommand => Batch!;
+	ICancellableCommand ISingleStoreCommand.CancellableCommand => Batch!;
 
 	internal SingleStoreBatch? Batch { get; set; }
 

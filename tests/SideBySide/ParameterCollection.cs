@@ -177,7 +177,7 @@ public class ParameterCollection : IDisposable
 	}
 
 	[Fact]
-	public void AddMySqlParameter()
+	public void AddSingleStoreParameter()
 	{
 		var parameter = new SingleStoreParameter("test", SingleStoreDbType.Double, 3);
 		var parameter2 = m_parameterCollection.Add(parameter);
