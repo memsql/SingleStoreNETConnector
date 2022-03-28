@@ -2,7 +2,7 @@ version: 2.1
 parameters:
   connector-version:
     type: string
-    default: "v0.1.2-beta"
+    default: "0.1.2-beta"
 
 orbs:
   win: circleci/windows@2.4.0
@@ -159,6 +159,6 @@ workflows:
       - publish-windows:
           filters:
             tags:
-              only: /^v.*/
+              only: /.*/
             branches:
               ignore: /.*/

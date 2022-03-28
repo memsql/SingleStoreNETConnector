@@ -2,6 +2,6 @@
 
 ## Release Notes
 
-###v0.1.2-beta
+###0.1.2-beta
 
 *Initial beta release of SingleStore .NET connector
