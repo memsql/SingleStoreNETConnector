@@ -13,7 +13,7 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <see cref="SingleStoreConnection"/> represents a connection to a MySQL database.
+/// <see cref="SingleStoreConnection"/> represents a connection to a SingleStore database.
 /// </summary>
 public sealed class SingleStoreConnection : DbConnection, ICloneable
 {
@@ -418,7 +418,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 			catch (SocketException)
 			{
 				SetState(ConnectionState.Closed);
-				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Unable to connect to any of the specified MySQL hosts.");
+				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Unable to connect to any of the specified SingleStore hosts.");
 			}
 
 			if (m_connectionSettings.AutoEnlist && System.Transactions.Transaction.Current is not null)
@@ -492,7 +492,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	public override string ServerVersion => Session.MySqlCompatVersion.OriginalString;
 
 	/// <summary>
-	/// The connection ID from MySQL Server.
+	/// The connection ID from SingleStore Server.
 	/// </summary>
 	public int ServerThread => Session.ConnectionId;
 

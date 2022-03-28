@@ -1,7 +1,7 @@
 namespace SingleStoreConnector;
 
 /// <summary>
-/// MySQL Server error codes. Taken from <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html">Server Error Codes and Messages</a>.
+/// SingleStore Server error codes. Taken from <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html">Server Error Codes and Messages</a>.
 /// </summary>
 [System.CodeDom.Compiler.GeneratedCode("https://gist.github.com/bgrainger/791cecb647d514a9dd2f3d83b2387e49", "5")]
 public enum SingleStoreErrorCode

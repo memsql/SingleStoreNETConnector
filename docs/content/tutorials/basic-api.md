@@ -10,18 +10,18 @@ weight: 5
 Basic API
 =========
 
-MySqlConnector aims to be fully ADO.NET-compatible; its API should feel almost identical to other .NET database drivers.
+SingleStoreConnector aims to be fully ADO.NET-compatible; its API should feel almost identical to other .NET database drivers.
 Here’s a basic code snippet to get you started.
 
 ```csharp
 var connString = "Server=myserver;User ID=mylogin;Password=mypass;Database=mydatabase";
 
-using (var conn = new MySqlConnection(connString))
+using (var conn = new SingleStoreConnection(connString))
 {
     await conn.OpenAsync();
 
     // Insert some data
-    using (var cmd = new MySqlCommand())
+    using (var cmd = new SingleStoreCommand())
     {
         cmd.Connection = conn;
         cmd.CommandText = "INSERT INTO data (some_field) VALUES (@p)";
@@ -30,7 +30,7 @@ using (var conn = new MySqlConnection(connString))
     }
 
     // Retrieve all rows
-    using (var cmd = new MySqlCommand("SELECT some_field FROM data", conn))
+    using (var cmd = new SingleStoreCommand("SELECT some_field FROM data", conn))
     using (var reader = await cmd.ExecuteReaderAsync())
         while (await reader.ReadAsync())
             Console.WriteLine(reader.GetString(0));

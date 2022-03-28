@@ -4,7 +4,7 @@ using System.Runtime.Serialization;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <see cref="SingleStoreException"/> is thrown when MySQL Server returns an error code, or there is a
+/// <see cref="SingleStoreException"/> is thrown when SingleStore Server returns an error code, or there is a
 /// communication error with the server.
 /// </summary>
 [Serializable]

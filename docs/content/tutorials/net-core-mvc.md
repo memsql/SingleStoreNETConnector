@@ -14,9 +14,9 @@ weight: 30
 This tutorial will walk through a basic ASP.NET Core JSON API application that performs CRUD operations on
 blog posts.
 
-### Initialize MySQL
+### Initialize SingleStore
 
-Create a MySQL database and copy the following SQL to create a table called `BlogPost`:
+Create a SingleStore database and copy the following SQL to create a table called `BlogPost`:
 
 ```sql
 CREATE SCHEMA blog;
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `BlogPost` (
 ### Initialize ASP.NET Core Web API
 
 Create a folder named `BlogPostApi`, then run `dotnet new webapi` at the root to create the initial project.
-Run `dotnet add package MySqlConnector`. You should have a working project at this point, use `dotnet run`
+Run `dotnet add package SingleStoreConnector`. You should have a working project at this point, use `dotnet run`
 to verify the project builds and runs successfully.
 
 ### Update Configuration Files
@@ -54,22 +54,22 @@ to verify the project builds and runs successfully.
 }
 ```
 
-`AppDb.cs` is a disposable [Application Database Object](/overview/configuration/), adapted to read the ConnectionString
+`AppDb.cs` is a disposable Application Database Object, adapted to read the ConnectionString
 from the Configuration Object:
 
 ```csharp
 using System;
-using MySqlConnector;
+using SingleStoreConnector;
 
 namespace BlogPostApi
 {
     public class AppDb : IDisposable
     {
-        public MySqlConnection Connection { get; }
+        public SingleStoreConnection Connection { get; }
 
         public AppDb(string connectionString)
         {
-            Connection = new MySqlConnection(connectionString);
+            Connection = new SingleStoreConnection(connectionString);
         }
 
         public void Dispose() => Connection.Dispose();
@@ -94,7 +94,7 @@ Now our app is configured and we can focus on writing the core functionality!
 ```csharp
 using System.Data;
 using System.Threading.Tasks;
-using MySqlConnector;
+using SingleStoreConnector;
 
 namespace BlogPostApi
 {
@@ -141,9 +141,9 @@ namespace BlogPostApi
             await cmd.ExecuteNonQueryAsync();
         }
 
-        private void BindId(MySqlCommand cmd)
+        private void BindId(SingleStoreCommand cmd)
         {
-            cmd.Parameters.Add(new MySqlParameter
+            cmd.Parameters.Add(new SingleStoreParameter
             {
                 ParameterName = "@id",
                 DbType = DbType.Int32,
@@ -151,15 +151,15 @@ namespace BlogPostApi
             });
         }
 
-        private void BindParams(MySqlCommand cmd)
+        private void BindParams(SingleStoreCommand cmd)
         {
-            cmd.Parameters.Add(new MySqlParameter
+            cmd.Parameters.Add(new SingleStoreParameter
             {
                 ParameterName = "@title",
                 DbType = DbType.String,
                 Value = Title,
             });
-            cmd.Parameters.Add(new MySqlParameter
+            cmd.Parameters.Add(new SingleStoreParameter
             {
                 ParameterName = "@content",
                 DbType = DbType.String,
@@ -177,7 +177,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
-using MySqlConnector;
+using SingleStoreConnector;
 
 namespace BlogPostApi
 {
@@ -194,7 +194,7 @@ namespace BlogPostApi
         {
             using var cmd = Db.Connection.CreateCommand();
             cmd.CommandText = @"SELECT `Id`, `Title`, `Content` FROM `BlogPost` WHERE `Id` = @id";
-            cmd.Parameters.Add(new MySqlParameter
+            cmd.Parameters.Add(new SingleStoreParameter
             {
                 ParameterName = "@id",
                 DbType = DbType.Int32,
@@ -380,4 +380,4 @@ GET https://localhost:5001/api/blog
 []
 ```
 
-If you would like to see all of this code and more on GitHub, check out [MySqlConnector.Performance](https://github.com/mysql-net/MySqlConnector/tree/master/tests/MySqlConnector.Performance).
+If you would like to see all of this code and more on GitHub, check out [SingleStoreConnector.Performance](https://github.com/memsql/SingleStoreNETConnector/tree/master/tests/SingleStoreConnector.Performance).

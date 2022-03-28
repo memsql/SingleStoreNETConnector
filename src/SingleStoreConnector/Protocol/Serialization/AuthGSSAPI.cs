@@ -22,7 +22,7 @@ internal static class NegotiateStreamConstants
 
 /// <summary>
 /// Helper class to translate NegotiateStream framing for SPNEGO token
-/// into MySQL protocol packets.
+/// into SingleStore protocol packets.
 ///
 /// Serves as underlying stream for System.Net.NegotiateStream
 /// to perform MariaDB's auth_gssapi_client authentication.

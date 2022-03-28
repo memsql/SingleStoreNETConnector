@@ -5,7 +5,7 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <see cref="SingleStoreDecimal"/> represents a MySQL <c>DECIMAL</c> value that is too large to fit in a .NET <see cref="decimal"/>.
+/// <see cref="SingleStoreDecimal"/> represents a SingleStore <c>DECIMAL</c> value that is too large to fit in a .NET <see cref="decimal"/>.
 /// </summary>
 public readonly struct SingleStoreDecimal
 {

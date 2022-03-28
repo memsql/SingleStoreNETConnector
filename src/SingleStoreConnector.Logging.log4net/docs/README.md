@@ -10,7 +10,7 @@ Add the following line of code to your application startup routine (before any `
 SingleStoreConnectorLogManager.Provider = new Log4netLoggerProvider();
 ```
 
-To reduce the verbosity of MySqlConnector logging, add the following element to your log4net config:
+To reduce the verbosity of SingleStoreConnector logging, add the following element to your log4net config:
 
 ```xml
 <log4net>

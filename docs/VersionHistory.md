@@ -1,9 +1,7 @@
-# MySqlConnector Version History
-
-## Known Issues
-
-Known Issues have [moved here](https://mysqlconnector.net/overview/known-issues/).
+# SingleStoreConnector Version History
 
 ## Release Notes
 
-Release Notes have [moved here](https://mysqlconnector.net/overview/version-history/).
+###v0.1.2-beta
+
+*Initial beta release of SingleStore .NET connector

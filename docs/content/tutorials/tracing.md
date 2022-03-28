@@ -9,7 +9,7 @@ weight: 12
 
 # Tracing
 
-MySqlConnector implements `ActivitySource` for tracing its operations. The `ActivitySource` name is `MySqlConnector`.
+SingleStoreConnector implements `ActivitySource` for tracing its operations. The `ActivitySource` name is `SingleStoreConnector`.
 
 The available activity names and tags are documented in [issue 1036](https://github.com/mysql-net/MySqlConnector/issues/1036).
 
@@ -19,7 +19,7 @@ To export traces using OpenTelemetry, install the [OpenTelemetry NuGet package](
 
 ```csharp
 using var openTelemetry = Sdk.CreateTracerProviderBuilder()
-	.AddSource("MySqlConnector")
+	.AddSource("SingleStoreConnector")
 	// add a destination, for example:
 	// .AddZipkinExporter(o => { o.Endpoint = new Uri(...); })
 	// .AddJaegerExporter(o => { o.AgentHost = "..."; o.AgentPort = 6831; })

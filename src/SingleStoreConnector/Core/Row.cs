@@ -491,7 +491,7 @@ internal abstract class Row
 				return DateTime.MinValue;
 			if (Connection.AllowZeroDateTime)
 				return default(SingleStoreDateTime);
-			throw new InvalidCastException("Unable to convert MySQL date/time to System.DateTime, set AllowZeroDateTime=True or ConvertZeroDateTime=True in the connection string. See https://mysqlconnector.net/connection-options/");
+			throw new InvalidCastException("Unable to convert SingleStore date/time to System.DateTime, set AllowZeroDateTime=True or ConvertZeroDateTime=True in the connection string. See https://mysqlconnector.net/connection-options/");
 		}
 
 		int hour, minute, second, microseconds;

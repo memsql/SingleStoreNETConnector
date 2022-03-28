@@ -1,7 +1,7 @@
 ## How to Use
 
-To integrate MySqlConnector with [Serilog](https://serilog.net/), add the following line of code to your application startup routine (before any `MySqlConnector` objects have been used):
+To integrate SingleStoreConnector with [Serilog](https://serilog.net/), add the following line of code to your application startup routine (before any `SingleStoreConnector` objects have been used):
 
 ```csharp
-MySqlConnectorLogManager.Provider = new SerilogLoggerProvider();
+SingleStoreConnectorLogManager.Provider = new SerilogLoggerProvider();
 ```

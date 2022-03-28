@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// Represents MySQL's internal GEOMETRY format: https://dev.mysql.com/doc/refman/8.0/en/gis-data-formats.html#gis-internal-format
+/// Represents SingleStore's internal GEOMETRY format: https://dev.mysql.com/doc/refman/8.0/en/gis-data-formats.html#gis-internal-format
 /// </summary>
 public sealed class SingleStoreGeometry
 {
@@ -22,9 +22,9 @@ public sealed class SingleStoreGeometry
 	}
 
 	/// <summary>
-	/// Constructs a <see cref="SingleStoreGeometry"/> from MySQL's internal format.
+	/// Constructs a <see cref="SingleStoreGeometry"/> from SingleStore's internal format.
 	/// </summary>
-	/// <param name="value">The raw bytes of MySQL's internal GEOMETRY format.</param>
+	/// <param name="value">The raw bytes of SingleStore's internal GEOMETRY format.</param>
 	/// <returns>A new <see cref="SingleStoreGeometry"/> containing the specified geometry.</returns>
 	/// <remarks>See <a href="https://dev.mysql.com/doc/refman/8.0/en/gis-data-formats.html#gis-internal-format">Internal Geometry Storage Format</a>.</remarks>
 	public static SingleStoreGeometry FromMySql(ReadOnlySpan<byte> value) => new SingleStoreGeometry(value.ToArray());
@@ -40,7 +40,7 @@ public sealed class SingleStoreGeometry
 	public ReadOnlySpan<byte> WKB => ValueSpan.Slice(4);
 
 	/// <summary>
-	/// The internal MySQL form of this geometry.
+	/// The internal SingleStore form of this geometry.
 	/// </summary>
 	public byte[] Value => ValueSpan.ToArray();
 

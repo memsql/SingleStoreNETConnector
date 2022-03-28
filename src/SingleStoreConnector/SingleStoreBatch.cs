@@ -10,7 +10,7 @@ namespace SingleStoreConnector;
 /// <a href="https://github.com/dotnet/runtime/issues/28633">ADO.NET batching API</a>.
 /// <strong>It is currently experimental</strong> and may change in the future.</para>
 /// <para>When using MariaDB (10.2 or later), the commands will be sent in a single batch, reducing network
-/// round-trip time. With other MySQL Servers, this may be no more efficient than executing the commands
+/// round-trip time. With other SingleStore Servers, this may be no more efficient than executing the commands
 /// individually.</para>
 /// <para>Example usage:</para>
 /// <code>

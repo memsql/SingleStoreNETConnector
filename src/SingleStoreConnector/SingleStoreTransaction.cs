@@ -5,7 +5,7 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <see cref="SingleStoreTransaction"/> represents an in-progress transaction on a MySQL Server.
+/// <see cref="SingleStoreTransaction"/> represents an in-progress transaction on a SingleStore Server.
 /// </summary>
 public sealed class SingleStoreTransaction : DbTransaction
 {

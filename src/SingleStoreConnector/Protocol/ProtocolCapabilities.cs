@@ -1,7 +1,7 @@
 namespace SingleStoreConnector.Protocol;
 
 /// <summary>
-/// The <a href="https://dev.mysql.com/doc/internals/en/capability-flags.html">MySQL Capability flags</a>.
+/// The <a href="https://dev.mysql.com/doc/internals/en/capability-flags.html">SingleStore Capability flags</a>.
 /// </summary>
 [Flags]
 internal enum ProtocolCapabilities : ulong

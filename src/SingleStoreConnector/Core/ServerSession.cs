@@ -437,7 +437,7 @@ internal sealed class ServerSession
 					lock (m_lock)
 						m_state = State.Failed;
 					Log.Error("Session{0} connecting failed", m_logArguments);
-					throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Unable to connect to any of the specified MySQL hosts.");
+					throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Unable to connect to any of the specified SingleStore hosts.");
 				}
 
 				var byteHandler = m_socket is null ? new StreamByteHandler(m_stream!) : (IByteHandler) new SocketByteHandler(m_socket);
@@ -1490,7 +1490,7 @@ internal sealed class ServerSession
 			if (ex is AuthenticationException)
 				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "SSL Authentication Error", ex);
 			if (ex is IOException && clientCertificates is not null)
-				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "MySQL Server rejected client certificate", ex);
+				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "SingleStore Server rejected client certificate", ex);
 			if (ex is Win32Exception { NativeErrorCode: -2146893007 }) // SEC_E_ALGORITHM_MISMATCH (0x80090331)
 				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "The server doesn't support the client's specified TLS versions.", ex);
 			throw;

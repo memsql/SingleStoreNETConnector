@@ -11,10 +11,11 @@ weight: 40
 Configuration
 ============
 
-MySqlConnector uses a connection string in order to connect to your database.
+SingleStoreConnector uses a connection string in order to connect to your database.
 
-To connect to a database on `localhost` port `3306` with a user `mysqltest`, password `Password123`, and default schema `mysqldb`, the connection string would be:
+To connect to a database on `some_host` port `3306` with a user `admin`, password `Password123`, and default database `testdb`, the connection string would be:
 
-`host=127.0.0.1;port=3306;user id=mysqltest;password=Password123;database=mysqldb;`
+`host=some_host;port=3306;user id=admin;password=Password123;database=testdb;`
 
-For all connection string options, view the [Connection Options Reference](/connection-options/).
+
+

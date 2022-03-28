@@ -2,28 +2,28 @@
 lastmod: 2021-11-25
 date: 2016-10-16
 title: Connection Options
-customtitle: MySQL Connection String for C# .NET Core Programs
+customtitle: SingleStore Connection String for C# .NET Core Programs
 weight: 30
 menu:
   main:
 ---
 
-# MySQL .NET Connection String Options
+# SingleStore .NET Connection String Options
 
-The simplest MySQL connection string for C# is:
+The simplest SingleStore connection string for C# is:
 
-`new MySqlConnection("server=YOURSERVER;user=YOURUSERID;password=YOURPASSWORD")`
+`new SingleStoreConnection("server=YOURSERVER;user=YOURUSERID;password=YOURPASSWORD")`
 
-For all the other options, see the tables below. MySqlConnector supports most of Oracle’s
-[Connector/NET connection options](https://dev.mysql.com/doc/connector-net/en/connector-net-8-0-connection-options.html).
+For all the other options, see the tables below. SingleStoreConnector supports most of Oracle’s
+Connector/NET connection options.
 
-There are also several unique options that are supported only by MySqlConnector, a replacement for `MySql.Data` that [fixes bugs](/tutorials/migrating-from-connector-net/#fixed-bugs),
-adds new features, and improves database access performance. [Install it now](/overview/installing/).
+There are also several unique options that are supported only by SingleStoreConnector, a replacement for `SingleStore.Data` that fixes bugs,
+adds new features, and improves database access performance.
 
 Base Options
 ------------
 
-These are the basic options that need to be defined to connect to a MySQL database.
+These are the basic options that need to be defined to connect to a SingleStore database.
 
 <table class="table table-striped table-hover">
   <thead>
@@ -35,37 +35,37 @@ These are the basic options that need to be defined to connect to a MySQL databa
     <td><a name="Server"></a>Server, Host, Data Source, DataSource, Address, Addr, Network Address</td>
     <td>localhost</td>
     <td>
-      <p>The host name or network address of the MySQL Server to which to connect. Multiple hosts can be specified in a comma-delimited list.</p>
-      <p>On Unix-like systems, this can be a fully qualified path to a MySQL socket file, which will cause a Unix socket to be used instead of a TCP/IP socket. Only a single socket name can be specified.</p>
+      <p>The host name or network address of the SingleStore Server to which to connect. Multiple hosts can be specified in a comma-delimited list.</p>
+      <p>On Unix-like systems, this can be a fully qualified path to a SingleStore socket file, which will cause a Unix socket to be used instead of a TCP/IP socket. Only a single socket name can be specified.</p>
     </td>
   </tr>
   <tr id="Port">
     <td>Port</td>
     <td>3306</td>
-    <td>The TCP port on which MySQL Server is listening for connections.</td>
+    <td>The TCP port on which SingleStore Server is listening for connections.</td>
   </tr>
   <tr id="UserId">
     <td>User ID, UserID, Username, Uid, User name, User</td>
     <td></td>
-    <td>The MySQL user ID.</td>
+    <td>The SingleStore user ID.</td>
   </tr>
   <tr id="Password">
     <td>Password, pwd</td>
     <td></td>
     <td>
-      <p>The password for the MySQL user.</p>
-      <p>For systems that use frequently-updated authentication tokens (such as Amazon Aurora RDS with IAM Authentication), leave this value empty, and set <a href="/api/mysqlconnector/mysqlconnection/providepasswordcallback/"><code>MySqlConnection.ProvidePasswordCallback</code></a> to a delegate that will provide the password (or authentication token) on demand before calling <a href="/api/mysqlconnector/mysqlconnection/open/"><code>MySqlConnection.Open</code></a>. This retains the benefits of connection pooling.</p>
+      <p>The password for the SingleStore user.</p>
+      <p>For systems that use frequently-updated authentication tokens (such as Amazon Aurora RDS with IAM Authentication), leave this value empty, and set <code>SingleStoreConnection.ProvidePasswordCallback</code> to a delegate that will provide the password (or authentication token) on demand before calling <code>SingleStoreConnection.Open</code>. This retains the benefits of connection pooling.</p>
     </td>
   </tr>
   <tr id="Database">
     <td>Database, Initial Catalog</td>
     <td></td>
-    <td>(Optional) The case-sensitive name of the initial database to use. This may be required if the MySQL user account only has access rights to particular databases on the server.</td>
+    <td>(Optional) The case-sensitive name of the initial database to use. This may be required if the SingleStore user account only has access rights to particular databases on the server.</td>
   </tr>
   <tr id="ConnectionProtocol">
     <td>Connection Protocol, ConnectionProtocol, Protocol</td>
     <td>Socket</td>
-    <td>How to connect to the MySQL Server. This option has the following values:
+    <td>How to connect to the SingleStore Server. This option has the following values:
       <ul>
         <li><b>Socket</b> (default): Use TCP/IP sockets.</li>
         <li><b>Unix</b>: Use a Unix socket.</li>
@@ -109,7 +109,7 @@ These are the options that need to be used in order to configure a connection to
     <td></td>
     <td>
       <p>The path to a certificate file in PKCS #12 (.pfx) format containing a bundled Certificate and Private Key used for mutual authentication. To create a PKCS #12 bundle from a PEM encoded Certificate and Key, use <code>openssl pkcs12 -in cert.pem -inkey key.pem -export -out bundle.pfx</code>. This option should not be specified if <code>SslCert</code> and <code>SslKey</code> are used.</p>
-      <p>If the certificate can't be loaded from a file path, leave this value empty and set <a href="/api/mysqlconnector/mysqlconnection/provideclientcertificatescallback/"><code>MySqlConnection.ProvideClientCertificatesCallback</code></a> before calling <a href="/api/mysqlconnector/mysqlconnection/open/"><code>MySqlConnection.Open</code></a>. The property should be set to an async delegate that will populate a <code>X509CertificateCollection</code> with the client certificate(s) needed to connect.</p>
+      <p>If the certificate can't be loaded from a file path, leave this value empty and set <code>SingleStoreConnection.ProvideClientCertificatesCallback</code> before calling <code>SingleStoreConnection.Open</code>. The property should be set to an async delegate that will populate a <code>X509CertificateCollection</code> with the client certificate(s) needed to connect.</p>
     </td>
   </tr>
   <tr id="CertificatePassword">
@@ -132,7 +132,7 @@ These are the options that need to be used in order to configure a connection to
     <td></td>
     <td>
       <p>The path to a CA certificate file in a PEM Encoded (.pem) format. This should be used with <code>SslMode=VerifyCA</code> or <code>SslMode=VerifyFull</code> to enable verification of a CA certificate that is not trusted by the operating system’s certificate store.</p>
-      <p>To provide a custom callback to validate the remote certificate, leave this option empty and set <code>SslMode</code> to <code>Required</code> (or <code>Preferred</code>), then set <a href="/api/mysqlconnector/mysqlconnection/remotecertificatevalidationcallback/"><code>MySqlConnection.RemoteCertificateValidationCallback</code></a> before calling <a href="/api/mysqlconnector/mysqlconnection/open/"><code>MySqlConnection.Open</code></a>. The property should be set to a delegate that will validate the remote certificate, as per <a href="https://docs.microsoft.com/en-us/dotnet/api/system.net.security.remotecertificatevalidationcallback" title="RemoteCertificateValidationCallback Delegate (MSDN)">the documentation</a>.</p>
+      <p>To provide a custom callback to validate the remote certificate, leave this option empty and set <code>SslMode</code> to <code>Required</code> (or <code>Preferred</code>), then set <code>SingleStoreConnection.RemoteCertificateValidationCallbac</code> before calling <code>SingleStoreConnection.Open</code>. The property should be set to a delegate that will validate the remote certificate, as per <a href="https://docs.microsoft.com/en-us/dotnet/api/system.net.security.remotecertificatevalidationcallback" title="RemoteCertificateValidationCallback Delegate (MSDN)">the documentation</a>.</p>
     </td>
   </tr>
   <tr id="CertificateStoreLocation">
@@ -171,7 +171,7 @@ Connection pooling is enabled by default. These options are used to configure it
   <tr id="Pooling">
     <td>Pooling</td>
     <td>true</td>
-    <td>Enables connection pooling. When pooling is enabled, <code>MySqlConnection.Open</code>/<code>OpenAsync</code> retrieves an open connection from the pool if one is available, and <code>Close</code>/<code>Dispose</code>/<code>DisposeAsync</code> returns the open connection to the pool. If there are no available connections in the pool, and the pool hasn’t reached <code>MaximumPoolSize</code> connections, a new connection will be opened; otherwise, the call to <code>Open</code>/<code>OpenAsync</code> blocks until a connection becomes available or <code>ConnectionTimeout</code> is reached.</td>
+    <td>Enables connection pooling. When pooling is enabled, <code>SingleStoreConnection.Open</code>/<code>OpenAsync</code> retrieves an open connection from the pool if one is available, and <code>Close</code>/<code>Dispose</code>/<code>DisposeAsync</code> returns the open connection to the pool. If there are no available connections in the pool, and the pool hasn’t reached <code>MaximumPoolSize</code> connections, a new connection will be opened; otherwise, the call to <code>Open</code>/<code>OpenAsync</code> blocks until a connection becomes available or <code>ConnectionTimeout</code> is reached.</td>
   </tr>
   <tr id="ConnectionLifeTime">
     <td>Connection Lifetime, ConnectionLifeTime</td>
@@ -181,7 +181,7 @@ Connection pooling is enabled by default. These options are used to configure it
   <tr id="ConnectionReset">
     <td>Connection Reset, ConnectionReset</td>
     <td><code>true</code></td>
-    <td>If <code>true</code>, all connections retrieved from the pool will have been reset. The default value of <code>true</code> ensures that the connection is in the same state whether it’s newly created or retrieved from the pool. A value of <code>false</code> avoids making an additional server round trip to reset the connection, but the connection state is not reset, meaning that session variables and other session state changes from any previous use of the connection are carried over. Additionally (if <code>Connection Reset</code> is <code>false</code>), when <code>MySqlConnection.Open</code> returns a connection from the pool (instead of opening a new one), the connection may be invalid (and throw an exception on first use) if the server has closed the connection.</td>
+    <td>If <code>true</code>, all connections retrieved from the pool will have been reset. The default value of <code>true</code> ensures that the connection is in the same state whether it’s newly created or retrieved from the pool. A value of <code>false</code> avoids making an additional server round trip to reset the connection, but the connection state is not reset, meaning that session variables and other session state changes from any previous use of the connection are carried over. Additionally (if <code>Connection Reset</code> is <code>false</code>), when <code>SingleStoreConnection.Open</code> returns a connection from the pool (instead of opening a new one), the connection may be invalid (and throw an exception on first use) if the server has closed the connection.</td>
   </tr>
   <tr id="ConnectionIdleTimeout">
     <td>Connection Idle Timeout, ConnectionIdleTimeout</td>
@@ -222,7 +222,7 @@ to the maximum number of open connections you want per server.
 Other Options
 -------------
 
-These are the other options that MySqlConnector supports. They are set to sensible defaults and typically do not need to be tweaked.
+These are the other options that SingleStoreConnector supports. They are set to sensible defaults and typically do not need to be tweaked.
 
 <table class="table table-striped table-hover">
   <thead>
@@ -234,8 +234,8 @@ These are the other options that MySqlConnector supports. They are set to sensib
     <td>Allow Load Local Infile, AllowLoadLocalInfile</td>
     <td>false</td>
     <td>Allows the <code>LOAD DATA LOCAL</code> command to request files from the client. This is disabled by
-      default as a <a href="/troubleshooting/load-data-local-infile/" title="Using Load Data Local Infile">security precaution</a>.
-      In order to use <code>MySqlBulkLoader</code> and set its <code>Local</code> property to <code>true</code>, you
+      default as a security precaution.
+      In order to use <code>SingleStoreBulkLoader</code> and set its <code>Local</code> property to <code>true</code>, you
       must set this option to <code>True</code> in  your connection string.</td>
   </tr>
   <tr id="AllowPublicKeyRetrieval">
@@ -255,31 +255,31 @@ These are the other options that MySqlConnector supports. They are set to sensib
   <tr id="AllowZeroDateTime">
     <td>Allow Zero DateTime, AllowZeroDateTime</td>
     <td>false</td>
-    <td>If set to <c>true</c> all <code>DATE</code>, <code>DATETIME</code> and <code>TIMESTAMP</code> columns are returned as <code>MySqlDateTime</code> objects instead of <code>DateTime</code>.
+    <td>If set to <c>true</c> all <code>DATE</code>, <code>DATETIME</code> and <code>TIMESTAMP</code> columns are returned as <code>SingleStoreDateTime</code> objects instead of <code>DateTime</code>.
     This allows the special “zero” date value <code>0000-00-00</code> to be retrieved from the database. If <code>false</code> (the default)
     date columns are returned as <code>DateTime</code> values, and an exception is thrown for unrepresentable dates.</td>
   </tr>
   <tr id="ApplicationName">
     <td>Application Name, ApplicationName</td>
     <td>null</td>
-    <td>Sets the <c>program_name</c> connection attribute passed to MySQL Server. This value may be displayed by diagnostic tools,
-    e.g., as the “Program” column in “Client Connections” in <a href="https://www.mysql.com/products/workbench/">MySQL Workbench</a>.</td>
+    <td>Sets the <c>program_name</c> connection attribute passed to SingleStore Server. This value may be displayed by diagnostic tools,
+    e.g., as the “Program” column in “Client Connections” in SingleStore Workbench.</td>
   </tr>
   <tr id="AutoEnlist">
     <td>Auto Enlist, AutoEnlist</td>
     <td>true</td>
-    <td>If <code>true</code> (default), <code>MySqlConnection</code> will detect if there is an active <code>TransactionScope</code> when it's opened and automatically enlist in it. If <code>false</code>, connections must be manually enlisted by calling <code>EnlistTransaction</code>.</td>
+    <td>If <code>true</code> (default), <code>SingleStoreConnection</code> will detect if there is an active <code>TransactionScope</code> when it's opened and automatically enlist in it. If <code>false</code>, connections must be manually enlisted by calling <code>EnlistTransaction</code>.</td>
   </tr>
   <tr id="CancellationTimeout">
     <td>Cancellation Timeout, CancellationTimeout</td>
     <td>2</td>
-    <td>The length of time (in seconds) to wait for a query to be canceled when <code>MySqlCommand.CommandTimeout</code> expires, or zero for no timeout. If a response isn’t received from the server in this
-    time, the local socket will be closed and a <code>MySqlException</code> will be thrown.</td>
+    <td>The length of time (in seconds) to wait for a query to be canceled when <code>SingleStoreCommand.CommandTimeout</code> expires, or zero for no timeout. If a response isn’t received from the server in this
+    time, the local socket will be closed and a <code>SingleStoreException</code> will be thrown.</td>
   </tr>
   <tr id="CharacterSet">
     <td>Character Set, CharSet, CharacterSet</td>
     <td>utf8mb4</td>
-    <td>MySqlConnector always uses <code>utf8mb4</code> to send and receive strings from MySQL Server. This option may be specified (for backwards compatibility) but it will be ignored.</td>
+    <td>SingleStoreConnector always uses <code>utf8mb4</code> to send and receive strings from SingleStore Server. This option may be specified (for backwards compatibility) but it will be ignored.</td>
   </tr>
   <tr id="UseCompression">
     <td>Use Compression, Compress, UseCompression</td>
@@ -296,13 +296,13 @@ These are the other options that MySqlConnector supports. They are set to sensib
   <tr id="ConvertZeroDateTime">
     <td>Convert Zero DateTime, ConvertZeroDateTime</td>
     <td>false</td>
-    <td>True to have <code>MySqlDataReader.GetValue()</code> and <code>MySqlDataReader.GetDateTime()</code> return <code>DateTime.MinValue</code> for date or datetime columns that have disallowed values.</td>
+    <td>True to have <code>SingleStoreDataReader.GetValue()</code> and <code>SingleStoreDataReader.GetDateTime()</code> return <code>DateTime.MinValue</code> for date or datetime columns that have disallowed values.</td>
   </tr>
   <tr id="DateTimeKind">
     <td>DateTime Kind, DateTimeKind</td>
     <td>Unspecified</td>
-    <td>The <code>DateTimeKind</code> used when <code>MySqlDataReader</code> returns a <code>DateTime</code>. If set to <code>Utc</code> or <code>Local</code>,
-    a <code>MySqlException</code> will be thrown if a <code>DateTime</code> command parameter has a <code>Kind</code> of <code>Local</code> or <code>Utc</code>,
+    <td>The <code>DateTimeKind</code> used when <code>SingleStoreDataReader</code> returns a <code>DateTime</code>. If set to <code>Utc</code> or <code>Local</code>,
+    a <code>SingleStoreException</code> will be thrown if a <code>DateTime</code> command parameter has a <code>Kind</code> of <code>Local</code> or <code>Utc</code>,
     respectively.</td>
   </tr>
   <tr id="GuidFormat">
@@ -338,14 +338,14 @@ These are the other options that MySqlConnector supports. They are set to sensib
   <tr id="IgnoreCommandTransaction">
     <td>Ignore Command Transaction, IgnoreCommandTransaction</td>
     <td>false</td>
-    <td>If <code>true</code>, the value of <code>MySqlCommand.Transaction</code> is ignored when commands are executed.
-    This matches the Connector/NET behaviour and can make porting code easier. For more information, see <a href="troubleshooting/transaction-usage/">Transaction Usage</a>.</td>
+    <td>If <code>true</code>, the value of <code>SingleStoreCommand.Transaction</code> is ignored when commands are executed.
+    This matches the Connector/NET behaviour and can make porting code easier.</td>
   </tr>
   <tr id="IgnorePrepare">
     <td>Ignore Prepare, IgnorePrepare</td>
     <td>false</td>
-    <td>If <code>true</code>, calls to <code>MySqlCommand.Prepare(Async)</code> are ignored (and will be no-ops).
-    This option is provided for backwards compatibility with MySQL Connector/NET (before 8.0.23) and should not be used.</td>
+    <td>If <code>true</code>, calls to <code>SingleStoreCommand.Prepare(Async)</code> are ignored (and will be no-ops).
+    This option is provided for backwards compatibility with SingleStore Connector/NET (before 8.0.23) and should not be used.</td>
   </tr>
   <tr id="InteractiveSession">
     <td>Interactive Session, Interactive, InteractiveSession</td>
@@ -407,7 +407,7 @@ These are the other options that MySqlConnector supports. They are set to sensib
         <dt>Required</dt>
         <dd>The server must support redirection, and making a redirected connection must be successful; otherwise, an exception will be thrown.</dd>
       </dl>
-      <p>Server Redirection is supported by Azure Database for MySQL if the <code>redirect_enabled</code> server parameter is set to <code>ON</code>.</p>
+      <p>Server Redirection is supported by Azure Database for SingleStore if the <code>redirect_enabled</code> server parameter is set to <code>ON</code>.</p>
       <p>This option is only respected if <code>Pooling=True</code>.
     </td>
   </tr>
@@ -434,10 +434,10 @@ These are the other options that MySqlConnector supports. They are set to sensib
   <tr id="UseXaTransactions">
     <td>Use XA Transactions, UseXaTransactions</td>
     <td>true</td>
-    <td>When <code>true</code> (default), using <code>TransactionScope</code> or <code>MySqlConnection.EnlistTransaction</code>
+    <td>When <code>true</code> (default), using <code>TransactionScope</code> or <code>SingleStoreConnection.EnlistTransaction</code>
     will use a <a href="https://dev.mysql.com/doc/refman/8.0/en/xa.html">XA Transaction</a>. This allows true
     distributed transactions, but may not be compatible with server replication; there are <a href="https://dev.mysql.com/doc/refman/8.0/en/xa-restrictions.html">other limitations</a>.
-    When set to <code>false</code>, regular MySQL transactions are used, just like Connector/NET.</td>
+    When set to <code>false</code>, regular SingleStore transactions are used, just like Connector/NET.</td>
   </tr>
 </table>
 
@@ -445,8 +445,8 @@ These are the other options that MySqlConnector supports. They are set to sensib
 Unsupported Options
 -------------
 
-These options are used by Connector/NET but not supported by MySqlConnector. In general, they should be removed
-from your connection string when migrating from Connector/NET to MySqlConnector.
+These options are used by Connector/NET but not supported by SingleStoreConnector. In general, they should be removed
+from your connection string when migrating from Connector/NET to SingleStoreConnector.
 
 <table class="table table-striped table-hover">
   <thead>
@@ -457,32 +457,32 @@ from your connection string when migrating from Connector/NET to MySqlConnector.
   <tr id="AllowBatch">
     <td>AllowBatch, Allow Batch</td>
     <td>true</td>
-    <td>MySqlConnector always allows batch statements.</td>
+    <td>SingleStoreConnector always allows batch statements.</td>
   </tr>
   <tr id="CacheServerProperties">
     <td>CacheServerProperties, Cache Server Properties</td>
     <td></td>
-    <td>MySqlConnector doesn’t need this optimization.</td>
+    <td>SingleStoreConnector doesn’t need this optimization.</td>
   </tr>
   <tr id="CheckParameters">
     <td>CheckParameters, Check Parameters</td>
     <td>true</td>
-    <td>MySqlConnector always checks stored procedure parameters efficiently; there’s no need to disable this.</td>
+    <td>SingleStoreConnector always checks stored procedure parameters efficiently; there’s no need to disable this.</td>
   </tr>
   <tr id="CommandInterceptors">
     <td>CommandInterceptors, Command Interceptors</td>
     <td></td>
-    <td>MySqlConnector doesn’t support this extensibility mechanism, which is not compatible with async operations.</td>
+    <td>SingleStoreConnector doesn’t support this extensibility mechanism, which is not compatible with async operations.</td>
   </tr>
   <tr id="DnsSrv">
     <td>DnsSrv, Dns-Srv</td>
     <td></td>
-    <td>MySqlConnector doesn’t support discovering server addresses from DNS SRV records.</td>
+    <td>SingleStoreConnector doesn’t support discovering server addresses from DNS SRV records.</td>
   </tr>
   <tr id="ExceptionInterceptors">
     <td>ExceptionInterceptors, Exception Interceptors</td>
     <td></td>
-    <td>MySqlConnector doesn’t support this extensibility mechanism.</td>
+    <td>SingleStoreConnector doesn’t support this extensibility mechanism.</td>
   </tr>
   <tr id="FunctionsReturnString">
     <td>FunctionsReturnString, Functions Return String</td>
@@ -502,17 +502,17 @@ from your connection string when migrating from Connector/NET to MySqlConnector.
   <tr id="Logging">
     <td>Logging</td>
     <td>false</td>
-    <td>Use <a href="/overview/logging/">MySqlConnector logging</a> (which is more flexible) instead.</td>
+    <td>Use SingleStoreConnector logging (which is more flexible) instead.</td>
   </tr>
   <tr id="OldSyntax">
     <td>OldSyntax, Old Syntax, UseOldSyntax, Use Old Syntax</td>
     <td>false</td>
-    <td>This option is deprecated in Connector/NET and unsupported in MySqlConnector.</td>
+    <td>This option is deprecated in Connector/NET and unsupported in SingleStoreConnector.</td>
   </tr>
   <tr id="ProcedureCacheSize">
     <td>ProcedureCacheSize, Procedure Cache Size, ProcedureCache, Procedure Cache</td>
     <td></td>
-    <td>MySqlConnector places no limit on the amount of stored procedure metadata that is cached. It takes a very small amount of memory.</td>
+    <td>SingleStoreConnector places no limit on the amount of stored procedure metadata that is cached. It takes a very small amount of memory.</td>
   </tr>
   <tr id="Replication">
     <td>Replication</td>
@@ -532,7 +532,7 @@ from your connection string when migrating from Connector/NET to MySqlConnector.
   <tr id="SshHostName">
     <td>SshHostName, SshPort, SshUserName, SshPassword, SshKeyFile, SshPassPhrase</td>
     <td></td>
-    <td>Connecting via SSH isn’t built into MySqlConnector, but can be set up easily by following <a href="tutorials/connect-ssh/" title="Connecting to MySQL Server with SSH from C#">these instructions</a>.</td>
+    <td>Connecting via SSH isn’t built into SingleStoreConnector, but can be set up easily by following Connecting to SingleStore Server with SSH from C#.</td>
   </tr>
   <tr id="SqlServerMode">
     <td>SqlServerMode, Sql Server Mode</td>

@@ -1,7 +1,7 @@
 namespace SingleStoreConnector.Protocol;
 
 /// <summary>
-/// See <a href="https://dev.mysql.com/doc/internals/en/com-query-response.html#column-type">MySQL documentation</a>.
+/// See <a href="https://dev.mysql.com/doc/internals/en/com-query-response.html#column-type">SingleStore documentation</a>.
 /// </summary>
 internal enum ColumnType
 {

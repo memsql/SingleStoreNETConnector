@@ -21,7 +21,7 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 		if (command.Connection?.State != ConnectionState.Open)
 			throw new ArgumentException("SingleStoreCommand.Connection must be an open connection.", nameof(command));
 
-		// no-op check as SingleStore reports at least 5.5.58
+		// no-op check as MySQL reports at least 5.5.58
 		if (command.Connection.Session.MySqlCompatVersion.Version < ServerVersions.SupportsProcedureCache)
 			throw new NotSupportedException("MySQL Server {0} doesn't support INFORMATION_SCHEMA".FormatInvariant(command.Connection.Session.MySqlCompatVersion.OriginalString));
 

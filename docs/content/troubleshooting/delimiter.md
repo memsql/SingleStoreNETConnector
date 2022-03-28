@@ -10,13 +10,13 @@ menu:
 
 # Fix: Using DELIMITER in SQL
 
-In MySQL Workbench, it's common to use `DELIMITER $$` (or similar) when defining stored procedures or using other compound statements that include an embedded semicolon (`;`).
+In SingleStore Workbench, it's common to use `DELIMITER $$` (or similar) when defining stored procedures or using other compound statements that include an embedded semicolon (`;`).
 
-This is not required by MySQL Server, but is a workaround for [limitations in the mysql client](https://dev.mysql.com/doc/refman/8.0/en/stored-programs-defining.html):
+This is not required by SingleStore Server, but is a workaround for [limitations in the mysql client](https://dev.mysql.com/doc/refman/8.0/en/stored-programs-defining.html):
 
 > By default, mysql itself recognizes the semicolon as a statement delimiter, so you must redefine the delimiter temporarily to cause mysql to pass the entire stored program definition to the server.
 
-This limitation does not exist in MySqlConnector, so using `DELIMITER` is unnecessary and it must be removed (to avoid sending invalid SQL to the server).
+This limitation does not exist in SingleStoreConnector, so using `DELIMITER` is unnecessary and it must be removed (to avoid sending invalid SQL to the server).
 
 ## Incorrect Code
 

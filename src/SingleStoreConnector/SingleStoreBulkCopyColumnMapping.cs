@@ -5,7 +5,7 @@ namespace SingleStoreConnector;
 /// columns in the destination table when using <see cref="SingleStoreBulkCopy"/>.</para>
 /// <para>Set <see cref="SourceOrdinal"/> to the index of the source column to map. Set <see cref="DestinationColumn"/> to
 /// either the name of a column in the destination table, or the name of a user-defined variable.
-/// If a user-defined variable, you can use <see cref="Expression"/> to specify a MySQL expression that assigns
+/// If a user-defined variable, you can use <see cref="Expression"/> to specify a SingleStore expression that assigns
 /// its value to destination column.</para>
 /// <para>Source columns that don't have an entry in <see cref="SingleStoreBulkCopy.ColumnMappings"/> will be ignored
 /// (unless the <see cref="SingleStoreBulkCopy.ColumnMappings"/> collection is empty, in which case all columns will be mapped

@@ -164,7 +164,7 @@ internal sealed class BinaryRow : Row
 				return DateTime.MinValue;
 			if (Connection.AllowZeroDateTime)
 				return default(SingleStoreDateTime);
-			throw new InvalidCastException("Unable to convert MySQL date/time to System.DateTime.");
+			throw new InvalidCastException("Unable to convert SingleStore date/time to System.DateTime.");
 		}
 
 		int year = value[0] + value[1] * 256;

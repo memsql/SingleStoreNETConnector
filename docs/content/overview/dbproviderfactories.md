@@ -11,7 +11,7 @@ weight: 15
 Using DbProviderFactories
 ==========
 
-MySqlConnector can be registered with `DbProviderFactories` and obtained via `DbProviderFactories.GetFactory("MySqlConnector")`, or by
+SingleStoreConnector can be registered with `DbProviderFactories` and obtained via `DbProviderFactories.GetFactory("SingleStoreConnector")`, or by
 using the methods [described here](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/obtaining-a-dbproviderfactory).
 
 ## .NET Framework
@@ -21,15 +21,15 @@ For .NET Framework applications, add the following section to your `app.config` 
 ```xml
 <system.data>
   <DbProviderFactories>
-     <add name="MySqlConnector"
-        invariant="MySqlConnector"
-        description="Async MySQL ADO.NET Connector"
-        type="MySqlConnector.MySqlConnectorFactory, MySqlConnector, Culture=neutral, PublicKeyToken=d33d3e53aa5f8c92" />
+     <add name="SingleStoreConnector"
+        invariant="SingleStoreConnector"
+        description="Async SingleStore ADO.NET Connector"
+        type="SingleStoreConnector.SingleStoreConnectorFactory, SingleStoreConnector, Culture=neutral, PublicKeyToken=d33d3e53aa5f8c92" />
   </DbProviderFactories>
 </system.data>
 ```
 
 ## .NET Core
 
-For .NET Core 2.1 or later, call `DbProviderFactories.RegisterFactory("MySqlConnector", MySqlConnectorFactory.Instance)` during application
-startup. This will register MySqlConnector's `DbProviderFactory` implementation in the central `DbProviderFactories` registry.
+For .NET Core 2.1 or later, call `DbProviderFactories.RegisterFactory("SingleStoreConnector", SingleStoreConnectorFactory.Instance)` during application
+startup. This will register SingleStoreConnector's `DbProviderFactory` implementation in the central `DbProviderFactories` registry.

@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <see cref="SingleStoreConversionException"/> is thrown when a MySQL value can't be converted to another type.
+/// <see cref="SingleStoreConversionException"/> is thrown when a SingleStore value can't be converted to another type.
 /// </summary>
 [Serializable]
 public sealed class SingleStoreConversionException : Exception

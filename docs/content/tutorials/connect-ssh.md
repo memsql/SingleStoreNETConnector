@@ -5,13 +5,13 @@ menu:
   main:
     parent: tutorials
 title: Connecting with SSH
-customtitle: "Tutorial: Connecting to MySQL Server with SSH from C#"
+customtitle: "Tutorial: Connecting to SingleStore Server with SSH from C#"
 weight: 15
 ---
 
-# Connecting to MySQL Server with SSH from C\#
+# Connecting to SingleStore Server with SSH from C\#
 
-This tutorial demonstrates how to use SSH.NET and MySqlConnector to connect to a MySQL database over SSH.
+This tutorial demonstrates how to use SSH.NET and SingleStoreConnector to connect to a SingleStore database over SSH.
 
 The arguments below are defined as follows:
 
@@ -22,7 +22,7 @@ The arguments below are defined as follows:
 * `sshPassPhrase`: (optional) the passphrase to unlock the SSH private key file specified by `sshKeyFile`
 * `sshPort`: (optional) the port of the SSH server (default `22`)
 * `databaseServer`: (optional) the host name or IP address of the database server (relative to the SSH server, default `localhost`)
-* `databasePort`: (optional) the port the MySQL server is listening on (default `3306`)
+* `databasePort`: (optional) the port the SingleStore server is listening on (default `3306`)
 
 ## Prerequisites
 
@@ -74,9 +74,9 @@ public static (SshClient SshClient, uint Port) ConnectSsh(string sshHostName, st
 Note that these examples dispose `sshClient`, which shuts down the forwarded port. In practice, you will
 want to keep the `SshClient` and forwarded port alive for the lifetime of your application.
 
-### If MySQL and SSH Server are the same
+### If SingleStore and SSH Server are the same
 
-If the MySQL Server and SSH Server are running on the same computer, use the following C# code:
+If the SingleStore Server and SSH Server are running on the same computer, use the following C# code:
 
 ```csharp
 var server = "your db & ssh server";
@@ -88,7 +88,7 @@ var databasePassword = "your database password";
 var (sshClient, localPort) = ConnectSsh(server, sshUserName, sshPassword);
 using (sshClient)
 {
-	MySqlConnectionStringBuilder csb = new MySqlConnectionStringBuilder
+	SingleStoreConnectionStringBuilder csb = new SingleStoreConnectionStringBuilder
 	{
 		Server = "127.0.0.1",
 		Port = localPort,
@@ -96,14 +96,14 @@ using (sshClient)
 		Password = databasePassword,
 	};
 
-	using var connection = new MySqlConnection(csb.ConnectionString);
+	using var connection = new SingleStoreConnection(csb.ConnectionString);
 	connection.Open();
 }
 ```
 
-### If MySQL and SSH Server are different
+### If SingleStore and SSH Server are different
 
-If the MySQL Server and SSH Server are running on different computers (and the MySQL Server
+If the SingleStore Server and SSH Server are running on different computers (and the SingleStore Server
 is reachable from the SSH Server, but not from the client computer), use the following C# code:
 
 ```csharp
@@ -117,7 +117,7 @@ var databasePassword = "your database password";
 var (sshClient, localPort) = ConnectSsh(sshServer, sshUserName, sshPassword, databaseServer: databaseServer);
 using (sshClient)
 {
-	MySqlConnectionStringBuilder csb = new MySqlConnectionStringBuilder
+	SingleStoreConnectionStringBuilder csb = new SingleStoreConnectionStringBuilder
 	{
 		Server = "127.0.0.1",
 		Port = localPort,
@@ -125,7 +125,7 @@ using (sshClient)
 		Password = databasePassword,
 	};
 
-	using var connection = new MySqlConnection(csb.ConnectionString);
+	using var connection = new SingleStoreConnection(csb.ConnectionString);
 	connection.Open();
 }
 ```

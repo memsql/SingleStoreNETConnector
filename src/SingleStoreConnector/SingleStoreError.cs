@@ -16,7 +16,7 @@ public sealed class SingleStoreError
 	}
 
 	/// <summary>
-	/// The error level. This comes from the MySQL Server. Possible values include <c>Note</c>, <c>Warning</c>, and <c>Error</c>.
+	/// The error level. This comes from the SingleStore Server. Possible values include <c>Note</c>, <c>Warning</c>, and <c>Error</c>.
 	/// </summary>
 	public string Level { get; }
 

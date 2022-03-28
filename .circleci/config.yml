@@ -2,7 +2,7 @@ version: 2.1
 parameters:
   connector-version:
     type: string
-    default: "0.1.1-beta"
+    default: "v0.1.2-beta"
 
 orbs:
   win: circleci/windows@2.4.0

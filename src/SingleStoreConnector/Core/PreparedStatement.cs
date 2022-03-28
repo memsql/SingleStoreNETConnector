@@ -3,7 +3,7 @@ using SingleStoreConnector.Protocol.Payloads;
 namespace SingleStoreConnector.Core;
 
 /// <summary>
-/// <see cref="PreparedStatement"/> is a statement that has been prepared on the MySQL Server.
+/// <see cref="PreparedStatement"/> is a statement that has been prepared on the SingleStore Server.
 /// </summary>
 internal sealed class PreparedStatement
 {

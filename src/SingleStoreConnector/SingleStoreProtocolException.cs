@@ -4,7 +4,7 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <see cref="SingleStoreProtocolException"/> is thrown when there is an internal protocol error communicating with MySQL Server.
+/// <see cref="SingleStoreProtocolException"/> is thrown when there is an internal protocol error communicating with SingleStore Server.
 /// </summary>
 [Serializable]
 public sealed class SingleStoreProtocolException : InvalidOperationException

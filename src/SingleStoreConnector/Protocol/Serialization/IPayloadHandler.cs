@@ -3,7 +3,7 @@ namespace SingleStoreConnector.Protocol.Serialization;
 internal interface IPayloadHandler : IDisposable
 {
 	/// <summary>
-	/// Starts a new "conversation" with the MySQL Server. This resets the "<a href="https://dev.mysql.com/doc/internals/en/sequence-id.html">sequence id</a>"
+	/// Starts a new "conversation" with the SingleStore Server. This resets the "<a href="https://dev.mysql.com/doc/internals/en/sequence-id.html">sequence id</a>"
 	/// and should be called when a new command begins.
 	/// </summary>
 	void StartNewConversation();

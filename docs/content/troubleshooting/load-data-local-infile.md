@@ -13,16 +13,16 @@ menu:
 
 ## Background
 
-MySQL Server supports a `LOAD DATA` command that can bulk load data from a CSV or TSV file.
+SingleStore Server supports a `LOAD DATA` command that can bulk load data from a CSV or TSV file.
 This normally loads data from a file on the server, but it can load from a file on the client by using
-the `LOAD DATA LOCAL` statement, or by setting `MySqlBulkLoader.Local = true`.
+the `LOAD DATA LOCAL` statement, or by setting `SingleStoreBulkLoader.Local = true`.
 
 ## Errors
 
 If you do this, you may receive one of the following errors:
 
-* The used command is not allowed with this MySQL version
-* To use MySqlBulkLoader.Local=true, set AllowLoadLocalInfile=true in the connection string.
+* The used command is not allowed with this SingleStore version
+* To use SingleStoreBulkLoader.Local=true, set AllowLoadLocalInfile=true in the connection string.
 * To use LOAD DATA LOCAL INFILE, set AllowLoadLocalInfile=true in the connection string.
 * Use SourceStream or SslMode >= VerifyCA for LOAD DATA LOCAL INFILE.
 
@@ -32,15 +32,15 @@ If you do this, you may receive one of the following errors:
 malicious server or proxy could send a fake “local infile request” packet to the client and
 read any file that the client has permission to open.
 
-For more information, see [the MySQL documentation](https://dev.mysql.com/doc/refman/8.0/en/load-data-local-security.html).
+For more information, see [the SingleStore documentation](https://dev.mysql.com/doc/refman/8.0/en/load-data-local-security.html).
 
 ## How to Fix
 
 To allow `LOAD DATA LOCAL INFILE` to succeed, you must set `AllowLoadLocalInfile=true`
 in the client’s connection string.
 
-If you use `MySqlBulkLoader` and set `Local=true`, then everything should work by default.
+If you use `SingleStoreBulkLoader` and set `Local=true`, then everything should work by default.
 
 If you are manually creating a `LOAD DATA LOCAL INFILE` statement, you must be connected
 to a trusted server. This requires specifying `SslMode=VerifyCA` or `SslMode=VerifyFull` in the
-connection string. Alternatively, rewrite the code to use `MySqlBulkLoader`.
+connection string. Alternatively, rewrite the code to use `SingleStoreBulkLoader`.

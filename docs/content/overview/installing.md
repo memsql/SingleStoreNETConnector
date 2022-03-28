@@ -11,18 +11,18 @@ weight: 10
 Installing
 ==========
 
-The recommended way of installing MySqlConnector is through [NuGet](https://www.nuget.org/packages/MySqlConnector/).
-Note that if you are using the `MySql.Data` NuGet package, it must be uninstalled first.
+The recommended way of installing SingleStoreConnector is through NuGet.
+Note that if you are using the `SingleStore.Data` NuGet package, it must be uninstalled first.
 
 ### Automatically
 
-If using the new project system, run: `dotnet add package MySqlConnector`
+If using the new project system, run: `dotnet add package SingleStoreConnector`
 
-Or, in Visual Studio, use the _NuGet Package Manager_ to browse for and install `MySqlConnector`.
+Or, in Visual Studio, use the _NuGet Package Manager_ to browse for and install `SingleStoreConnector`.
 
 ### Manually
 
-**Step 1:** Add MySqlConnector to the dependencies in your `csproj` file:
+**Step 1:** Add SingleStoreConnector to the dependencies in your `csproj` file:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -34,7 +34,7 @@ Or, in Visual Studio, use the _NuGet Package Manager_ to browse for and install 
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MySqlConnector" Version="0.61.0" />
+    <PackageReference Include="SingleStoreConnector" Version="0.61.0" />
   </ItemGroup>
 
 </Project>

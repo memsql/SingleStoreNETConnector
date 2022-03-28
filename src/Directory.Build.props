@@ -5,13 +5,12 @@
     <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
     <AssemblyOriginatorKeyFile>..\..\SingleStoreConnector.snk</AssemblyOriginatorKeyFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <PackageReleaseNotes>https://mysqlconnector.net/overview/version-history/</PackageReleaseNotes>
-    <PackageProjectUrl>https://mysqlconnector.net/</PackageProjectUrl>
+    <PackageReleaseNotes>https://github.com/memsql/SingleStoreNETConnector/blob/master/docs/VersionHistory.md</PackageReleaseNotes>
+    <PackageProjectUrl>https://github.com/memsql/SingleStoreNETConnector</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageIconUrl>https://mysqlconnector.net/img/logo.png</PackageIconUrl>
-    <PackageIcon>logo.png</PackageIcon>
+    <PackageIcon>singlestore_logo.png</PackageIcon>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/mysql-net/MySqlConnector.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/memsql/SingleStoreNETConnector.git</RepositoryUrl>
     <DebugType>embedded</DebugType>
     <LangVersion>preview</LangVersion>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -38,7 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\docs\static\img\logo.png" Pack="true" PackagePath="\"/>
+    <None Include="..\..\docs\static\img\singlestore_logo.png" Pack="true" PackagePath="\"/>
   </ItemGroup>
 
 </Project>

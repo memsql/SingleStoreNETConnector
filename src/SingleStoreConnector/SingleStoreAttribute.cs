@@ -1,7 +1,7 @@
 namespace SingleStoreConnector
 {
 	/// <summary>
-	/// <see cref="SingleStoreAttribute"/> represents an attribute that can be sent with a MySQL query.
+	/// <see cref="SingleStoreAttribute"/> represents an attribute that can be sent with a SingleStore query.
 	/// </summary>
 	/// <remarks>See <a href="https://dev.mysql.com/doc/refman/8.0/en/query-attributes.html">Query Attributes</a> for information on using query attributes.</remarks>
 	public sealed class SingleStoreAttribute

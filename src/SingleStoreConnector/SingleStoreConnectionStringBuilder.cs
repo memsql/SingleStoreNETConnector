@@ -8,7 +8,7 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <see cref="SingleStoreConnectionStringBuilder"/> allows you to construct a MySQL connection string by setting properties on the builder then reading the <see cref="DbConnectionStringBuilder.ConnectionString"/> property.
+/// <see cref="SingleStoreConnectionStringBuilder"/> allows you to construct a SingleStore connection string by setting properties on the builder then reading the <see cref="DbConnectionStringBuilder.ConnectionString"/> property.
 /// </summary>
 /// <remarks>See <a href="https://mysqlconnector.net/connection-options/">Connection String Options</a> for more documentation on the options.</remarks>
 public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuilder
@@ -32,13 +32,13 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	// Connection Options
 
 	/// <summary>
-	/// <para>The host name or network address of the MySQL Server to which to connect. Multiple hosts can be specified in a comma-delimited list.</para>
-	/// <para>On Unix-like systems, this can be a fully qualified path to a MySQL socket file, which will cause a Unix socket to be used instead of a TCP/IP socket. Only a single socket name can be specified.</para>
+	/// <para>The host name or network address of the SingleStore Server to which to connect. Multiple hosts can be specified in a comma-delimited list.</para>
+	/// <para>On Unix-like systems, this can be a fully qualified path to a SingleStore socket file, which will cause a Unix socket to be used instead of a TCP/IP socket. Only a single socket name can be specified.</para>
 	/// </summary>
 	[AllowNull]
 	[Category("Connection")]
 	[DefaultValue("")]
-	[Description("The host name or network address of the MySQL Server to which to connect.")]
+	[Description("The host name or network address of the SingleStore Server to which to connect.")]
 	[DisplayName("Server")]
 	public string Server
 	{
@@ -47,11 +47,11 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// The TCP port on which MySQL Server is listening for connections.
+	/// The TCP port on which SingleStore Server is listening for connections.
 	/// </summary>
 	[Category("Connection")]
 	[DefaultValue(3306u)]
-	[Description("The TCP port on which MySQL Server is listening for connections.")]
+	[Description("The TCP port on which SingleStore Server is listening for connections.")]
 	[DisplayName("Port")]
 	public uint Port
 	{
@@ -60,12 +60,12 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// The MySQL user ID.
+	/// The SingleStore user ID.
 	/// </summary>
 	[AllowNull]
 	[Category("Connection")]
 	[DefaultValue("")]
-	[Description("The MySQL user ID.")]
+	[Description("The SingleStore user ID.")]
 	[DisplayName("User ID")]
 	public string UserID
 	{
@@ -74,12 +74,12 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// The password for the MySQL user.
+	/// The password for the SingleStore user.
 	/// </summary>
 	[AllowNull]
 	[Category("Connection")]
 	[DefaultValue("")]
-	[Description("The password for the MySQL user.")]
+	[Description("The password for the SingleStore user.")]
 	[DisplayName("Password")]
 	public string Password
 	{
@@ -88,7 +88,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// (Optional) The case-sensitive name of the initial database to use. This may be required if the MySQL user account only has access rights to particular databases on the server.
+	/// (Optional) The case-sensitive name of the initial database to use. This may be required if the SingleStore user account only has access rights to particular databases on the server.
 	/// </summary>
 	[AllowNull]
 	[Category("Connection")]
@@ -115,11 +115,11 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// The protocol to use to connect to the MySQL Server.
+	/// The protocol to use to connect to the SingleStore Server.
 	/// </summary>
 	[Category("Connection")]
 	[DefaultValue(SingleStoreConnectionProtocol.Socket)]
-	[Description("The protocol to use to connect to the MySQL Server.")]
+	[Description("The protocol to use to connect to the SingleStore Server.")]
 	[DisplayName("Connection Protocol")]
 	public SingleStoreConnectionProtocol ConnectionProtocol
 	{
@@ -144,11 +144,11 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	// SSL/TLS Options
 
 	/// <summary>
-	/// Whether to use SSL/TLS when connecting to the MySQL server.
+	/// Whether to use SSL/TLS when connecting to the SingleStore server.
 	/// </summary>
 	[Category("TLS")]
 	[DefaultValue(SingleStoreSslMode.Preferred)]
-	[Description("Whether to use SSL/TLS when connecting to the MySQL server.")]
+	[Description("Whether to use SSL/TLS when connecting to the SingleStore server.")]
 	[DisplayName("SSL Mode")]
 	public SingleStoreSslMode SslMode
 	{
@@ -456,12 +456,12 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// Sets the <c>program_name</c> connection attribute passed to MySQL Server.
+	/// Sets the <c>program_name</c> connection attribute passed to SingleStore Server.
 	/// </summary>
 	[AllowNull]
 	[Category("Other")]
 	[DefaultValue("")]
-	[Description("Sets the program_name connection attribute passed to MySQL Server.")]
+	[Description("Sets the program_name connection attribute passed to SingleStore Server.")]
 	[DisplayName("Application Name")]
 	public string ApplicationName
 	{
@@ -614,11 +614,11 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// Instructs the MySQL server that this is an interactive session.
+	/// Instructs the SingleStore server that this is an interactive session.
 	/// </summary>
 	[Category("Connection")]
 	[DefaultValue(false)]
-	[Description("Instructs the MySQL server that this is an interactive session.")]
+	[Description("Instructs the SingleStore server that this is an interactive session.")]
 	[DisplayName("Interactive Session")]
 	public bool InteractiveSession
 	{
@@ -640,11 +640,11 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// Doesn't escape backslashes in string parameters. For use with the <c>NO_BACKSLASH_ESCAPES</c> MySQL server mode.
+	/// Doesn't escape backslashes in string parameters. For use with the <c>NO_BACKSLASH_ESCAPES</c> SingleStore server mode.
 	/// </summary>
 	[Category("Other")]
 	[DefaultValue(false)]
-	[Description("Doesn't escape backslashes in string parameters. For use with the NO_BACKSLASH_ESCAPES MySQL server mode.")]
+	[Description("Doesn't escape backslashes in string parameters. For use with the NO_BACKSLASH_ESCAPES SingleStore server mode.")]
 	[DisplayName("No Backslash Escapes")]
 	public bool NoBackslashEscapes
 	{

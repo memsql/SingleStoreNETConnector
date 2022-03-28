@@ -10,11 +10,11 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <para><see cref="SingleStoreBulkCopy"/> lets you efficiently load a MySQL Server table with data from another source.
+/// <para><see cref="SingleStoreBulkCopy"/> lets you efficiently load a SingleStore Server table with data from another source.
 /// It is similar to the <a href="https://docs.microsoft.com/en-us/dotnet/api/system.data.sqlclient.sqlbulkcopy">SqlBulkCopy</a> class
 /// for SQL Server.</para>
 /// <para>Due to <a href="https://mysqlconnector.net/troubleshooting/load-data-local-infile/">security features</a>
-/// in MySQL Server, the connection string <em>must</em> have <c>AllowLoadLocalInfile=true</c> in order
+/// in SingleStore Server, the connection string <em>must</em> have <c>AllowLoadLocalInfile=true</c> in order
 /// to use this class.</para>
 /// <para>For data that is in CSV or TSV format, use <see cref="SingleStoreBulkLoader"/> to bulk load the file.</para>
 /// <para>Example code:</para>

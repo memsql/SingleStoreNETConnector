@@ -1,7 +1,7 @@
 namespace SingleStoreConnector.Protocol;
 
 /// <summary>
-/// MySQL character set codes.
+/// SingleStore character set codes.
 /// </summary>
 /// <remarks>Obtained from <c>SELECT id, collation_name FROM information_schema.collations ORDER BY id;</c> on MySQL 8.0.16.</remarks>
 internal enum CharacterSet : ushort

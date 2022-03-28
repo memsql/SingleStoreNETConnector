@@ -8,7 +8,7 @@ namespace SingleStoreConnector;
 
 /// <summary>
 /// <see cref="SingleStoreCommand"/> represents a SQL statement or stored procedure name
-/// to execute against a MySQL database.
+/// to execute against a SingleStore database.
 /// </summary>
 public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancellableCommand, ICloneable
 {

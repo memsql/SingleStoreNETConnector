@@ -12,7 +12,7 @@ weight: 80
 
 `DbConnection.GetSchema` retrieves schema information about the database that is currently connected. For background, see MSDN on [GetSchema and Schema Collections](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/getschema-and-schema-collections) and [Common Schema Collections](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/common-schema-collections).
 
-`MySqlConnection.GetSchema` supports the following schemas:
+`SingleStoreConnection.GetSchema` supports the following schemas:
 
 * `MetaDataCollections`—information about available schemas
 * `CharacterSets`

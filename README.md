@@ -1,4 +1,4 @@
-# Async SingleStore Connector for .NET and .NET Core V0.1.0 Preview
+# Async SingleStore Connector for .NET and .NET Core v0.1.2-beta 
 
 This is an [ADO.NET](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/) data
 provider for [SingleStore](https://www.singlestore.com/). It provides implementations of
@@ -19,7 +19,7 @@ To build and run the tests, clone the repo and execute:
 
 ```
 dotnet restore
-dotnet test tests\MySqlConnector.Tests
+dotnet test tests\SingleStoreConnector.Tests
 ```
 
 To run the side-by-side tests, see [the instructions](tests/README.md).
@@ -36,7 +36,7 @@ The goals of this project are:
 6. **Independent:** This is a clean-room reimplementation of the [MySQL Protocol](https://dev.mysql.com/doc/internals/en/client-server-protocol.html), not based on Connector/NET.
 
 Cloning the full API of Connector/NET is not a goal of this project, although
-it will try not to be gratuitously incompatible. For typical scenarios, [migrating to this package](https://mysqlconnector.net/tutorials/migrating-from-connector-net/) should
+it will try not to be gratuitously incompatible. For typical scenarios, [migrating to this package](https://github.com/memsql/SingleStoreNETConnector/blob/master/docs/content/tutorials/migrating-from-connector-net.md) should
 be easy.
 
 ## License

@@ -7,7 +7,7 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <para><see cref="SingleStoreBulkLoader"/> lets you efficiently load a MySQL Server Table with data from a CSV or TSV file or <see cref="Stream"/>.</para>
+/// <para><see cref="SingleStoreBulkLoader"/> lets you efficiently load a SingleStore Server Table with data from a CSV or TSV file or <see cref="Stream"/>.</para>
 /// <para>Example code:</para>
 /// <code>
 /// using var connection = new SingleStoreConnection("...;AllowLoadLocalInfile=True");
@@ -27,7 +27,7 @@ namespace SingleStoreConnector;
 /// </code>
 /// </summary>
 /// <remarks>Due to <a href="https://mysqlconnector.net/troubleshooting/load-data-local-infile/">security features</a>
-/// in MySQL Server, the connection string <strong>must</strong> have <c>AllowLoadLocalInfile=true</c> in order to use a local source.
+/// in SingleStore Server, the connection string <strong>must</strong> have <c>AllowLoadLocalInfile=true</c> in order to use a local source.
 /// </remarks>
 public sealed class SingleStoreBulkLoader
 {
