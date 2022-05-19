@@ -575,6 +575,19 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
+	/// Determines whether CHAR(48) should be read as a GeographyPoint.
+	/// </summary>
+	[Category("Other")]
+	[DefaultValue(false)]
+	[Description("Determines whether CHAR(48) should be read as a GeographyPoint.")]
+	[DisplayName("TreatChar48AsGeographyPoint")]
+	public bool TreatChar48AsGeographyPoint
+	{
+		get => SingleStoreConnectionStringOption.TreatChar48AsGeographyPoint.GetValue(this);
+		set => SingleStoreConnectionStringOption.TreatChar48AsGeographyPoint.SetValue(this, value);
+	}
+
+	/// <summary>
 	/// Determines which column type (if any) should be read as a <see cref="Guid"/>.
 	/// </summary>
 	[Category("Other")]
@@ -916,6 +929,7 @@ internal abstract class SingleStoreConnectionStringOption
 	public static readonly SingleStoreConnectionStringValueOption<SingleStoreDateTimeKind> DateTimeKind;
 	public static readonly SingleStoreConnectionStringValueOption<uint> DefaultCommandTimeout;
 	public static readonly SingleStoreConnectionStringValueOption<bool> ForceSynchronous;
+	public static readonly SingleStoreConnectionStringValueOption<bool> TreatChar48AsGeographyPoint;
 	public static readonly SingleStoreConnectionStringValueOption<SingleStoreGuidFormat> GuidFormat;
 	public static readonly SingleStoreConnectionStringValueOption<bool> IgnoreCommandTransaction;
 	public static readonly SingleStoreConnectionStringValueOption<bool> IgnorePrepare;
@@ -1159,6 +1173,10 @@ internal abstract class SingleStoreConnectionStringOption
 		AddOption(ForceSynchronous = new(
 			keys: new[] { "Force Synchronous", "ForceSynchronous" },
 			defaultValue: false));
+
+		AddOption(TreatChar48AsGeographyPoint = new SingleStoreConnectionStringValueOption<bool>(
+			new[] { "TreatChar48AsGeographyPoint", "Treat Char48 As GeographyPoint" },
+			false));
 
 		AddOption(GuidFormat = new(
 			keys: new[] { "GUID Format", "GuidFormat" },

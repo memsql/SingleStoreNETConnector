@@ -26,7 +26,8 @@ internal static class ISingleStoreCommandExtensions
 	{
 		var connection = command.Connection!;
 		var statementPreparerOptions = StatementPreparerOptions.None;
-		if (connection.AllowUserVariables || command.CommandType == CommandType.StoredProcedure || command.AllowUserVariables)
+		if (connection.AllowUserVariables || command.CommandType == CommandType.StoredProcedure ||
+		    command.AllowUserVariables)
 			statementPreparerOptions |= StatementPreparerOptions.AllowUserVariables;
 		if (connection.DateTimeKind == DateTimeKind.Utc)
 			statementPreparerOptions |= StatementPreparerOptions.DateTimeUtc;
@@ -36,6 +37,8 @@ internal static class ISingleStoreCommandExtensions
 			statementPreparerOptions |= StatementPreparerOptions.AllowOutputParameters;
 		if (connection.NoBackslashEscapes)
 			statementPreparerOptions |= StatementPreparerOptions.NoBackslashEscapes;
+		if (connection.TreatChar48AsGeographyPoint)
+			statementPreparerOptions |= StatementPreparerOptions.TreatChar48AsGeographyPoint;
 
 		statementPreparerOptions |= connection.GuidFormat switch
 		{

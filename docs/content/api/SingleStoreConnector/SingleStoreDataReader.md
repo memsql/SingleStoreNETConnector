@@ -57,7 +57,8 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 | override [GetSchemaTableAsync](SingleStoreDataReader/GetSchemaTableAsync.md)(…) | Returns a DataTable that contains metadata about the columns in the result set. |
 | [GetSingleStoreDateTime](SingleStoreDataReader/GetSingleStoreDateTime.md)(…) |  (2 methods) |
 | [GetSingleStoreDecimal](SingleStoreDataReader/GetSingleStoreDecimal.md)(…) |  (2 methods) |
-| [GetSingleStoreGeometry](SingleStoreDataReader/GetSingleStoreGeometry.md)(…) |  (2 methods) |
+| [GetSingleStoreGeography](SingleStoreDataReader/GetSingleStoreGeography.md)(…) |  (2 methods) |
+| [GetSingleStoreGeographyPoint](SingleStoreDataReader/GetSingleStoreGeographyPoint.md)(…) |  (2 methods) |
 | override [GetStream](SingleStoreDataReader/GetStream.md)(…) |  |
 | [GetStream](SingleStoreDataReader/GetStream.md)(…) |  |
 | override [GetString](SingleStoreDataReader/GetString.md)(…) |  |

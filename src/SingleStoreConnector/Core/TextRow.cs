@@ -57,10 +57,16 @@ internal sealed class TextRow : Row
 			return ReadBit(data, columnDefinition);
 
 		case ColumnType.String:
-			if (Connection.GuidFormat == SingleStoreGuidFormat.Char36 && columnDefinition.ColumnLength / ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet) == 36)
+			var columnLen = columnDefinition.ColumnLength /
+			                ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet);
+			if (Connection.GuidFormat == SingleStoreGuidFormat.Char36 && columnLen == 36)
 				return Utf8Parser.TryParse(data, out Guid guid, out int guid36BytesConsumed, 'D') && guid36BytesConsumed == 36 ? guid : throw new FormatException();
-			if (Connection.GuidFormat == SingleStoreGuidFormat.Char32 && columnDefinition.ColumnLength / ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet) == 32)
+			if (Connection.GuidFormat == SingleStoreGuidFormat.Char32 && columnLen == 32)
 				return Utf8Parser.TryParse(data, out Guid guid, out int guid32BytesConsumed, 'N') && guid32BytesConsumed == 32 ? guid : throw new FormatException();
+			if (Connection.TreatChar48AsGeographyPoint && columnLen == 48)
+				goto case ColumnType.GeographyPoint;
+			if (columnLen == 1431655765)
+				goto case ColumnType.Geography;
 			goto case ColumnType.VarString;
 
 		case ColumnType.VarString:
@@ -109,9 +115,9 @@ internal sealed class TextRow : Row
 		case ColumnType.NewDecimal:
 			return Utf8Parser.TryParse(data, out decimal decimalValue, out int bytesConsumed) && bytesConsumed == data.Length ? decimalValue : throw new FormatException();
 
-		case ColumnType.Geometry:
-			return data.ToArray();
-
+		case ColumnType.GeographyPoint:
+		case ColumnType.Geography:
+			return Encoding.UTF8.GetString(data);
 		default:
 			throw new NotImplementedException("Reading {0} not implemented".FormatInvariant(columnDefinition.ColumnType));
 		}

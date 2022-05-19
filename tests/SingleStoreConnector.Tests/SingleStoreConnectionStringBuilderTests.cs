@@ -54,6 +54,7 @@ public class SingleStoreConnectionStringBuilderTests
 		Assert.Equal("", csb.ApplicationName);
 		Assert.Equal(180u, csb.ConnectionIdleTimeout);
 		Assert.False(csb.ForceSynchronous);
+		Assert.False(csb.TreatChar48AsGeographyPoint);
 		Assert.Equal(SingleStoreGuidFormat.Default, csb.GuidFormat);
 		Assert.False(csb.IgnoreCommandTransaction);
 		Assert.Equal(SingleStoreLoadBalance.RoundRobin, csb.LoadBalance);
@@ -137,6 +138,7 @@ public class SingleStoreConnectionStringBuilderTests
 				"server rsa public key file=rsa.pem;" +
 				"load balance=random;" +
 				"guidformat=timeswapbinary16;" +
+				"treatchar48asgeographypoint=true;" +
 				"nobackslashescapes=true;" +
 				"pipelining=false;" +
 				"server redirection mode=required;" +
@@ -196,6 +198,7 @@ public class SingleStoreConnectionStringBuilderTests
 		Assert.True(csb.DeferConnectionReset);
 #pragma warning restore 618
 		Assert.True(csb.ForceSynchronous);
+		Assert.True(csb.TreatChar48AsGeographyPoint);
 		Assert.True(csb.IgnoreCommandTransaction);
 		Assert.Equal("rsa.pem", csb.ServerRsaPublicKeyFile);
 		Assert.Equal(SingleStoreLoadBalance.Random, csb.LoadBalance);
@@ -505,6 +508,7 @@ public class SingleStoreConnectionStringBuilderTests
 	[InlineData("Connection Idle Timeout", 10u)]
 	[InlineData("DateTime Kind", SingleStoreDateTimeKind.Utc)]
 	[InlineData("Force Synchronous", true)]
+	[InlineData("TreatChar48AsGeographyPoint", true)]
 	[InlineData("GUID Format", SingleStoreGuidFormat.Binary16)]
 	[InlineData("Ignore Command Transaction", true)]
 	[InlineData("Ignore Prepare", false)]

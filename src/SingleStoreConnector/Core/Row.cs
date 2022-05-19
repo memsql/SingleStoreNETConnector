@@ -422,14 +422,21 @@ internal abstract class Row
 		return (SingleStoreDateTime) value;
 	}
 
-	public SingleStoreGeometry GetSingleStoreGeometry(int ordinal)
+	public SingleStoreGeography GetSingleStoreGeography(int ordinal)
 	{
 		var value = GetValue(ordinal);
-		if (value is byte[] bytes && ResultSet.ColumnDefinitions![ordinal].ColumnType == ColumnType.Geometry)
-			return new SingleStoreGeometry(bytes);
-		throw new InvalidCastException("Can't convert {0} to SingleStoreGeometry.".FormatInvariant(ResultSet.ColumnDefinitions![ordinal].ColumnType));
+		if (value is string wkt)
+			return new SingleStoreGeography(wkt);
+		return (SingleStoreGeography) value;
 	}
 
+	public SingleStoreGeographyPoint GetSingleStoreGeographyPoint(int ordinal)
+	{
+		var value = GetValue(ordinal);
+		if (value is string wkt)
+			return new SingleStoreGeographyPoint(wkt);
+		return (SingleStoreGeographyPoint) value;
+	}
 	public SingleStoreDecimal GetSingleStoreDecimal(int ordinal)
 	{
 		if (IsDBNull(ordinal))
@@ -599,8 +606,7 @@ InvalidDateTime:
 		var columnType = column.ColumnType;
 		if ((column.ColumnFlags & ColumnFlags.Binary) == 0 ||
 			(columnType != ColumnType.String && columnType != ColumnType.VarString && columnType != ColumnType.TinyBlob &&
-			columnType != ColumnType.Blob && columnType != ColumnType.MediumBlob && columnType != ColumnType.LongBlob &&
-			columnType != ColumnType.Geometry))
+			columnType != ColumnType.Blob && columnType != ColumnType.MediumBlob && columnType != ColumnType.LongBlob))
 		{
 			throw new InvalidCastException("Can't convert {0} to bytes.".FormatInvariant(columnType));
 		}

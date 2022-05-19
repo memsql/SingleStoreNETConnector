@@ -12,12 +12,12 @@ using MySql.Data.Types;
 using GetValueWhenNullException = System.Data.SqlTypes.SqlNullValueException;
 using GetGuidWhenNullException = MySql.Data.MySqlClient.SingleStoreException;
 using GetBytesWhenNullException = System.NullReferenceException;
-using GetGeometryWhenNullException = System.Exception;
+using GetGeographyWhenNullException = System.Exception;
 #else
 using GetValueWhenNullException = System.InvalidCastException;
 using GetGuidWhenNullException = System.InvalidCastException;
 using GetBytesWhenNullException = System.InvalidCastException;
-using GetGeometryWhenNullException = System.InvalidCastException;
+using GetGeographyWhenNullException = System.InvalidCastException;
 #endif
 
 namespace SideBySide;
@@ -1039,53 +1039,64 @@ ORDER BY t.`Key`", Connection);
 #endif
 	}
 
-	// TODO: PLAT-6084: replace the tests with Geography and GeographyPoint when they are added
-	[SkippableTheory(Skip = "SingleStore doesn't have Geometry type")]
-	[InlineData("Geometry", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63 })]
-	[InlineData("Point", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63 })]
-	[InlineData("LineString", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 64 })]
-	[InlineData("Polygon", "GEOMETRY", new byte[] { 0, 0, 0, 0, 1, 3, 0, 0, 0, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 })]
-	public void QueryGeometry(string columnName, string dataTypeName, byte[] expected)
+	[Theory]
+	// [InlineData("Geography", "GEOGRAPHY", "POINT(1.00000000 1.00000000)")] those two are failing bc we use string to represent geospatial types => SS returns POINT(0.99999998 1.00000003)
+	// [InlineData("Point", "POINT", "POINT(1.00000000 1.00000000)")]
+	[InlineData("LineString", "GEOGRAPHY", "LINESTRING(0.00000000 0.00000000, 1.00000000 1.00000000, 2.00000000 2.00000000)")]
+	[InlineData("Polygon", "GEOGRAPHY", "POLYGON((0.00000000 0.00000000, 1.00000000 0.00000000, 1.00000000 1.00000000, 0.00000000 1.00000000, 0.00000000 0.00000000))")]
+	public void QueryGeography(string columnName, string dataTypeName, string expectedGeography)
 	{
-		var geometryData = new byte[][]
+		var csb = CreateConnectionStringBuilder();
+		csb.TreatChar48AsGeographyPoint = true;
+		using var connectionWithParam = new SingleStoreConnection(csb.ConnectionString);
+		connectionWithParam.Open();
+
+		var geographyData = new string[]
 		{
 			null,
-			expected,
+			expectedGeography
 		};
 
-		DoQuery("geometry", columnName, dataTypeName, geometryData.ToArray(),
-#if !BASELINE
-			GetBytes
-#else
-			// NOTE: Connector/NET returns 'null' for NULL so simulate an exception for the tests
-			x => x.IsDBNull(0) ? throw new GetValueWhenNullException() : x.GetValue(0)
-#endif
-			);
+		DoQuery("geography", columnName, dataTypeName, geographyData, reader => reader.GetString(0), connection: connectionWithParam);
 
-		DoQuery<GetGeometryWhenNullException>("geometry", columnName, dataTypeName, geometryData.Select(CreateGeometry).ToArray(),
-			reader => reader.GetSingleStoreGeometry(0),
-			matchesDefaultType: false,
-#if BASELINE
-			omitGetFieldValueTest: true, // https://bugs.mysql.com/bug.php?id=96500
-			omitWhereTest: true, // https://bugs.mysql.com/bug.php?id=96498
-#endif
-#if BASELINE
-			assertEqual: (x, y) => Assert.Equal(((SingleStoreGeometry) x).Value, ((SingleStoreGeometry) y).Value)
-#else
-			assertEqual: (x, y) => Assert.Equal(((SingleStoreGeometry) x)?.Value.ToArray(), ((SingleStoreGeometry) y)?.Value.ToArray())
-#endif
-			);
+		if (dataTypeName == "GEOGRAPHY")
+		{
+			DoQuery<GetGeographyWhenNullException>("geography", columnName, dataTypeName,
+				geographyData.Select(CreateGeography).ToArray(),
+				reader => reader.GetSingleStoreGeography(0),
+				matchesDefaultType: false,
+				connection: connectionWithParam,
+				assertEqual: (x, y) =>
+					Assert.Equal(((SingleStoreGeography) x)?.Value, ((SingleStoreGeography) y)?.Value));
+		}
+		else
+		{
+			DoQuery<GetGeographyWhenNullException>("geography", columnName, dataTypeName,
+				geographyData.Select(CreateGeographyPoint).ToArray(),
+				reader => reader.GetSingleStoreGeographyPoint(0),
+				matchesDefaultType: false,
+				connection: connectionWithParam,
+				assertEqual: (x, y) =>
+					Assert.Equal(((SingleStoreGeographyPoint) x)?.Value, ((SingleStoreGeographyPoint) y)?.Value));
+		}
+
+		connectionWithParam.Close();
 	}
 
-	private static object CreateGeometry(byte[] data)
+	private static object CreateGeography(string data)
 	{
 		if (data is null)
 			return null;
-#if BASELINE
-		return new SingleStoreGeometry(SingleStoreDbType.Geometry, data);
-#else
-		return SingleStoreGeometry.FromMySql(data);
-#endif
+
+		return new SingleStoreGeography(data);
+	}
+
+	private static object CreateGeographyPoint(string data)
+	{
+		if(data is null)
+			return null;
+
+		return new SingleStoreGeographyPoint(data);
 	}
 
 	[Theory]
@@ -1144,16 +1155,24 @@ ORDER BY t.`Key`", Connection);
 #else
 	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, 4, typeof(int), "N", 0, 0)]
 #endif
-	[InlineData("Geometry", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("Point", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("LineString", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
-	[InlineData("Polygon", "datatypes_geometry", SingleStoreDbType.Geometry, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
+	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
+	[InlineData("Point", "datatypes_geography", SingleStoreDbType.GeographyPoint, 48, typeof(string), "N", 0, 0)]
+	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
+	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
 	public void GetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
-		// TODO: PLAT-6084: enable these tests replacing Geometry with Geography
-		if (mySqlDbType == SingleStoreDbType.Geometry)
-			return;
-		DoGetSchemaTable(column, table, mySqlDbType, columnSize, dataType, flags, precision, scale);
+		SingleStoreConnection connectionWithParam = null;
+		if (mySqlDbType == SingleStoreDbType.GeographyPoint)
+		{
+			var csb = CreateConnectionStringBuilder();
+			csb.TreatChar48AsGeographyPoint = true;
+			connectionWithParam = new SingleStoreConnection(csb.ConnectionString);
+			connectionWithParam.Open();
+		}
+
+		DoGetSchemaTable(column, table, mySqlDbType, columnSize, dataType, flags, precision, scale, connection: connectionWithParam);
+		if(connectionWithParam != null)
+			connectionWithParam.Close();
 	}
 
 	[Theory]
@@ -1171,17 +1190,18 @@ create table schema_table({createColumn});");
 		DoGetSchemaTable(column, "schema_table", mySqlDbType, columnSize, dataType, flags, precision, scale);
 	}
 
-	private void DoGetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale)
+	private void DoGetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale, SingleStoreConnection connection = null)
 	{
 		if (table == "datatypes_json_core" && !AppConfig.SupportsJson)
 			return;
 
+		connection = connection ?? Connection;
 		var isAutoIncrement = flags.IndexOf('A') != -1;
 		var isKey = flags.IndexOf('K') != -1;
 		var isLong = flags.IndexOf('L') != -1;
 		var allowDbNull = flags.IndexOf('N') != -1;
 
-		using var command = Connection.CreateCommand();
+		using var command = connection.CreateCommand();
 		command.CommandText = $"select `{column}` from `{table}`;";
 
 		using var reader = command.ExecuteReader(CommandBehavior.SchemaOnly);
@@ -1207,8 +1227,8 @@ create table schema_table({createColumn});");
 
 			// this if is here because wrong charset is reported in 7.5 and 7.6 for utf8mb4 fields
 			if ((column == "utf8" || column == "utf8bin") &&
-				Connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 5, 0)) >=0 &&
-				Connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 8, 0)) < 0)
+				connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 5, 0)) >=0 &&
+				connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 8, 0)) < 0)
 			{
 			}
 			else
@@ -1231,7 +1251,7 @@ create table schema_table({createColumn});");
 			mySqlDbType = SingleStoreDbType.String;
 #endif
 		Assert.Equal(mySqlDbType, (SingleStoreDbType) schema["ProviderType"]);
-		Assert.Equal(Connection.Database, schema["BaseSchemaName"]);
+		Assert.Equal(connection.Database, schema["BaseSchemaName"]);
 		Assert.Equal(table, schema["BaseTableName"]);
 		Assert.Equal(column, schema["BaseColumnName"]);
 		Assert.False((bool) schema["IsUnique"]);
@@ -1326,25 +1346,39 @@ create table schema_table({createColumn});");
 	[InlineData("Timestamp", "datatypes_times", SingleStoreDbType.Timestamp, "TIMESTAMP", 26, typeof(DateTime), "N", -1, 6)]
 	[InlineData("Time", "datatypes_times", SingleStoreDbType.Time, "TIME", 18, typeof(TimeSpan), "N", -1, 6)]
 	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, "YEAR", 4, typeof(int), "N", -1, 0)]
-	[InlineData("Geometry", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("Point", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("LineString", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
-	[InlineData("Polygon", "datatypes_geometry", SingleStoreDbType.Geometry, "GEOMETRY", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
+	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
+	[InlineData("Point", "datatypes_geography", SingleStoreDbType.GeographyPoint, "POINT", 48, typeof(string), "N", -1, 0)]
+	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
+	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
 	public void GetColumnSchema(string column, string table, SingleStoreDbType mySqlDbType, string dataTypeName, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
-		// TODO: enable these tests replacing Geometry with Geography
-		if (mySqlDbType == SingleStoreDbType.Geometry)
-			return;
+		SingleStoreConnection connectionWithParam = null;
+		if (mySqlDbType == SingleStoreDbType.GeographyPoint)
+		{
+			var csb = CreateConnectionStringBuilder();
+			csb.TreatChar48AsGeographyPoint = true;
+			connectionWithParam = new SingleStoreConnection(csb.ConnectionString);
+			connectionWithParam.Open();
+		}
+
+		DoGetColumnSchema(column, table, mySqlDbType, dataTypeName, columnSize, dataType, flags, precision, scale, connection: connectionWithParam);
+		if(connectionWithParam != null)
+			connectionWithParam.Close();
+	}
+
+	private void DoGetColumnSchema(string column, string table, SingleStoreDbType mySqlDbType, string dataTypeName, int columnSize, Type dataType, string flags, int precision, int scale, SingleStoreConnection connection = null)
+	{
 		if (table == "datatypes_json_core" && !AppConfig.SupportsJson)
 			return;
 
+		connection = connection ?? Connection;
 		var isAutoIncrement = flags.IndexOf('A') != -1;
 		var isKey = flags.IndexOf('K') != -1;
 		var isLong = flags.IndexOf('L') != -1;
 		var allowDbNull = flags.IndexOf('N') != -1;
 		var realPrecision = precision == -1 ? default(int?) : precision;
 
-		using var command = Connection.CreateCommand();
+		using var command = connection.CreateCommand();
 		command.CommandText = $"select `{column}` from `{table}`;";
 
 		using var reader = command.ExecuteReader();
@@ -1353,7 +1387,7 @@ create table schema_table({createColumn});");
 		var schema = (SingleStoreDbColumn) columns[0];
 		Assert.Equal(allowDbNull, schema.AllowDBNull);
 		Assert.Equal(column, schema.BaseColumnName);
-		Assert.Equal(Connection.Database, schema.BaseSchemaName);
+		Assert.Equal(connection.Database, schema.BaseSchemaName);
 		Assert.Equal(table, schema.BaseTableName);
 		Assert.Equal(column, schema.ColumnName);
 		Assert.Equal(0, schema.ColumnOrdinal);
@@ -1363,8 +1397,8 @@ create table schema_table({createColumn});");
 		// the condition below accounts for wrong charset reported in SingleStore 7.5 and 7.6
 		// when dealing with utf8mb4 data
  		if ( !( (column == "utf8" || column == "utf8bin") &&
-			Connection.Session.S2ServerVersion.Version.CompareTo(new Version(7,5,0)) > 0 &&
-			Connection.Session.S2ServerVersion.Version.CompareTo(new Version(7,8,0)) < 0 ))
+			connection.Session.S2ServerVersion.Version.CompareTo(new Version(7,5,0)) > 0 &&
+			connection.Session.S2ServerVersion.Version.CompareTo(new Version(7,8,0)) < 0 ))
 		{
 			// TODO: PLAT-6085: remove this if
 			if (column != "Single" && column != "Double")
@@ -1436,8 +1470,8 @@ create table schema_table({createColumn});");
 #endif
 #if !BASELINE
 	[InlineData("value", "datatypes_json_core", "JSON", typeof(string), 4, "[]")]
-	[InlineData("Geometry", "datatypes_geometry", "GEOGRAPHY", typeof(string), 2, null)]
-	[InlineData("Point", "datatypes_geometry", "GEOGRAPHYPOINT", typeof(string), 2, null)]
+	[InlineData("Geography", "datatypes_geography", "GEOGRAPHY", typeof(string), 2, null)]
+	[InlineData("Point", "datatypes_geography", "GEOGRAPHY", typeof(string), 2, null)]
 #endif
 	public void StoredProcedureParameter(string column, string table, string dataTypeName, Type dataType, int rowid, object expectedValue)
 	{

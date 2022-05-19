@@ -144,7 +144,7 @@ internal sealed class ResultSet
 
 						var columnDefinition = ColumnDefinitionPayload.Create(new ResizableArraySegment<byte>(m_columnDefinitionPayloads, m_columnDefinitionPayloadUsedBytes, payloadLength));
 						ColumnDefinitions[column] = columnDefinition;
-						ColumnTypes[column] = TypeMapper.ConvertToSingleStoreDbType(columnDefinition, treatTinyAsBoolean: Connection.TreatTinyAsBoolean, guidFormat: Connection.GuidFormat);
+						ColumnTypes[column] = TypeMapper.ConvertToSingleStoreDbType(columnDefinition, treatTinyAsBoolean: Connection.TreatTinyAsBoolean, treatChar48AsGeographyPoint: Connection.TreatChar48AsGeographyPoint, guidFormat: Connection.GuidFormat);
 						m_columnDefinitionPayloadUsedBytes += payloadLength;
 					}
 

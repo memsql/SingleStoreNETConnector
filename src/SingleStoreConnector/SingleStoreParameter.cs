@@ -279,14 +279,13 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			writer.WriteString(ulongValue);
 		}
-		else if (Value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or SingleStoreGeometry or MemoryStream)
+		else if (Value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream)
 		{
 			var inputSpan = Value switch
 			{
 				byte[] byteArray => byteArray.AsSpan(),
 				ArraySegment<byte> arraySegment => arraySegment.AsSpan(),
 				Memory<byte> memory => memory.Span,
-				SingleStoreGeometry geometry => geometry.ValueSpan,
 				MemoryStream memoryStream => memoryStream.TryGetBuffer(out var streamBuffer) ? streamBuffer.AsSpan() : memoryStream.ToArray().AsSpan(),
 				_ => ((ReadOnlyMemory<byte>) Value).Span,
 			};
@@ -319,6 +318,17 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			outputSpan[index++] = quote;
 			Debug.Assert(index == length, "index == length");
 			writer.Advance(index);
+		}
+		else if (Value is SingleStoreGeography or SingleStoreGeographyPoint)
+		{
+			var geographyValue = Value switch
+			{
+				SingleStoreGeography geography => geography.Value,
+				SingleStoreGeographyPoint geographyPoint => geographyPoint.Value,
+				_ => "",
+			};
+
+			writer.Write('\"' + geographyValue + '\"');
 		}
 		else if (Value is bool boolValue)
 		{
@@ -602,10 +612,15 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			writer.WriteLengthEncodedInteger(unchecked((ulong) arraySegmentValue.Count));
 			writer.Write(arraySegmentValue);
 		}
-		else if (Value is SingleStoreGeometry geometry)
+		else if (Value is SingleStoreGeography geography)
 		{
-			writer.WriteLengthEncodedInteger(unchecked((ulong) geometry.ValueSpan.Length));
-			writer.Write(geometry.ValueSpan);
+			writer.WriteLengthEncodedInteger(unchecked((ulong) geography.Value.Length));
+			writer.Write(geography.Value);
+		}
+		else if (Value is SingleStoreGeographyPoint geographyPoint)
+		{
+			writer.WriteLengthEncodedInteger(unchecked((ulong) geographyPoint.Value.Length));
+			writer.Write(geographyPoint.Value);
 		}
 		else if (Value is MemoryStream memoryStream)
 		{

@@ -16,7 +16,7 @@ A `ValueTask` representing the asynchronous operation.
 
 ## Remarks
 
-This is an optional feature of the SingleStore protocol and may not be supported by all servers. It's known to be supported by SingleStore Server 5.7.3 (and later), MariaDB 10.2.4 (and later), SingleStore 7.5 and later. Calling this for SingleStore 7.5 and 7.6 resets the connection to no database selected. Other SingleStore-compatible servers or proxies may not support this command.
+This is an optional feature of the MySQL protocol and may not be supported by all servers. It's known to be supported by MySQL Server 5.7.3 (and later), MariaDB 10.2.4 (and later), SingleStore 7.5 and later. Calling this for SingleStore 7.5 and 7.6 resets the connection to no database selected. Other MySQL-compatible servers or proxies may not support this command.
 
 ## See Also
 

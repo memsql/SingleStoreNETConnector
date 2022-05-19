@@ -198,19 +198,19 @@ values
   ('{33221100-5544-7766-8899-aabbccddeeff}', '{33221100-5544-7766-8899-aabbccddeeff}',
     '{33221100-5544-7766-8899-aabbccddeeff}', X'00112233445566778899AABBCCDDEEFF');
 
-drop table if exists datatypes_geometry;
-create rowstore table datatypes_geometry (
+drop table if exists datatypes_geography;
+create rowstore table datatypes_geography (
   rowid bigint not null primary key auto_increment,
-  `Geometry` geography null,
+  `Geography` geography null,
   `Point` geographypoint null,
   `LineString` geography null,
   `Polygon` geography null
 );
 
-insert into datatypes_geometry (`Geometry`, `Point`, `LineString`, `Polygon`)
+insert into datatypes_geography (`Geography`, `Point`, `LineString`, `Polygon`)
 values
   (null, null, null, null),
-  ('POINT(1 1)', 'POINT(1 1)', 'LINESTRING(0 0,1 1,2 2)', 'POLYGON((0 0,1 0,1 1,0 1,0 0))');
+  ('POINT(1.0 1.0)', 'POINT(1.0 1.0)', 'LINESTRING(0.0 0.0,1.0 1.0,2.0 2.0)', 'POLYGON((0.0 0.0,1.0 0.0,1.0 1.0,0.0 1.0,0.0 0.0))');
 ");
 
 		if (AppConfig.SupportsJson)

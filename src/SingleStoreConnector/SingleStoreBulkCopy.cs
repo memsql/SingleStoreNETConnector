@@ -500,18 +500,28 @@ public sealed class SingleStoreBulkCopy
 			{
 				return Utf8Formatter.TryFormat(decimalValue, output, out bytesWritten);
 			}
-			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or SingleStoreGeometry)
+			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte>)
 			{
 				var inputSpan = value switch
 				{
 					byte[] byteArray => byteArray.AsSpan(),
 					ArraySegment<byte> arraySegment => arraySegment.AsSpan(),
 					Memory<byte> memory => memory.Span,
-					SingleStoreGeometry geometry => geometry.ValueSpan,
 					_ => ((ReadOnlyMemory<byte>) value).Span,
 				};
 
 				return WriteBytes(inputSpan, ref inputIndex, output, out bytesWritten);
+			}
+			else if (value is SingleStoreGeography or SingleStoreGeographyPoint)
+			{
+				var geographyValue = value switch
+				{
+					SingleStoreGeography geography => geography.Value,
+					SingleStoreGeographyPoint geographyPoint => geographyPoint.Value,
+					_ => "",
+				};
+
+				return WriteString(geographyValue, ref utf8Encoder, output, out bytesWritten);
 			}
 			else if (value is bool boolValue)
 			{

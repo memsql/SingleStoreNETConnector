@@ -61,6 +61,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 | [SslMode](SingleStoreConnectionStringBuilder/SslMode.md) { get; set; } | Whether to use SSL/TLS when connecting to the SingleStore server. |
 | [TlsCipherSuites](SingleStoreConnectionStringBuilder/TlsCipherSuites.md) { get; set; } | The TLS cipher suites which may be used during TLS negotiation. The default value (the empty string) allows the OS to determine the TLS cipher suites to use; this is the recommended setting. |
 | [TlsVersion](SingleStoreConnectionStringBuilder/TlsVersion.md) { get; set; } | The TLS versions which may be used during TLS negotiation, or empty to use OS defaults. |
+| [TreatChar48AsGeographyPoint](SingleStoreConnectionStringBuilder/TreatChar48AsGeographyPoint.md) { get; set; } | Determines whether CHAR(48) should be read as a GeographyPoint. |
 | [TreatTinyAsBoolean](SingleStoreConnectionStringBuilder/TreatTinyAsBoolean.md) { get; set; } | Returns `TINYINT(1)` fields as Boolean values. |
 | [UseAffectedRows](SingleStoreConnectionStringBuilder/UseAffectedRows.md) { get; set; } | Report changed rows instead of found rows. |
 | [UseCompression](SingleStoreConnectionStringBuilder/UseCompression.md) { get; set; } | Compress packets sent to and from the server. |

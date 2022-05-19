@@ -136,6 +136,7 @@ internal sealed class ConnectionSettings
 		IgnoreCommandTransaction = csb.IgnoreCommandTransaction;
 		IgnorePrepare = csb.IgnorePrepare;
 		InteractiveSession = csb.InteractiveSession;
+		TreatChar48AsGeographyPoint = csb.TreatChar48AsGeographyPoint;
 		GuidFormat = GetEffectiveGuidFormat(csb.GuidFormat, csb.OldGuids);
 		Keepalive = csb.Keepalive;
 		NoBackslashEscapes = csb.NoBackslashEscapes;
@@ -227,6 +228,7 @@ internal sealed class ConnectionSettings
 	public DateTimeKind DateTimeKind { get; }
 	public int DefaultCommandTimeout { get; }
 	public bool ForceSynchronous { get; }
+	public bool TreatChar48AsGeographyPoint { get; }
 	public SingleStoreGuidFormat GuidFormat { get; }
 	public bool IgnoreCommandTransaction { get; }
 	public bool IgnorePrepare { get; }
@@ -314,6 +316,7 @@ internal sealed class ConnectionSettings
 		IgnoreCommandTransaction = other.IgnoreCommandTransaction;
 		IgnorePrepare = other.IgnorePrepare;
 		InteractiveSession = other.InteractiveSession;
+		TreatChar48AsGeographyPoint = other.TreatChar48AsGeographyPoint;
 		GuidFormat = other.GuidFormat;
 		Keepalive = other.Keepalive;
 		NoBackslashEscapes = other.NoBackslashEscapes;

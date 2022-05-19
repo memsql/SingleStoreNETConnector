@@ -278,6 +278,34 @@ create table insert_mysqldatetime(rowid integer not null primary key auto_increm
 		Assert.Equal(new DateTime(2018, 6, 9, 12, 34, 56, 123).AddTicks(4560), datetime);
 	}
 
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void InsertGeography(bool prepare)
+	{
+		m_database.Connection.Execute(@"drop table if exists insert_singlestoregeography;
+create rowstore table insert_singlestoregeography(rowid integer not null primary key auto_increment, shape geography not null);");
+
+		m_database.Connection.Open();
+		try
+		{
+			using var cmd = m_database.Connection.CreateCommand();
+			cmd.CommandText = @"insert into insert_singlestoregeography(shape) values(@shape);";
+			cmd.Parameters.AddWithValue("@shape", new SingleStoreGeography("POLYGON((3 3,4 3,4 4,3 4,3 3))"));
+			if(prepare)
+				cmd.Prepare();
+			Assert.Equal(1, cmd.ExecuteNonQuery());
+		}
+		finally
+		{
+			m_database.Connection.Close();
+		}
+
+		using var reader = m_database.Connection.ExecuteReader(@"select shape from insert_singlestoregeography order by rowid;");
+		Assert.True(reader.Read());
+		Assert.Equal("POLYGON((3.00000000 3.00000000, 4.00000000 3.00000000, 4.00000000 4.00000000, 3.00000000 4.00000000, 3.00000000 3.00000000))", reader.GetValue(0));
+	}
+
 	[SkippableTheory(Baseline = "https://bugs.mysql.com/bug.php?id=102593")]
 	[InlineData(false)]
 	[InlineData(true)]

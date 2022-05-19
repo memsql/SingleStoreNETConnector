@@ -839,6 +839,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	internal bool ConvertZeroDateTime => GetInitializedConnectionSettings().ConvertZeroDateTime;
 	internal DateTimeKind DateTimeKind => GetInitializedConnectionSettings().DateTimeKind;
 	internal int DefaultCommandTimeout => GetConnectionSettings().DefaultCommandTimeout;
+	internal bool TreatChar48AsGeographyPoint => GetInitializedConnectionSettings().TreatChar48AsGeographyPoint;
 	internal SingleStoreGuidFormat GuidFormat => GetInitializedConnectionSettings().GuidFormat;
 	internal bool IgnoreCommandTransaction => GetInitializedConnectionSettings().IgnoreCommandTransaction || m_enlistedTransaction is StandardEnlistedTransaction;
 	internal bool IgnorePrepare => GetInitializedConnectionSettings().IgnorePrepare;

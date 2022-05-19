@@ -27,6 +27,8 @@ public enum SingleStoreDbType
 | Newdate | `14` |  |
 | VarString | `15` |  |
 | Bit | `16` |  |
+| Geography | `242` |  |
+| GeographyPoint | `244` |  |
 | JSON | `245` |  |
 | NewDecimal | `246` |  |
 | Enum | `247` |  |
@@ -37,7 +39,6 @@ public enum SingleStoreDbType
 | Blob | `252` |  |
 | VarChar | `253` |  |
 | String | `254` |  |
-| Geometry | `255` |  |
 | UByte | `501` |  |
 | UInt16 | `502` |  |
 | UInt32 | `503` |  |

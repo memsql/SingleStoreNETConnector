@@ -263,8 +263,11 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	public SingleStoreDateTime GetSingleStoreDateTime(int ordinal) => GetResultSet().GetCurrentRow().GetSingleStoreDateTime(ordinal);
 	public SingleStoreDateTime GetSingleStoreDateTime(string name) => GetSingleStoreDateTime(GetOrdinal(name));
 
-	public SingleStoreGeometry GetSingleStoreGeometry(int ordinal) => GetResultSet().GetCurrentRow().GetSingleStoreGeometry(ordinal);
-	public SingleStoreGeometry GetSingleStoreGeometry(string name) => GetSingleStoreGeometry(GetOrdinal(name));
+	public SingleStoreGeography GetSingleStoreGeography(int ordinal) => GetResultSet().GetCurrentRow().GetSingleStoreGeography(ordinal);
+	public SingleStoreGeography GetSingleStoreGeography(string name) => GetSingleStoreGeography(GetOrdinal(name));
+
+	public SingleStoreGeographyPoint GetSingleStoreGeographyPoint(int ordinal) => GetResultSet().GetCurrentRow().GetSingleStoreGeographyPoint(ordinal);
+	public SingleStoreGeographyPoint GetSingleStoreGeographyPoint(string name) => GetSingleStoreGeographyPoint(GetOrdinal(name));
 
 	public SingleStoreDecimal GetSingleStoreDecimal(int ordinal) => GetResultSet().GetCurrentRow().GetSingleStoreDecimal(ordinal);
 	public SingleStoreDecimal GetSingleStoreDecimal(string name) => GetSingleStoreDecimal(GetOrdinal(name));
@@ -398,8 +401,10 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 			return (T) (object) GetDateTimeOffset(ordinal);
 		if (typeof(T) == typeof(Guid))
 			return (T) (object) GetGuid(ordinal);
-		if (typeof(T) == typeof(SingleStoreGeometry))
-			return (T) (object) GetSingleStoreGeometry(ordinal);
+		if (typeof(T) == typeof(SingleStoreGeography))
+			return (T) (object) GetSingleStoreGeography(ordinal);
+		if (typeof(T) == typeof(SingleStoreGeographyPoint))
+			return (T) (object) GetSingleStoreGeographyPoint(ordinal);
 		if (typeof(T) == typeof(Stream))
 			return (T) (object) GetStream(ordinal);
 		if (typeof(T) == typeof(TextReader) || typeof(T) == typeof(StringReader))

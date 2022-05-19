@@ -31,9 +31,9 @@ public class ParameterTests
 	[InlineData(new[] { DbType.Date }, new[] { SingleStoreDbType.Date, SingleStoreDbType.Newdate })]
 #if !BASELINE
 	[InlineData(new[] { DbType.Int32 }, new[] { SingleStoreDbType.Int32, SingleStoreDbType.Year })]
-	[InlineData(new[] { DbType.Binary }, new[] { SingleStoreDbType.Blob, SingleStoreDbType.Binary, SingleStoreDbType.TinyBlob, SingleStoreDbType.MediumBlob, SingleStoreDbType.LongBlob, SingleStoreDbType.Geometry })]
+	[InlineData(new[] { DbType.Binary }, new[] { SingleStoreDbType.Blob, SingleStoreDbType.Binary, SingleStoreDbType.TinyBlob, SingleStoreDbType.MediumBlob, SingleStoreDbType.LongBlob})]
 	[InlineData(new[] { DbType.String, DbType.AnsiString, DbType.Xml },
-		new[] { SingleStoreDbType.VarChar, SingleStoreDbType.VarString, SingleStoreDbType.Text, SingleStoreDbType.TinyText, SingleStoreDbType.MediumText, SingleStoreDbType.LongText, SingleStoreDbType.JSON, SingleStoreDbType.Enum, SingleStoreDbType.Set })]
+		new[] { SingleStoreDbType.VarChar, SingleStoreDbType.VarString, SingleStoreDbType.Text, SingleStoreDbType.TinyText, SingleStoreDbType.MediumText, SingleStoreDbType.LongText, SingleStoreDbType.JSON, SingleStoreDbType.Enum, SingleStoreDbType.Set, SingleStoreDbType.Geography, SingleStoreDbType.GeographyPoint })]
 	[InlineData(new[] { DbType.Decimal, DbType.Currency }, new[] { SingleStoreDbType.NewDecimal, SingleStoreDbType.Decimal })]
 #else
 	[InlineData(new[] { DbType.Decimal, DbType.Currency }, new[] { SingleStoreDbType.Decimal, SingleStoreDbType.NewDecimal })]
@@ -461,7 +461,7 @@ CREATE TABLE zeroByteEscaping (
 );
 INSERT INTO zeroByteEscaping VALUES(1, BINARY('\012\0\0'));
 ");
-             
+
                 using (var command = new SingleStoreCommand(@"CREATE TABLE zeroByteEscapingCTAS as SELECT * FROM zeroByteEscaping WHERE Content=@content", connection))
                 {
                         command.Parameters.AddWithValue("@content", new byte[] {0x00, 0x31, 0x32, 0x00, 0x00});

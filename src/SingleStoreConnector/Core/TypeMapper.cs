@@ -77,15 +77,10 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("LONGBLOB", typeBinary, SingleStoreDbType.LongBlob, binary: true, columnSize: uint.MaxValue, simpleDataTypeName: "BLOB"));
 
 		// spatial
-		AddColumnTypeMetadata(new("GEOMETRY", typeBinary, SingleStoreDbType.Geometry, binary: true));
-		AddColumnTypeMetadata(new("POINT", typeBinary, SingleStoreDbType.Geometry, binary: true));
-		AddColumnTypeMetadata(new("LINESTRING", typeBinary, SingleStoreDbType.Geometry, binary: true));
-		AddColumnTypeMetadata(new("POLYGON", typeBinary, SingleStoreDbType.Geometry, binary: true));
-		AddColumnTypeMetadata(new("MULTIPOINT", typeBinary, SingleStoreDbType.Geometry, binary: true));
-		AddColumnTypeMetadata(new("MULTILINESTRING", typeBinary, SingleStoreDbType.Geometry, binary: true));
-		AddColumnTypeMetadata(new("MULTIPOLYGON", typeBinary, SingleStoreDbType.Geometry, binary: true));
-		AddColumnTypeMetadata(new("GEOMETRYCOLLECTION", typeBinary, SingleStoreDbType.Geometry, binary: true));
-		AddColumnTypeMetadata(new("GEOMCOLLECTION", typeBinary, SingleStoreDbType.Geometry, binary: true));
+		AddColumnTypeMetadata(new("GEOGRAPHY", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
+		AddColumnTypeMetadata(new("POINT", typeString, SingleStoreDbType.GeographyPoint, columnSize: 48));
+		AddColumnTypeMetadata(new("LINESTRING", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
+		AddColumnTypeMetadata(new("POLYGON", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
 
 		// date/time
 #if NET6_0_OR_GREATER
@@ -179,7 +174,7 @@ internal sealed class TypeMapper
 		return columnTypeMetadata;
 	}
 
-	public static SingleStoreDbType ConvertToSingleStoreDbType(ColumnDefinitionPayload columnDefinition, bool treatTinyAsBoolean, SingleStoreGuidFormat guidFormat)
+	public static SingleStoreDbType ConvertToSingleStoreDbType(ColumnDefinitionPayload columnDefinition, bool treatTinyAsBoolean, bool treatChar48AsGeographyPoint, SingleStoreGuidFormat guidFormat)
 	{
 		var isUnsigned = (columnDefinition.ColumnFlags & ColumnFlags.Unsigned) != 0;
 		if ((columnDefinition.ColumnFlags & ColumnFlags.Enum) != 0)
@@ -206,10 +201,16 @@ internal sealed class TypeMapper
 			return SingleStoreDbType.Bit;
 
 		case ColumnType.String:
-			if (guidFormat == SingleStoreGuidFormat.Char36 && columnDefinition.ColumnLength / ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet) == 36)
+			var columnLen = columnDefinition.ColumnLength /
+			                ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet);
+			if (guidFormat == SingleStoreGuidFormat.Char36 && columnLen == 36)
 				return SingleStoreDbType.Guid;
-			if (guidFormat == SingleStoreGuidFormat.Char32 && columnDefinition.ColumnLength / ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet) == 32)
+			if (guidFormat == SingleStoreGuidFormat.Char32 && columnLen == 32)
 				return SingleStoreDbType.Guid;
+			if (treatChar48AsGeographyPoint && columnLen == 48)
+				return SingleStoreDbType.GeographyPoint;
+			if (columnLen == 1431655765)
+				return SingleStoreDbType.Geography;
 			goto case ColumnType.VarString;
 
 		case ColumnType.VarChar:
@@ -278,8 +279,11 @@ internal sealed class TypeMapper
 		case ColumnType.NewDecimal:
 			return SingleStoreDbType.NewDecimal;
 
-		case ColumnType.Geometry:
-			return SingleStoreDbType.Geometry;
+		case ColumnType.Geography:
+			return SingleStoreDbType.Geography;
+
+		case ColumnType.GeographyPoint:
+			return SingleStoreDbType.GeographyPoint;
 
 		case ColumnType.Null:
 			return SingleStoreDbType.Null;
@@ -324,7 +328,8 @@ internal sealed class TypeMapper
 			SingleStoreDbType.Double => ColumnType.Double,
 			SingleStoreDbType.Decimal => ColumnType.Decimal,
 			SingleStoreDbType.NewDecimal => ColumnType.NewDecimal,
-			SingleStoreDbType.Geometry => ColumnType.Geometry,
+			SingleStoreDbType.Geography => ColumnType.Geography,
+			SingleStoreDbType.GeographyPoint => ColumnType.GeographyPoint,
 			SingleStoreDbType.Null => ColumnType.Null,
 			_ => throw new NotImplementedException("ConvertToColumnTypeAndFlags for {0} is not implemented".FormatInvariant(dbType)),
 		};
