@@ -44,18 +44,30 @@ namespace SingleStoreConnector
 {
 	public sealed class SingleStoreDbColumn : System.Data.Common.DbColumn
 	{
-		internal SingleStoreDbColumn(int ordinal, ColumnDefinitionPayload column, bool allowZeroDateTime, SingleStoreDbType mySqlDbType)
+		internal SingleStoreDbColumn(int ordinal, ColumnDefinitionPayload column, bool allowZeroDateTime, SingleStoreDbType mySqlDbType, Version serverVersion)
 		{
 			var columnTypeMetadata = TypeMapper.Instance.GetColumnTypeMetadata(mySqlDbType);
 
 			var type = columnTypeMetadata.DbTypeMapping.ClrType;
 
-			if (mySqlDbType == SingleStoreDbType.JSON || mySqlDbType == SingleStoreDbType.LongBlob)
-				ColumnSize = int.MaxValue;
+			// starting from 7.8 SingleStore returns number of characters (not amount of bytes)
+			// for text types (e.g. Text, TinyText, MediumText, LongText)
+			// (see https://grizzly.internal.memcompute.com/D54237)
+			if (serverVersion >= new Version(7, 8, 0) &&
+			    mySqlDbType is SingleStoreDbType.LongText or SingleStoreDbType.MediumText or SingleStoreDbType.Text or SingleStoreDbType.TinyText)
+			{
+				// overflow may occur here for SingleStoreDbType.LongText
+				ColumnSize = (int)column.ColumnLength;
+			}
 			else
+			{
+				if (mySqlDbType == SingleStoreDbType.JSON || mySqlDbType == SingleStoreDbType.LongBlob)
+					ColumnSize = int.MaxValue;
+				else
 
-				// overflow may occur here
-				ColumnSize = (int) (column.ColumnLength / ProtocolUtility.GetBytesPerCharacter(column.CharacterSet));
+					// overflow may occur here
+					ColumnSize = (int) (column.ColumnLength / ProtocolUtility.GetBytesPerCharacter(column.CharacterSet));
+			}
 
 			// if overflow occured, i.e. when column.ColumnLength > int.MaxValue and char size was 1,
 			// we set ColumnSize to max
@@ -69,7 +81,6 @@ namespace SingleStoreConnector
 			BaseTableName = column.PhysicalTable;
 			ColumnName = column.Name;
 			ColumnOrdinal = ordinal;
-
 			DataType = (allowZeroDateTime && type == typeof(DateTime)) ? typeof(SingleStoreDateTime) : type;
 			DataTypeName = columnTypeMetadata.SimpleDataTypeName;
 			if (mySqlDbType == SingleStoreDbType.String)

@@ -345,7 +345,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		var hasNoSchema = columnDefinitions is null || m_resultSet!.ContainsCommandParameters;
 		return hasNoSchema ? new List<DbColumn>().AsReadOnly() :
 			columnDefinitions!
-				.Select((c, n) => (DbColumn) new SingleStoreDbColumn(n, c, Connection!.AllowZeroDateTime, GetResultSet().ColumnTypes![n]))
+				.Select((c, n) => (DbColumn) new SingleStoreDbColumn(n, c, Connection!.AllowZeroDateTime, GetResultSet().ColumnTypes![n], Connection.Session.S2ServerVersion.Version))
 				.ToList().AsReadOnly();
 	}
 

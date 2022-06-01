@@ -815,7 +815,7 @@ create table bulk_load_data_table(a int, b text);", connection))
 		Assert.Equal(3, result.RowsInserted);
 		Assert.Empty(result.Warnings);
 
-		using var reader = connection.ExecuteReader(@"select * from bulk_copy_column_mapping;");
+		using var reader = connection.ExecuteReader(@"select * from bulk_copy_column_mapping order by intvalue;");
 		Assert.True(reader.Read());
 		Assert.Equal(101, reader.GetValue(0));
 		Assert.Equal("A", reader.GetValue(1));
