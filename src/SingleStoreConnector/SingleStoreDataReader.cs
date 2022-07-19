@@ -202,8 +202,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	}
 
 	public override bool IsClosed => Command is null;
-	public override int RecordsAffected => GetResultSet().RecordsAffected is ulong recordsAffected ? checked((int) recordsAffected) : -1;
-
+	public override int RecordsAffected => RealRecordsAffected is ulong recordsAffected ? checked((int) recordsAffected) : -1;
 	public override int GetOrdinal(string name) => GetResultSet().GetOrdinal(name);
 
 	public override bool GetBoolean(int ordinal) => GetResultSet().GetCurrentRow().GetBoolean(ordinal);
@@ -447,6 +446,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	internal Activity? Activity { get; }
 	internal ISingleStoreCommand? Command { get; private set; }
 	internal SingleStoreConnection? Connection => Command?.Connection;
+	internal ulong? RealRecordsAffected { get; set; }
 	internal ServerSession? Session => Command?.Connection!.Session;
 
 	internal static async Task<SingleStoreDataReader> CreateAsync(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, ISingleStoreCommand command, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
