@@ -62,6 +62,10 @@ jobs:
           command: python.exe .circleci\fill_test_config.py
       - run-tests-win:
           target_framework: net6.0
+      - run:
+          name: Terminate test cluster
+          when: always
+          command: python.exe .circleci\s2ms_cluster.py terminate
 
   test-ubuntu:
     parameters:

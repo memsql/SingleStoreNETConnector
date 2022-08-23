@@ -58,8 +58,9 @@ def request_with_retry(request_method, url, data=None, headers=HEADERS):
 
 
 def create_cluster() -> str:
-    cl_id = request_with_retry("POST", BASE_URL + CLUSTERS_PATH, data=json.dumps(PAYLOAD_FOR_CREATE))
-    return cl_id.json()["clusterID"]
+    cl_id_response = request_with_retry("POST", BASE_URL + CLUSTERS_PATH, data=json.dumps(PAYLOAD_FOR_CREATE))
+    cl_id_response.raise_for_status()
+    return cl_id_response.json()["clusterID"]
 
 
 def get_cluster_info(cluster_id: str) -> Dict:
