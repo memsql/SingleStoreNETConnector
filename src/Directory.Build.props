@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
-    <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
     <AssemblyOriginatorKeyFile>..\..\SingleStoreConnector.snk</AssemblyOriginatorKeyFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <PackageReleaseNotes>https://github.com/memsql/SingleStoreNETConnector/blob/master/docs/VersionHistory.md</PackageReleaseNotes>
