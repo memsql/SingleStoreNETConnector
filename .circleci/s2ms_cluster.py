@@ -106,6 +106,7 @@ def check_connection(cluster_id: str, create_db: Optional[str] = None):
         if create_db is not None:
             cur.execute(f"DROP DATABASE IF EXISTS {create_db}")
             cur.execute(f"CREATE DATABASE {create_db}")
+            cur.execute("SET GLOBAL data_conversion_compatibility_level = '6.0'")
     finally:
         cur.close()
         conn.close()
