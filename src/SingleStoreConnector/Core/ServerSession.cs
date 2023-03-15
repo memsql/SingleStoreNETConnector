@@ -1035,7 +1035,11 @@ internal sealed class ServerSession
 						{
 							if (ioBehavior == IOBehavior.Asynchronous)
 							{
+#if NET5_0_OR_GREATER
+								await tcpClient.ConnectAsync(ipAddress, cs.Port, cancellationToken).ConfigureAwait(false);
+#else
 								await tcpClient.ConnectAsync(ipAddress, cs.Port).ConfigureAwait(false);
+#endif
 							}
 							else
 							{
@@ -1056,7 +1060,7 @@ internal sealed class ServerSession
 								}
 							}
 						}
-						catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
+						catch (Exception ex) when ((ex is ObjectDisposedException || ex is OperationCanceledException) && cancellationToken.IsCancellationRequested)
 						{
 							SafeDispose(ref tcpClient);
 							Log.Info("Session{0} connect timeout expired connecting to IpAddress {1} for HostName '{2}'", m_logArguments[0], ipAddress, hostName);
