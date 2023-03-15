@@ -1060,7 +1060,7 @@ internal sealed class ServerSession
 								}
 							}
 						}
-						catch (Exception ex) when ((ex is ObjectDisposedException || ex is OperationCanceledException) && cancellationToken.IsCancellationRequested)
+						catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
 						{
 							SafeDispose(ref tcpClient);
 							Log.Info("Session{0} connect timeout expired connecting to IpAddress {1} for HostName '{2}'", m_logArguments[0], ipAddress, hostName);
