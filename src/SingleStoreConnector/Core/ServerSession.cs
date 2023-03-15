@@ -1011,7 +1011,11 @@ internal sealed class ServerSession
 			try
 			{
 				ipAddresses = ioBehavior == IOBehavior.Asynchronous
+#if NET6_0_OR_GREATER
+					? await Dns.GetHostAddressesAsync(hostName, cancellationToken).ConfigureAwait(false)
+#else
 					? await Dns.GetHostAddressesAsync(hostName).ConfigureAwait(false)
+#endif
 					: Dns.GetHostAddresses(hostName);
 			}
 			catch (SocketException)
