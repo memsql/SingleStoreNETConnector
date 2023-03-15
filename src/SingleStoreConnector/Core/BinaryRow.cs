@@ -100,9 +100,9 @@ internal sealed class BinaryRow : Row
 			                ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet);
 
 			if (Connection.GuidFormat == SingleStoreGuidFormat.Char36 && columnLen == 36)
-				return Utf8Parser.TryParse(data, out Guid guid, out int guid36BytesConsumed, 'D') && guid36BytesConsumed == 36 ? guid : throw new FormatException();
+				return Utf8Parser.TryParse(data, out Guid guid, out int guid36BytesConsumed, 'D') && guid36BytesConsumed == 36 ? guid : throw new FormatException("Could not parse CHAR(36) value as Guid: {0}".FormatInvariant(Encoding.UTF8.GetString(data)));
 			if (Connection.GuidFormat == SingleStoreGuidFormat.Char32 && columnLen == 32)
-				return Utf8Parser.TryParse(data, out Guid guid, out int guid32BytesConsumed, 'N') && guid32BytesConsumed == 32 ? guid : throw new FormatException();
+				return Utf8Parser.TryParse(data, out Guid guid, out int guid32BytesConsumed, 'N') && guid32BytesConsumed == 32 ? guid : throw new FormatException("Could not parse CHAR(32) value as Guid: {0}".FormatInvariant(Encoding.UTF8.GetString(data)));
 			if (Connection.TreatChar48AsGeographyPoint && columnLen == 48)
 				goto case ColumnType.GeographyPoint;
 			if (columnLen == 1431655765)

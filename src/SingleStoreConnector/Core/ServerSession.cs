@@ -323,7 +323,7 @@ internal sealed class ServerSession
 			// In order to handle this case, we issue a dummy query that will consume the pending cancellation.
 			// See https://bugs.mysql.com/bug.php?id=45679
 			Log.Debug("Session{0} sending 'SELECT SLEEP(0) INTO @dummy' command to clear pending cancellation", m_logArguments);
-			var payload = QueryPayload.Create(SupportsQueryAttributes, "SELECT SLEEP(0) INTO @dummy;");
+			var payload = SupportsQueryAttributes ? s_sleepWithAttributesPayload : s_sleepNoAttributesPayload;
 #pragma warning disable CA2012 // Safe because method completes synchronously
 			SendAsync(payload, IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 			payload = ReceiveReplyAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
@@ -1621,7 +1621,8 @@ internal sealed class ServerSession
 		Log.Debug("Session{0} is getting CONNECTION_ID(), VERSION(), S2Version from server", m_logArguments);
 		try
 		{
-			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version;"), ioBehavior, cancellationToken).ConfigureAwait(false);
+			var payload = SupportsQueryAttributes ? s_selectConnectionIdVersionWithAttributesPayload : s_selectConnectionIdVersionNoAttributesPayload;
+			await SendAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// column count: 3
 			await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -1631,7 +1632,6 @@ internal sealed class ServerSession
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 
-			PayloadData payload;
 			if (!SupportsDeprecateEof)
 			{
 				payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
@@ -1916,6 +1916,10 @@ internal sealed class ServerSession
 	static readonly PayloadData s_setNamesUtf8mb4NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8mb4;");
 	static readonly PayloadData s_setNamesUtf8WithAttributesPayload = QueryPayload.Create(true, "SET NAMES utf8;");
 	static readonly PayloadData s_setNamesUtf8mb4WithAttributesPayload = QueryPayload.Create(true, "SET NAMES utf8mb4;");
+	static readonly PayloadData s_sleepNoAttributesPayload = QueryPayload.Create(false, "SELECT SLEEP(0) INTO @dummy;");
+	static readonly PayloadData s_sleepWithAttributesPayload = QueryPayload.Create(true, "SELECT SLEEP(0) INTO @dummy;");
+	static readonly PayloadData s_selectConnectionIdVersionNoAttributesPayload = QueryPayload.Create(false, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version;");
+	static readonly PayloadData s_selectConnectionIdVersionWithAttributesPayload = QueryPayload.Create(true, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version;");
 	static int s_lastId;
 
 	readonly object m_lock;
