@@ -18,4 +18,6 @@ public sealed class SingleStoreInfoMessageEventArgs : EventArgs
 /// </summary>
 /// <param name="sender">The sender. This is the associated <see cref="SingleStoreConnection"/>.</param>
 /// <param name="args">The <see cref="SingleStoreInfoMessageEventArgs"/> containing the errors.</param>
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 public delegate void SingleStoreInfoMessageEventHandler(object sender, SingleStoreInfoMessageEventArgs args);
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix

@@ -15,10 +15,12 @@ internal sealed class CachedParameter
 			Direction = ParameterDirection.Output;
 		Name = name;
 		SingleStoreDbType = TypeMapper.Instance.GetSingleStoreDbType(dataType, unsigned, length);
+		Length = length;
 	}
 
 	public int Position { get; }
 	public ParameterDirection Direction { get; }
 	public string Name { get; }
 	public SingleStoreDbType SingleStoreDbType { get; }
+	public int Length { get; }
 }

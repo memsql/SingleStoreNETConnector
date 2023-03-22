@@ -12,6 +12,10 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
+#if !NET6_0_OR_GREATER
+#pragma warning disable CA1822 // Mark members as static
+#endif
+
 /// <summary>
 /// <see cref="SingleStoreConnection"/> represents a connection to a SingleStore database.
 /// </summary>
@@ -460,7 +464,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	public async Task ResetConnectionAsync(CancellationToken cancellationToken = default)
 #endif
 	{
-		await Session.ResetConnectionAsync(AsyncIOBehavior, cancellationToken, Database);
+		await Session.ResetConnectionAsync(AsyncIOBehavior, Database, cancellationToken);
 	}
 
 	[AllowNull]

@@ -766,7 +766,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else if (Value is Enum)
 		{
-			writer.Write(Convert.ToInt32(Value));
+			writer.Write(Convert.ToInt32(Value, CultureInfo.InvariantCulture));
 		}
 		else
 		{

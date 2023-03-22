@@ -37,6 +37,7 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 		{
 			var parameter = command.Parameters.Add("@" + cachedParameter.Name, cachedParameter.SingleStoreDbType);
 			parameter.Direction = cachedParameter.Direction;
+			parameter.Size = cachedParameter.Length;
 		}
 	}
 

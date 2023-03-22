@@ -1,5 +1,7 @@
 namespace SingleStoreConnector;
 
+#pragma warning disable CA1720 // Identifier contains type name
+
 public enum SingleStoreDbType
 {
 	Bool = -1,

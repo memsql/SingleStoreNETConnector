@@ -20,4 +20,6 @@ public sealed class SingleStoreRowsCopiedEventArgs : EventArgs
 /// <summary>
 /// Represents the method that handles the <see cref="SingleStoreBulkCopy.SingleStoreRowsCopied"/> event of a <see cref="SingleStoreBulkCopy"/>.
 /// </summary>
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 public delegate void SingleStoreRowsCopiedEventHandler(object sender, SingleStoreRowsCopiedEventArgs e);
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix

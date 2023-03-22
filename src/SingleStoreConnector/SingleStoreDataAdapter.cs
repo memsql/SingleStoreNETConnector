@@ -216,7 +216,11 @@ public sealed class SingleStoreDataAdapter : DbDataAdapter
 			ParameterIndexes.Add(parameterIndex);
 
 			// overwrite the parameter name with spaces
+#if NETCOREAPP3_0_OR_GREATER
+			CommandText = string.Concat(CommandText.AsSpan(0, index), new string(' ', length), CommandText.AsSpan(index + length));
+#else
 			CommandText = CommandText.Substring(0, index) + new string(' ', length) + CommandText.Substring(index + length);
+#endif
 		}
 
 		protected override void OnPositionalParameter(int index)
@@ -224,7 +228,11 @@ public sealed class SingleStoreDataAdapter : DbDataAdapter
 			ParameterIndexes.Add(ParameterIndexes.Count);
 
 			// overwrite the parameter placeholder with a space
+#if NETCOREAPP3_0_OR_GREATER
+			CommandText = string.Concat(CommandText.AsSpan(0, index), " ", CommandText.AsSpan(index + 1));
+#else
 			CommandText = CommandText.Substring(0, index) + " " + CommandText.Substring(index + 1);
+#endif
 		}
 
 		readonly SingleStoreParameterCollection? m_parameters;
@@ -233,9 +241,11 @@ public sealed class SingleStoreDataAdapter : DbDataAdapter
 	SingleStoreBatch? m_batch;
 }
 
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 public delegate void SingleStoreRowUpdatingEventHandler(object sender, SingleStoreRowUpdatingEventArgs e);
 
 public delegate void SingleStoreRowUpdatedEventHandler(object sender, SingleStoreRowUpdatedEventArgs e);
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix
 
 public sealed class SingleStoreRowUpdatingEventArgs : RowUpdatingEventArgs
 {

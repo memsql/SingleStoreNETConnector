@@ -20,6 +20,8 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector.Core;
 
+#pragma warning disable CA1001 // Types that own disposable fields should be disposable
+
 internal sealed class ServerSession
 {
 	public ServerSession()
@@ -103,7 +105,7 @@ internal sealed class ServerSession
 		{
 			if (ActiveCommandId != command.CommandId)
 				return false;
-			VerifyState(State.Querying, State.CancelingQuery, State.Failed);
+			VerifyState(State.Querying, State.CancelingQuery, State.ClearingPendingCancellation, State.Closing, State.Closed, State.Failed);
 			if (m_state != State.Querying)
 				return false;
 			if (command.CancelAttemptCount++ >= 10)
@@ -423,7 +425,9 @@ internal sealed class ServerSession
 			InitialHandshakePayload initialHandshake;
 			do
 			{
-				shouldRetrySsl = (sslProtocols == SslProtocols.None || (sslProtocols & SslProtocols.Tls12) == SslProtocols.Tls12) && Utility.IsWindows();
+				bool tls11or10Supported = (sslProtocols & (SslProtocols.Tls | SslProtocols.Tls11)) != SslProtocols.None;
+				bool tls12Supported = (sslProtocols & SslProtocols.Tls12) == SslProtocols.Tls12;
+				shouldRetrySsl = (sslProtocols == SslProtocols.None || (tls12Supported && tls11or10Supported)) && Utility.IsWindows();
 
 				var connected = false;
 				if (cs.ConnectionProtocol == SingleStoreConnectionProtocol.Sockets)
@@ -508,7 +512,7 @@ internal sealed class ServerSession
 					{
 						// negotiating TLS 1.2 with a yaSSL-based server throws an exception on Windows, see comment at top of method
 						Log.Debug(ex, "Session{0} failed negotiating TLS; falling back to TLS 1.1", m_logArguments);
-						sslProtocols = SslProtocols.Tls | SslProtocols.Tls11;
+						sslProtocols = sslProtocols == SslProtocols.None ? SslProtocols.Tls | SslProtocols.Tls11 : (SslProtocols.Tls | SslProtocols.Tls11) & sslProtocols;
 						if (Pool is not null)
 							Pool.SslProtocols = sslProtocols;
 					}
@@ -568,7 +572,7 @@ internal sealed class ServerSession
 		return statusInfo;
 	}
 
-	public async Task ResetConnectionAsync(IOBehavior ioBehavior, CancellationToken cancellationToken = default, string targetDatabase = "")
+	public async Task ResetConnectionAsync(IOBehavior ioBehavior, string targetDatabase = "", CancellationToken cancellationToken = default)
 	{
 		if (S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) < 0)
 			throw new InvalidOperationException("Resetting connection is not supported in SingleStore " + S2ServerVersion.OriginalString);
@@ -580,7 +584,7 @@ internal sealed class ServerSession
 
 		if (targetDatabase.Length > 0)
 		{
-			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, string.Format("USE {0}", targetDatabase)), ioBehavior, cancellationToken).ConfigureAwait(false);
+			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, "USE {0}".FormatInvariant(targetDatabase)), ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
 		}
@@ -602,7 +606,7 @@ internal sealed class ServerSession
 				m_logArguments[1] = S2ServerVersion.OriginalString;
 
 				Log.Trace("Session{0} ServerVersion={1} supports reset connection; sending reset connection request", m_logArguments);
-				await ResetConnectionAsync(ioBehavior, cancellationToken, connection.Database);
+				await ResetConnectionAsync(ioBehavior, connection.Database, cancellationToken);
 			}
 			else
 			{
@@ -1011,7 +1015,11 @@ internal sealed class ServerSession
 			try
 			{
 				ipAddresses = ioBehavior == IOBehavior.Asynchronous
+#if NET6_0_OR_GREATER
+					? await Dns.GetHostAddressesAsync(hostName, cancellationToken).ConfigureAwait(false)
+#else
 					? await Dns.GetHostAddressesAsync(hostName).ConfigureAwait(false)
+#endif
 					: Dns.GetHostAddresses(hostName);
 			}
 			catch (SocketException)
@@ -1647,10 +1655,14 @@ internal sealed class ServerSession
 				connectionId = (length != -1 && Utf8Parser.TryParse(reader.ReadByteString(length), out int id, out _)) ? id : default(int?);
 
 				length = reader.ReadLengthEncodedIntegerOrNull();
+#pragma warning disable CA1825 // Avoid zero-length array allocations
 				serverVersion = length != -1 ? reader.ReadByteString(length).ToArray() : new byte[0];
+#pragma warning restore CA1825 // Avoid zero-length array allocations
 
 				length = reader.ReadLengthEncodedIntegerOrNull();
+#pragma warning disable CA1825 // Avoid zero-length array allocations
 				s2Version = length != -1 ? reader.ReadByteString(length).ToArray() : new byte[0];
+#pragma warning restore CA1825 // Avoid zero-length array allocations
 			}
 			ReadRow(payload.Span, out var connectionId, out var serverVersion, out var s2Version);
 
@@ -1746,12 +1758,13 @@ internal sealed class ServerSession
 		}
 	}
 
-	private void VerifyState(State state1, State state2, State state3)
+	private void VerifyState(State state1, State state2, State state3, State state4, State state5, State state6)
 	{
-		if (m_state != state1 && m_state != state2 && m_state != state3)
+		if (m_state != state1 && m_state != state2 && m_state != state3 && m_state != state4 && m_state != state5 && m_state != state6)
 		{
-			Log.Error("Session{0} should have SessionStateExpected {1} or SessionStateExpected2 {2} or SessionStateExpected3 {3} but was SessionState {4}", m_logArguments[0], state1, state2, state3, m_state);
-			throw new InvalidOperationException("Expected state to be ({0}|{1}|{2}) but was {3}.".FormatInvariant(state1, state2, state3, m_state));
+			Log.Error("Session{0} should have SessionStateExpected {1} or SessionStateExpected2 {2} or SessionStateExpected3 {3} or SessionStateExpected4 {4} or SessionStateExpected5 {5} or SessionStateExpected6 {6} but was SessionState {7}",
+				m_logArguments[0], state1, state2, state3, state4, state5, state6, m_state);
+			throw new InvalidOperationException("Expected state to be ({0}|{1}|{2}|{3}|{4}|{5}) but was {6}.".FormatInvariant(state1, state2, state3, state4, state5, state6, m_state));
 		}
 	}
 

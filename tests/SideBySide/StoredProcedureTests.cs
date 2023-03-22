@@ -533,6 +533,75 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		}
 	}
 
+	[Theory]
+	[InlineData("bit(1)", 1)]
+	[InlineData("bit(10)", 10)]
+#if !BASELINE
+	[InlineData("bool", 1)]
+	[InlineData("tinyint(1)", 1)]
+#endif
+	[InlineData("char(30)", 30)]
+	[InlineData("mediumtext", 0)]
+	[InlineData("varchar(50)", 50)]
+	// These return nonzero sizes for some versions of MySQL Server 8.0
+	// [InlineData("bit", 0)]
+	// [InlineData("tinyint", 0)]
+	// [InlineData("bigint", 0)]
+	// [InlineData("bigint unsigned", 0)]
+	public void DeriveParametersParameterSize(string parameterType, int expectedSize)
+	{
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.Pooling = false;
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		connection.Open();
+
+		using (var cmd = new SingleStoreCommand($"create or replace procedure parameter_size(param1 {parameterType}) as begin end;", connection))
+			cmd.ExecuteNonQuery();
+
+		using (var cmd = new SingleStoreCommand("parameter_size", connection))
+		{
+			cmd.CommandType = CommandType.StoredProcedure;
+			SingleStoreCommandBuilder.DeriveParameters(cmd);
+			var parameter = (SingleStoreParameter) Assert.Single(cmd.Parameters);
+			Assert.Equal(expectedSize, parameter.Size);
+		}
+	}
+
+	[Theory]
+	[InlineData("bit", SingleStoreDbType.Bit)]
+	[InlineData("bit(1)", SingleStoreDbType.Bit)]
+#if BASELINE
+	[InlineData("bool", SingleStoreDbType.Byte)]
+	[InlineData("tinyint(1)", MySqlDbType.Byte)]
+#else
+	[InlineData("bool", SingleStoreDbType.Bool)]
+	[InlineData("tinyint(1)", SingleStoreDbType.Bool)]
+#endif
+	[InlineData("tinyint", SingleStoreDbType.Byte)]
+	[InlineData("bigint", SingleStoreDbType.Int64)]
+	[InlineData("bigint unsigned", SingleStoreDbType.UInt64)]
+	[InlineData("char(30)", SingleStoreDbType.String)]
+	[InlineData("mediumtext", SingleStoreDbType.MediumText)]
+	[InlineData("varchar(50)", SingleStoreDbType.VarChar)]
+	public void DeriveParametersParameterType(string parameterType, SingleStoreDbType expectedType)
+	{
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.Pooling = false;
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		connection.Open();
+
+		using (var cmd = new SingleStoreCommand($"create or replace procedure parameter_size(param1 {parameterType}) as begin end;", connection))
+			cmd.ExecuteNonQuery();
+
+		using (var cmd = new SingleStoreCommand("parameter_size", connection))
+		{
+			cmd.CommandType = CommandType.StoredProcedure;
+			SingleStoreCommandBuilder.DeriveParameters(cmd);
+			var parameter = (SingleStoreParameter) Assert.Single(cmd.Parameters);
+			Assert.Equal(expectedType, parameter.SingleStoreDbType);
+		}
+	}
+
 	[SkippableFact(ServerFeatures.Json, Baseline = "https://bugs.mysql.com/bug.php?id=89335")]
 	public void DeriveParametersSetJson()
 	{

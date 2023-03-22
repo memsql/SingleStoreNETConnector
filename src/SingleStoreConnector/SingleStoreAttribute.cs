@@ -4,7 +4,9 @@ namespace SingleStoreConnector
 	/// <see cref="SingleStoreAttribute"/> represents an attribute that can be sent with a SingleStore query.
 	/// </summary>
 	/// <remarks>See <a href="https://dev.mysql.com/doc/refman/8.0/en/query-attributes.html">Query Attributes</a> for information on using query attributes.</remarks>
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 	public sealed class SingleStoreAttribute
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix
 	{
 		/// <summary>
 		/// Initializes a new <see cref="SingleStoreAttribute"/>.

@@ -2,6 +2,10 @@ using SingleStoreConnector.Core;
 
 namespace SingleStoreConnector;
 
+#if !NET6_0_OR_GREATER
+#pragma warning disable CA1822 // Mark members as static
+#endif
+
 public sealed class SingleStoreBatchCommand :
 #if NET6_0_OR_GREATER
 	DbBatchCommand,

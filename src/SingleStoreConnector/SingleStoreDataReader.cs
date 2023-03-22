@@ -8,6 +8,8 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
+#pragma warning disable CA1010 // Generic interface should also be implemented
+
 #if NET45 || NET461
 public sealed class SingleStoreDataReader : DbDataReader
 #else

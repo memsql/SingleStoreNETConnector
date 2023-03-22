@@ -7,6 +7,8 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
+#pragma warning disable CA1010 // Generic interface should also be implemented
+
 /// <summary>
 /// <see cref="SingleStoreConnectionStringBuilder"/> allows you to construct a SingleStore connection string by setting properties on the builder then reading the <see cref="DbConnectionStringBuilder.ConnectionString"/> property.
 /// </summary>
