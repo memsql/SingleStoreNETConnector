@@ -15,5 +15,6 @@ internal enum StatementPreparerOptions
 	GuidFormatLittleEndianBinary16 = 0xA0,
 	GuidFormatMask = 0xE0,
 	NoBackslashEscapes = 0x100,
-	TreatChar48AsGeographyPoint = 0x200,
+	AppendSemicolon = 0x200,
+	TreatChar48AsGeographyPoint = 0x300,
 }

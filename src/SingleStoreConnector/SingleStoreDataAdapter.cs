@@ -235,10 +235,10 @@ public sealed class SingleStoreDataAdapter : DbDataAdapter
 #endif
 		}
 
-		readonly SingleStoreParameterCollection? m_parameters;
+		private readonly SingleStoreParameterCollection? m_parameters;
 	}
 
-	SingleStoreBatch? m_batch;
+	private SingleStoreBatch? m_batch;
 }
 
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix

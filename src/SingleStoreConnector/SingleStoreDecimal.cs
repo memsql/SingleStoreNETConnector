@@ -4,6 +4,8 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
+#pragma warning disable CA1815 // Override equals and operator equals on value types
+
 /// <summary>
 /// <see cref="SingleStoreDecimal"/> represents a SingleStore <c>DECIMAL</c> value that is too large to fit in a .NET <see cref="decimal"/>.
 /// </summary>

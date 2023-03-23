@@ -42,14 +42,14 @@ internal static class CommandExecutor
 
 			var writer = new ByteBufferWriter();
 			//// cachedProcedures will be non-null if there is a stored procedure, which is also the only time it will be read
-			if (!payloadCreator.WriteQueryCommand(ref commandListPosition, cachedProcedures!, writer))
+			if (!payloadCreator.WriteQueryCommand(ref commandListPosition, cachedProcedures!, writer, false))
 				throw new InvalidOperationException("ICommandPayloadCreator failed to write query payload");
 
 			cancellationToken.ThrowIfCancellationRequested();
 
 			using var payload = writer.ToPayloadData();
 			connection.Session.StartQuerying(command.CancellableCommand);
-			command.SetLastInsertedId(-1);
+			command.SetLastInsertedId(0);
 			try
 			{
 				await connection.Session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
@@ -76,5 +76,5 @@ internal static class CommandExecutor
 		}
 	}
 
-	static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(CommandExecutor));
+	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(CommandExecutor));
 }

@@ -42,7 +42,7 @@ create table insert_ai(rowid integer not null primary key auto_increment);");
 			using var command = new SingleStoreCommand("INSERT INTO insert_ai(rowid) VALUES (@rowid);", m_database.Connection);
 			command.Parameters.AddWithValue("@rowid", -1);
 			Assert.Equal(1, await command.ExecuteNonQueryAsync());
-			Assert.Equal(-1L, command.LastInsertedId);
+			Assert.Equal(0, command.LastInsertedId);
 		}
 		finally
 		{
@@ -147,6 +147,27 @@ INSERT INTO insert_ai (text) VALUES ('test');
 UNLOCK TABLES;", m_database.Connection);
 			Assert.Equal(1, await command.ExecuteNonQueryAsync());
 			Assert.Equal(1L, command.LastInsertedId);
+		}
+		finally
+		{
+			m_database.Connection.Close();
+		}
+	}
+
+	[Fact]
+	public async Task LastInsertedIdInsertIgnore()
+	{
+		await m_database.Connection.ExecuteAsync(@"drop table if exists insert_ai;
+create table insert_ai(rowid integer not null primary key auto_increment, text varchar(100) not null);
+");
+		try
+		{
+			await m_database.Connection.OpenAsync();
+			using var command = new SingleStoreCommand(@"INSERT IGNORE INTO insert_ai (rowid, text) VALUES (2, 'test');", m_database.Connection);
+			Assert.Equal(1, await command.ExecuteNonQueryAsync());
+			Assert.Equal(2L, command.LastInsertedId);
+			Assert.Equal(0, await command.ExecuteNonQueryAsync());
+			Assert.Equal(0L, command.LastInsertedId);
 		}
 		finally
 		{

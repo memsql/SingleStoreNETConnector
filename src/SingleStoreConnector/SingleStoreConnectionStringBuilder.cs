@@ -852,9 +852,13 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 		{
 			var csb = new SingleStoreConnectionStringBuilder(connectionString);
 			foreach (string? key in Keys)
+			{
 				foreach (var passwordKey in SingleStoreConnectionStringOption.Password.Keys)
+				{
 					if (string.Equals(key, passwordKey, StringComparison.OrdinalIgnoreCase))
 						csb.Remove(key!);
+				}
+			}
 			m_cachedConnectionStringWithoutPassword = csb.ConnectionString;
 			m_cachedConnectionString = connectionString;
 		}
@@ -879,8 +883,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 			propertyDescriptors.Remove(property.DisplayName);
 	}
 
-	string? m_cachedConnectionString;
-	string? m_cachedConnectionStringWithoutPassword;
+	private string? m_cachedConnectionString;
+	private string? m_cachedConnectionStringWithoutPassword;
 }
 
 internal abstract class SingleStoreConnectionStringOption
@@ -972,6 +976,8 @@ internal abstract class SingleStoreConnectionStringOption
 			s_options.Add(key, option);
 	}
 
+#pragma warning disable CA1065 // Do not raise exceptions in unexpected locations
+#pragma warning disable CA1810 // Initialize reference type static fields inline
 	static SingleStoreConnectionStringOption()
 	{
 		s_options = new(StringComparer.OrdinalIgnoreCase);
@@ -1245,10 +1251,10 @@ internal abstract class SingleStoreConnectionStringOption
 			defaultValue: true));
 	}
 
-	static readonly Regex s_tlsVersions = new(@"\s*TLS( ?v?(1|1\.?0|1\.?1|1\.?2|1\.?3))?$", RegexOptions.IgnoreCase);
-	static readonly Dictionary<string, SingleStoreConnectionStringOption> s_options;
+	private static readonly Regex s_tlsVersions = new(@"\s*TLS( ?v?(1|1\.?0|1\.?1|1\.?2|1\.?3))?$", RegexOptions.IgnoreCase);
+	private static readonly Dictionary<string, SingleStoreConnectionStringOption> s_options;
 
-	readonly IReadOnlyList<string> m_keys;
+	private readonly IReadOnlyList<string> m_keys;
 }
 
 internal sealed class SingleStoreConnectionStringValueOption<T> : SingleStoreConnectionStringOption
@@ -1307,8 +1313,8 @@ internal sealed class SingleStoreConnectionStringValueOption<T> : SingleStoreCon
 		}
 	}
 
-	readonly T m_defaultValue;
-	readonly Func<T, T>? m_coerce;
+	private readonly T m_defaultValue;
+	private readonly Func<T, T>? m_coerce;
 }
 
 internal sealed class SingleStoreConnectionStringReferenceOption<T> : SingleStoreConnectionStringOption
@@ -1334,6 +1340,6 @@ internal sealed class SingleStoreConnectionStringReferenceOption<T> : SingleStor
 	private static T ChangeType(object objectValue) =>
 		(T) Convert.ChangeType(objectValue, typeof(T), CultureInfo.InvariantCulture);
 
-	readonly T m_defaultValue;
-	readonly Func<T?, T>? m_coerce;
+	private readonly T m_defaultValue;
+	private readonly Func<T?, T>? m_coerce;
 }

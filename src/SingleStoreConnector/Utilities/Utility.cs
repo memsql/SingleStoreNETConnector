@@ -56,9 +56,11 @@ internal static class Utility
 	public static unsafe int GetBytes(this Encoding encoding, ReadOnlySpan<char> chars, Span<byte> bytes)
 	{
 		fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
-		fixed (byte* bytesPtr = &MemoryMarshal.GetReference(bytes))
 		{
-			return encoding.GetBytes(charsPtr, chars.Length, bytesPtr, bytes.Length);
+			fixed (byte* bytesPtr = &MemoryMarshal.GetReference(bytes))
+			{
+				return encoding.GetBytes(charsPtr, chars.Length, bytesPtr, bytes.Length);
+			}
 		}
 	}
 #endif
@@ -67,11 +69,13 @@ internal static class Utility
 	public static unsafe void Convert(this Encoder encoder, ReadOnlySpan<char> chars, Span<byte> bytes, bool flush, out int charsUsed, out int bytesUsed, out bool completed)
 	{
 		fixed (char* charsPtr = &MemoryMarshal.GetReference(chars))
-		fixed (byte* bytesPtr = &MemoryMarshal.GetReference(bytes))
 		{
-			// MemoryMarshal.GetNonNullPinnableReference is internal, so fake it by using an invalid but non-null pointer; this
-			// prevents Convert from throwing an exception when the output buffer is empty
-			encoder.Convert(charsPtr, chars.Length, bytesPtr is null ? (byte*) 1 : bytesPtr, bytes.Length, flush, out charsUsed, out bytesUsed, out completed);
+			fixed (byte* bytesPtr = &MemoryMarshal.GetReference(bytes))
+			{
+				// MemoryMarshal.GetNonNullPinnableReference is internal, so fake it by using an invalid but non-null pointer; this
+				// prevents Convert from throwing an exception when the output buffer is empty
+				encoder.Convert(charsPtr, chars.Length, bytesPtr is null ? (byte*) 1 : bytesPtr, bytes.Length, flush, out charsUsed, out bytesUsed, out completed);
+			}
 		}
 	}
 
@@ -480,7 +484,7 @@ internal static class Utility
 			return s_completedTask;
 		}
 	}
-	static Task? s_completedTask;
+	private static Task? s_completedTask;
 
 	public static Task TaskFromException(Exception exception) => TaskFromException<object>(exception);
 	public static Task<T> TaskFromException<T>(Exception exception)
@@ -642,7 +646,7 @@ internal static class Utility
 		return s_defaultSslProtocols.Value;
 	}
 
-	static SslProtocols? s_defaultSslProtocols;
+	private static SslProtocols? s_defaultSslProtocols;
 #else
 	public static SslProtocols GetDefaultSslProtocols() => SslProtocols.None;
 #endif

@@ -121,5 +121,5 @@ public sealed class SingleStoreException : DbException
 		or SingleStoreErrorCode.UnableToConnectToHost
 		or SingleStoreErrorCode.XARBDeadlock;
 
-	IDictionary? m_data;
+	private IDictionary? m_data;
 }

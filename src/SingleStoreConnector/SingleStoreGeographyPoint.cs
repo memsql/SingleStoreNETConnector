@@ -16,5 +16,5 @@ public sealed class SingleStoreGeographyPoint
 	/// <returns>A new <see cref="SingleStoreGeographyPoint"/> containing the specified geography.</returns>
 	internal SingleStoreGeographyPoint(string wkt) => m_wkt = wkt;
 
-	readonly string m_wkt;
+	private readonly string m_wkt;
 }

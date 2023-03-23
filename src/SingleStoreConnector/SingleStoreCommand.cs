@@ -96,7 +96,13 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	/// <inheritdoc/>
 	public override void Cancel() => Connection?.Cancel(this, m_commandId, true);
 
-	/// <inheritdoc/>
+	/// <summary>
+	/// Executes this command on the associated <see cref="SingleStoreConnection"/>.
+	/// </summary>
+	/// <returns>The number of rows affected.</returns>
+	/// <remarks>For UPDATE, INSERT, and DELETE statements, the return value is the number of rows affected by the command.
+	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
+	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
 	public override int ExecuteNonQuery() => ExecuteNonQueryAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 
 	/// <inheritdoc/>
@@ -270,6 +276,14 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) =>
 		ExecuteReaderAsync(behavior, IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 
+	/// <summary>
+	/// Executes this command asynchronously on the associated <see cref="SingleStoreConnection"/>.
+	/// </summary>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>A task representing the asynchronous operation.</returns>
+	/// <remarks>For UPDATE, INSERT, and DELETE statements, the return value is the number of rows affected by the command.
+	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
+	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
 	public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) =>
 		ExecuteNonQueryAsync(AsyncIOBehavior, cancellationToken);
 
@@ -431,19 +445,17 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	SingleStoreParameterCollection? ISingleStoreCommand.OutParameters { get; set; }
 	SingleStoreParameter? ISingleStoreCommand.ReturnParameter { get; set; }
 
-	static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(SingleStoreCommand));
-
-	readonly int m_commandId;
-	bool m_isDisposed;
-	SingleStoreConnection? m_connection;
-	string m_commandText;
-	SingleStoreParameterCollection? m_parameterCollection;
-	SingleStoreAttributeCollection? m_attributeCollection;
-	int? m_commandTimeout;
-	CommandType m_commandType;
-	CommandBehavior m_commandBehavior;
-	Action? m_cancelAction;
-	Action? m_cancelForCommandTimeoutAction;
-	uint m_cancelTimerId;
-	bool m_commandTimedOut;
+	private readonly int m_commandId;
+	private bool m_isDisposed;
+	private SingleStoreConnection? m_connection;
+	private string m_commandText;
+	private SingleStoreParameterCollection? m_parameterCollection;
+	private SingleStoreAttributeCollection? m_attributeCollection;
+	private int? m_commandTimeout;
+	private CommandType m_commandType;
+	private CommandBehavior m_commandBehavior;
+	private Action? m_cancelAction;
+	private Action? m_cancelForCommandTimeoutAction;
+	private uint m_cancelTimerId;
+	private bool m_commandTimedOut;
 }

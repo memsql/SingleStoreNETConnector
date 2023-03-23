@@ -49,6 +49,9 @@ namespace SingleStoreConnector;
 /// </code>
 /// </summary>
 /// <remarks>The proposed ADO.NET API that <see cref="SingleStoreBatch"/> is based on is not finalized. This API is experimental and may change in the future.</remarks>
+#if NET6_0_OR_GREATER
+#pragma warning disable CA1063 // Implement IDisposable Correctly
+#endif
 public sealed class SingleStoreBatch :
 #if NET6_0_OR_GREATER
 	DbBatch,
@@ -120,7 +123,7 @@ public sealed class SingleStoreBatch :
 #else
 	public async Task<SingleStoreDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default) =>
 #endif
-		(SingleStoreDataReader) await ExecuteDbDataReaderAsync(CommandBehavior.Default, cancellationToken);
+		(SingleStoreDataReader) await ExecuteDbDataReaderAsync(CommandBehavior.Default, cancellationToken).ConfigureAwait(false);
 
 	//// TODO: new ExecuteReaderAsync(CommandBehavior)
 
@@ -340,7 +343,7 @@ public sealed class SingleStoreBatch :
 			exception = new InvalidOperationException("Connection must be Open; current state is {0}".FormatInvariant(Connection.State));
 		else if (BatchCommands.Count == 0)
 			exception = new InvalidOperationException("BatchCommands must contain a command");
-		else if (Connection?.HasActiveReader ?? false)
+		else if (Connection.HasActiveReader)
 			exception = new InvalidOperationException("Cannot call Prepare when there is an open DataReader for this command; it must be closed first.");
 		else
 			exception = GetExceptionForInvalidCommands();
@@ -397,10 +400,10 @@ public sealed class SingleStoreBatch :
 
 	private IOBehavior AsyncIOBehavior => Connection?.AsyncIOBehavior ?? IOBehavior.Asynchronous;
 
-	readonly int m_commandId;
-	bool m_isDisposed;
-	Action? m_cancelAction;
-	Action? m_cancelForCommandTimeoutAction;
-	uint m_cancelTimerId;
-	bool m_commandTimedOut;
+	private readonly int m_commandId;
+	private bool m_isDisposed;
+	private Action? m_cancelAction;
+	private Action? m_cancelForCommandTimeoutAction;
+	private uint m_cancelTimerId;
+	private bool m_commandTimedOut;
 }

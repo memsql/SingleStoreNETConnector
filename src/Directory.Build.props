@@ -12,7 +12,7 @@
     <RepositoryUrl>https://github.com/memsql/SingleStoreNETConnector.git</RepositoryUrl>
     <DebugType>embedded</DebugType>
     <LangVersion>preview</LangVersion>
-    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <AnalysisLevel>latest-all</AnalysisLevel>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -30,7 +30,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>-->
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.376">
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0-beta.406">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>

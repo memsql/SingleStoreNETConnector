@@ -64,7 +64,7 @@ internal sealed class ConnectionSettings
 		else
 		{
 			TlsVersions = default;
-			for (var i = 6; i < csb.TlsVersion.Length; i += 8)
+			for (var i = 6; i < csb.TlsVersion.Length; i += 9)
 			{
 				char minorVersion = csb.TlsVersion[i];
 				if (minorVersion == '0')
@@ -84,7 +84,7 @@ internal sealed class ConnectionSettings
 				throw new NotSupportedException("All specified TLS versions are incompatible with this platform.");
 		}
 
-		if (csb.TlsCipherSuites != "")
+		if (csb.TlsCipherSuites.Length != 0)
 		{
 #if NETCOREAPP3_0_OR_GREATER
 			var tlsCipherSuites = new List<TlsCipherSuite>();
@@ -248,7 +248,7 @@ internal sealed class ConnectionSettings
 	public byte[]? ConnectionAttributes { get; set; }
 
 	// Helper Functions
-	int? m_connectionTimeoutMilliseconds;
+	private int? m_connectionTimeoutMilliseconds;
 	public int ConnectionTimeoutMilliseconds
 	{
 		get
@@ -331,6 +331,6 @@ internal sealed class ConnectionSettings
 		UseXaTransactions = other.UseXaTransactions;
 	}
 
-	static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(ConnectionSettings));
-	static readonly string[] s_localhostPipeServer = { "." };
+	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(ConnectionSettings));
+	private static readonly string[] s_localhostPipeServer = { "." };
 }

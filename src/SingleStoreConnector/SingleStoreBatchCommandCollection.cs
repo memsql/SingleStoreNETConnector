@@ -52,5 +52,5 @@ public sealed class SingleStoreBatchCommandCollection
 
 	internal IReadOnlyList<SingleStoreBatchCommand> Commands => m_commands;
 
-	readonly List<SingleStoreBatchCommand> m_commands;
+	private readonly List<SingleStoreBatchCommand> m_commands;
 }

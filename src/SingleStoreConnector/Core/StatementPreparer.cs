@@ -92,14 +92,14 @@ internal sealed class StatementPreparer
 			m_writer.Write(Preparer.m_commandText, m_lastIndex, Preparer.m_commandText.Length - m_lastIndex);
 			if ((states & FinalParseStates.NeedsNewline) == FinalParseStates.NeedsNewline)
 				m_writer.Write((byte) '\n');
-			if ((states & FinalParseStates.NeedsSemicolon) == FinalParseStates.NeedsSemicolon)
+			if ((states & FinalParseStates.NeedsSemicolon) == FinalParseStates.NeedsSemicolon && (Preparer.Options & StatementPreparerOptions.AppendSemicolon) == StatementPreparerOptions.AppendSemicolon)
 				m_writer.Write((byte) ';');
 			IsComplete = (states & FinalParseStates.Complete) == FinalParseStates.Complete;
 		}
 
-		readonly ByteBufferWriter m_writer;
-		int m_currentParameterIndex;
-		int m_lastIndex;
+		private readonly ByteBufferWriter m_writer;
+		private int m_currentParameterIndex;
+		private int m_lastIndex;
 	}
 
 	private sealed class PreparedCommandSqlParser : SqlParser
@@ -153,13 +153,13 @@ internal sealed class StatementPreparer
 			m_statementStartEndIndexes.Add(m_writer.Position);
 		}
 
-		readonly List<ParsedStatement> m_statements;
-		readonly List<int> m_statementStartEndIndexes;
-		readonly ByteBufferWriter m_writer;
-		int m_currentParameterIndex;
-		int m_lastIndex;
+		private readonly List<ParsedStatement> m_statements;
+		private readonly List<int> m_statementStartEndIndexes;
+		private readonly ByteBufferWriter m_writer;
+		private int m_currentParameterIndex;
+		private int m_lastIndex;
 	}
 
-	readonly string m_commandText;
-	readonly SingleStoreParameterCollection? m_parameters;
+	private readonly string m_commandText;
+	private readonly SingleStoreParameterCollection? m_parameters;
 }

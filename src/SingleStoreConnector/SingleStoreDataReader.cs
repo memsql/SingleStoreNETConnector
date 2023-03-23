@@ -73,7 +73,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 						using (Command.CancellableCommand.RegisterCancel(cancellationToken))
 						{
 							var writer = new ByteBufferWriter();
-							if (!Command.Connection!.Session.IsCancelingQuery && m_payloadCreator.WriteQueryCommand(ref m_commandListPosition, m_cachedProcedures!, writer))
+							if (!Command.Connection!.Session.IsCancelingQuery && m_payloadCreator.WriteQueryCommand(ref m_commandListPosition, m_cachedProcedures!, writer, false))
 							{
 								using var payload = writer.ToPayloadData();
 								await Command.Connection.Session.SendAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -204,6 +204,13 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	}
 
 	public override bool IsClosed => Command is null;
+
+	/// <summary>
+	/// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
+	/// </summary>
+	/// <remarks>For UPDATE, INSERT, and DELETE statements, the return value is the number of rows affected by the command.
+	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
+	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
 	public override int RecordsAffected => RealRecordsAffected is ulong recordsAffected ? checked((int) recordsAffected) : -1;
 	public override int GetOrdinal(string name) => GetResultSet().GetOrdinal(name);
 
@@ -668,13 +675,13 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		return m_resultSet;
 	}
 
-	readonly CommandBehavior m_behavior;
-	readonly ICommandPayloadCreator m_payloadCreator;
-	readonly IDictionary<string, CachedProcedure?>? m_cachedProcedures;
-	CommandListPosition m_commandListPosition;
-	bool m_closed;
-	bool m_hasWarnings;
-	ResultSet? m_resultSet;
-	bool m_hasMoreResults;
-	DataTable? m_schemaTable;
+	private readonly CommandBehavior m_behavior;
+	private readonly ICommandPayloadCreator m_payloadCreator;
+	private readonly IDictionary<string, CachedProcedure?>? m_cachedProcedures;
+	private CommandListPosition m_commandListPosition;
+	private bool m_closed;
+	private bool m_hasWarnings;
+	private ResultSet? m_resultSet;
+	private bool m_hasMoreResults;
+	private DataTable? m_schemaTable;
 }

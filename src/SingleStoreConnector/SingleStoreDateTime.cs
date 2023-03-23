@@ -1,5 +1,7 @@
 namespace SingleStoreConnector;
 
+#pragma warning disable CA2225 // Operator overloads have named alternates
+
 /// <summary>
 /// Represents a SingleStore date/time value. This type can be used to store <c>DATETIME</c> values such
 /// as <c>0000-00-00</c> that can be stored in SingleStore (when <see cref="SingleStoreConnectionStringBuilder.AllowZeroDateTime"/>

@@ -131,8 +131,10 @@ internal sealed class TypeMapper
 		m_dbTypeMappingsByClrType[dbTypeMapping.ClrType] = dbTypeMapping;
 
 		if (dbTypeMapping.DbTypes is not null)
+		{
 			foreach (var dbType in dbTypeMapping.DbTypes)
 				m_dbTypeMappingsByDbType[dbType] = dbTypeMapping;
+		}
 
 		return dbTypeMapping;
 	}
@@ -342,9 +344,9 @@ internal sealed class TypeMapper
 		return m_columnTypeMetadataLookup.Values.AsEnumerable();
 	}
 
-	readonly List<ColumnTypeMetadata> m_columnTypeMetadata;
-	readonly Dictionary<Type, DbTypeMapping> m_dbTypeMappingsByClrType;
-	readonly Dictionary<DbType, DbTypeMapping> m_dbTypeMappingsByDbType;
-	readonly Dictionary<string, ColumnTypeMetadata> m_columnTypeMetadataLookup;
-	readonly Dictionary<SingleStoreDbType, ColumnTypeMetadata> m_mySqlDbTypeToColumnTypeMetadata;
+	private readonly List<ColumnTypeMetadata> m_columnTypeMetadata;
+	private readonly Dictionary<Type, DbTypeMapping> m_dbTypeMappingsByClrType;
+	private readonly Dictionary<DbType, DbTypeMapping> m_dbTypeMappingsByDbType;
+	private readonly Dictionary<string, ColumnTypeMetadata> m_columnTypeMetadataLookup;
+	private readonly Dictionary<SingleStoreDbType, ColumnTypeMetadata> m_mySqlDbTypeToColumnTypeMetadata;
 }

@@ -185,6 +185,6 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 		parameter.ParameterCollection = this;
 	}
 
-	readonly List<SingleStoreParameter> m_parameters;
-	readonly Dictionary<string, int> m_nameToIndex;
+	private readonly List<SingleStoreParameter> m_parameters;
+	private readonly Dictionary<string, int> m_nameToIndex;
 }

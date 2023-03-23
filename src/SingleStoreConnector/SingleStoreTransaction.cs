@@ -289,5 +289,5 @@ public sealed class SingleStoreTransaction : DbTransaction
 
 	private static string QuoteIdentifier(string identifier) => "`" + identifier.Replace("`", "``") + "`";
 
-	bool m_isDisposed;
+	private bool m_isDisposed;
 }

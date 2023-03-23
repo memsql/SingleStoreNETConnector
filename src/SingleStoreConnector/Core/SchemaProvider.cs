@@ -1001,6 +1001,6 @@ internal sealed class SchemaProvider
 		close?.Invoke();
 	}
 
-	readonly SingleStoreConnection m_connection;
-	readonly Dictionary<string, Func<IOBehavior, DataTable, CancellationToken, Task>> m_schemaCollections;
+	private readonly SingleStoreConnection m_connection;
+	private readonly Dictionary<string, Func<IOBehavior, DataTable, CancellationToken, Task>> m_schemaCollections;
 }

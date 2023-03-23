@@ -1,5 +1,7 @@
 using System.Buffers;
 using System.Buffers.Text;
+using System.Globalization;
+using System.Numerics;
 using System.Text;
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Logging;
@@ -560,6 +562,16 @@ public sealed class SingleStoreBulkCopy
 				// store as UTC as it will be read as such when deserialized from a timespan column
 				return WriteString("{0:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}".FormatInvariant(dateTimeOffsetValue.UtcDateTime), ref utf8Encoder, output, out bytesWritten);
 			}
+#if NET6_0_OR_GREATER
+			else if (value is DateOnly dateOnlyValue)
+			{
+				return WriteString("{0:yyyy'-'MM'-'dd}".FormatInvariant(dateOnlyValue), ref utf8Encoder, output, out bytesWritten);
+			}
+			else if (value is TimeOnly timeOnlyValue)
+			{
+				return WriteString("{0:HH':'mm':'ss'.'ffffff}".FormatInvariant(timeOnlyValue), ref utf8Encoder, output, out bytesWritten);
+			}
+#endif
 			else if (value is TimeSpan ts)
 			{
 				var isNegative = false;
@@ -568,7 +580,7 @@ public sealed class SingleStoreBulkCopy
 					isNegative = true;
 					ts = TimeSpan.FromTicks(-ts.Ticks);
 				}
-				return WriteString("{0}{1}:{2:mm':'ss'.'ffffff}'".FormatInvariant(isNegative ? "-" : "", ts.Days * 24 + ts.Hours, ts), ref utf8Encoder, output, out bytesWritten);
+				return WriteString("{0}{1}:{2:mm':'ss'.'ffffff}".FormatInvariant(isNegative ? "-" : "", ts.Days * 24 + ts.Hours, ts), ref utf8Encoder, output, out bytesWritten);
 			}
 			else if (value is Guid guidValue)
 			{
@@ -603,6 +615,14 @@ public sealed class SingleStoreBulkCopy
 			else if (value is Enum)
 			{
 				return WriteString("{0:d}".FormatInvariant(value), ref utf8Encoder, output, out bytesWritten);
+			}
+			else if (value is BigInteger bigInteger)
+			{
+				return WriteString(bigInteger.ToString(CultureInfo.InvariantCulture), ref utf8Encoder, output, out bytesWritten);
+			}
+			else if (value is SingleStoreDecimal mySqlDecimal)
+			{
+				return WriteString(mySqlDecimal.ToString(), ref utf8Encoder, output, out bytesWritten);
 			}
 			else
 			{
@@ -681,9 +701,9 @@ public sealed class SingleStoreBulkCopy
 	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(SingleStoreBulkCopy));
 	private static readonly Encoding s_utf8Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
-	readonly SingleStoreConnection m_connection;
-	readonly SingleStoreTransaction? m_transaction;
-	int m_rowsCopied;
-	IValuesEnumerator? m_valuesEnumerator;
-	bool m_wasAborted;
+	private readonly SingleStoreConnection m_connection;
+	private readonly SingleStoreTransaction? m_transaction;
+	private int m_rowsCopied;
+	private IValuesEnumerator? m_valuesEnumerator;
+	private bool m_wasAborted;
 }

@@ -75,6 +75,6 @@ public sealed class SingleStoreBatchCommand :
 
 	internal SingleStoreBatch? Batch { get; set; }
 
-	SingleStoreParameterCollection? m_parameterCollection;
-	long m_lastInsertedId;
+	private SingleStoreParameterCollection? m_parameterCollection;
+	private long m_lastInsertedId;
 }
