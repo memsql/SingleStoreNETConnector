@@ -553,7 +553,7 @@ create table `{AppConfig.SecondaryDatabase}`.changedb2(value int not null);");
 	public void Sha256WithoutSecureConnection()
 	{
 		var csb = AppConfig.CreateSha256ConnectionStringBuilder();
-		csb.SslMode = SingleStoreSslMode.None;
+		csb.SslMode = SingleStoreSslMode.Disabled;
 		csb.AllowPublicKeyRetrieval = true;
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 #if NET45

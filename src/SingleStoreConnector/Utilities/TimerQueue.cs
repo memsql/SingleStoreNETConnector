@@ -1,6 +1,8 @@
 namespace SingleStoreConnector.Utilities;
 
+#pragma warning disable CA1001 // Types that own disposable fields should be disposable
 internal sealed class TimerQueue
+#pragma warning restore CA1001 // Types that own disposable fields should be disposable
 {
 	public static TimerQueue Instance { get; } = new();
 

@@ -206,7 +206,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 
 		if (Value is null || Value == DBNull.Value)
 		{
-			ReadOnlySpan<byte> nullBytes = new byte[] { 0x4E, 0x55, 0x4C, 0x4C }; // NULL
+			ReadOnlySpan<byte> nullBytes = "NULL"u8;
 			writer.Write(nullBytes);
 		}
 #if NET45
@@ -332,8 +332,8 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else if (Value is bool boolValue)
 		{
-			ReadOnlySpan<byte> trueBytes = new byte[] { 0x74, 0x72, 0x75, 0x65 }; // true
-			ReadOnlySpan<byte> falseBytes = new byte[] { 0x66, 0x61, 0x6C, 0x73, 0x65 }; // false
+			ReadOnlySpan<byte> trueBytes = "true"u8;
+			ReadOnlySpan<byte> falseBytes = "false"u8;
 			writer.Write(boolValue ? trueBytes : falseBytes);
 		}
 		else if (Value is float or double)
@@ -438,7 +438,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 				var guidLength = is32Characters ? 34 : 38;
 				var span = writer.GetSpan(guidLength);
 				span[0] = 0x27;
-				Utf8Formatter.TryFormat(guidValue, span.Slice(1), out _, is32Characters ? 'N' : 'D');
+				Utf8Formatter.TryFormat(guidValue, span[1..], out _, is32Characters ? 'N' : 'D');
 				span[guidLength - 1] = 0x27;
 				writer.Advance(guidLength);
 			}
@@ -516,7 +516,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			var charsWritten = 0;
 			while (charsWritten < value.Length)
 			{
-				var remainingValue = value.Slice(charsWritten);
+				var remainingValue = value[charsWritten..];
 				var nextDelimiterIndex = remainingValue.IndexOfAny('\'', '\\');
 				if (nextDelimiterIndex == -1)
 				{
@@ -527,7 +527,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 				else
 				{
 					// write up to (and including) the delimiter, then double it
-					writer.Write(remainingValue.Slice(0, nextDelimiterIndex + 1), flush: true);
+					writer.Write(remainingValue[..(nextDelimiterIndex + 1)], flush: true);
 					if (remainingValue[nextDelimiterIndex] == '\\' && !noBackslashEscapes)
 						writer.Write((byte) '\\');
 					else if (remainingValue[nextDelimiterIndex] == '\'')
@@ -847,7 +847,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 	}
 
-	private static ReadOnlySpan<byte> BinaryBytes => new byte[] { 0x5F, 0x62, 0x69, 0x6E, 0x61, 0x72, 0x79, 0x27 }; // _binary'
+	private static ReadOnlySpan<byte> BinaryBytes => "_binary'"u8;
 
 	private DbType m_dbType;
 	private SingleStoreDbType m_mySqlDbType;

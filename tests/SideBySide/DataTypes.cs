@@ -794,7 +794,6 @@ insert into date_time_kind(d, dt0, dt6) values(?, ?, ?)", connection)
 			Array.Resize(ref data, padLength);
 
 		DoQuery<GetBytesWhenNullException>("blobs", "`" + column + "`", "BLOB", new object[] { null, data }, GetBytes);
-#if !BASELINE // https://bugs.mysql.com/bug.php?id=93374
 		DoQuery("blobs", "`" + column + "`", "BLOB", new object[] { null, data }, GetStreamBytes);
 		DoQuery("blobs", "`" + column + "`", "BLOB", new object[] { null, data }, reader => reader.GetStream(0), matchesDefaultType: false, assertEqual: (e, a) =>
 		{
@@ -805,7 +804,6 @@ insert into date_time_kind(d, dt0, dt6) values(?, ?, ?)", connection)
 			Assert.Equal(bytes.Length, stream.Read(bytes, 0, bytes.Length));
 			Assert.Equal(e, bytes);
 		}, getFieldValueType: typeof(Stream));
-#endif
 	}
 
 	[Theory]

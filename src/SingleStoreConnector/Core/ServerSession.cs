@@ -175,20 +175,20 @@ internal sealed class ServerSession
 				buffer[2] = 'L';
 				buffer[3] = 'L';
 				buffer[4] = ' ';
-				buffer = buffer.Slice(5);
+				buffer = buffer[5..];
 				state.commandText.AsSpan().CopyTo(buffer);
-				buffer = buffer.Slice(state.commandText.Length);
+				buffer = buffer[state.commandText.Length..];
 				buffer[0] = '(';
-				buffer = buffer.Slice(1);
+				buffer = buffer[1..];
 				if (state.parameterCount > 0)
 				{
 					buffer[0] = '?';
-					buffer = buffer.Slice(1);
+					buffer = buffer[1..];
 					for (var i = 1; i < state.parameterCount; i++)
 					{
 						buffer[0] = ',';
 						buffer[1] = '?';
-						buffer = buffer.Slice(2);
+						buffer = buffer[2..];
 					}
 				}
 				buffer[0] = ')';
@@ -245,7 +245,7 @@ internal sealed class ServerSession
 					payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 					var payloadLength = payload.Span.Length;
 					Utility.Resize(ref columnsAndParameters, columnsAndParametersSize + payloadLength);
-					payload.Span.CopyTo(columnsAndParameters.Array.AsSpan().Slice(columnsAndParametersSize));
+					payload.Span.CopyTo(columnsAndParameters.AsSpan(columnsAndParametersSize));
 					parameters[i] = ColumnDefinitionPayload.Create(new(columnsAndParameters, columnsAndParametersSize, payloadLength));
 					columnsAndParametersSize += payloadLength;
 				}
@@ -265,7 +265,7 @@ internal sealed class ServerSession
 					payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 					var payloadLength = payload.Span.Length;
 					Utility.Resize(ref columnsAndParameters, columnsAndParametersSize + payloadLength);
-					payload.Span.CopyTo(columnsAndParameters.Array.AsSpan().Slice(columnsAndParametersSize));
+					payload.Span.CopyTo(columnsAndParameters.AsSpan(columnsAndParametersSize));
 					columns[i] = ColumnDefinitionPayload.Create(new(columnsAndParameters, columnsAndParametersSize, payloadLength));
 					columnsAndParametersSize += payloadLength;
 				}
@@ -1125,7 +1125,7 @@ internal sealed class ServerSession
 		m_logArguments[1] = cs.UnixSocket;
 		Log.Trace("Session{0} connecting to UNIX Socket '{1}'", m_logArguments);
 		var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.IP);
-		var unixEp = new UnixEndPoint(cs.UnixSocket!);
+		var unixEp = new UnixDomainSocketEndPoint(cs.UnixSocket!);
 		try
 		{
 			using (cancellationToken.Register(() => socket.Dispose()))
@@ -1768,13 +1768,13 @@ internal sealed class ServerSession
 		}
 	}
 
-	internal bool SslIsEncrypted => m_sslStream?.IsEncrypted ?? false;
+	internal bool SslIsEncrypted => m_sslStream?.IsEncrypted is true;
 
-	internal bool SslIsSigned => m_sslStream?.IsSigned ?? false;
+	internal bool SslIsSigned => m_sslStream?.IsSigned is true;
 
-	internal bool SslIsAuthenticated => m_sslStream?.IsAuthenticated ?? false;
+	internal bool SslIsAuthenticated => m_sslStream?.IsAuthenticated is true;
 
-	internal bool SslIsMutuallyAuthenticated => m_sslStream?.IsMutuallyAuthenticated ?? false;
+	internal bool SslIsMutuallyAuthenticated => m_sslStream?.IsMutuallyAuthenticated is true;
 
 	internal SslProtocols SslProtocol => m_sslStream?.SslProtocol ?? SslProtocols.None;
 
@@ -1923,7 +1923,7 @@ internal sealed class ServerSession
 		private readonly string m_sql;
 	}
 
-	private static ReadOnlySpan<byte> BeginCertificateBytes => new byte[] { 45, 45, 45, 45, 45, 66, 69, 71, 73, 78, 32, 67, 69, 82, 84, 73, 70, 73, 67, 65, 84, 69, 45, 45, 45, 45, 45 }; // -----BEGIN CERTIFICATE-----
+	private static ReadOnlySpan<byte> BeginCertificateBytes => "-----BEGIN CERTIFICATE-----"u8;
 	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(ServerSession));
 	private static readonly PayloadData s_setNamesUtf8NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8;");
 	private static readonly PayloadData s_setNamesUtf8mb4NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8mb4;");

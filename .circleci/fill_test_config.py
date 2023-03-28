@@ -5,7 +5,7 @@ import os
 CLUSTER_ID_FILE = "CLUSTER_ID"
 HOSTNAME_TMPL = "svc-{}-ddl.aws-frankfurt-1.svc.singlestore.com"
 
-NET_FRAMEWORKS = ["net452", "net461", "net472", "netcoreapp3.1", "net5.0", "net6.0"]
+NET_FRAMEWORKS = ["net452", "net461", "net472", "netcoreapp3.1", "net6.0", "net7.0"]
 
 
 if __name__ == "__main__":

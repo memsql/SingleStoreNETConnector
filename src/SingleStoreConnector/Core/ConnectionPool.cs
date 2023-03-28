@@ -6,7 +6,9 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector.Core;
 
+#pragma warning disable CA1001 // Types that own disposable fields should be disposable
 internal sealed class ConnectionPool
+#pragma warning restore CA1001 // Types that own disposable fields should be disposable
 {
 	public int Id { get; }
 

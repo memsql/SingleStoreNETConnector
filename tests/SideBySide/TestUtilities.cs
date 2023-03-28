@@ -57,7 +57,7 @@ public static class TestUtilities
 			return null;
 
 		var csb = AppConfig.CreateConnectionStringBuilder();
-		if (configSettings.HasFlag(ConfigSettings.RequiresSsl) && (csb.SslMode == SingleStoreSslMode.None
+		if (configSettings.HasFlag(ConfigSettings.RequiresSsl) && (csb.SslMode == SingleStoreSslMode.Disabled
 #if !BASELINE
 		 || csb.SslMode == SingleStoreSslMode.Preferred
 #endif
@@ -65,7 +65,7 @@ public static class TestUtilities
 			return "Requires SslMode=Required or higher in connection string";
 
 		if (configSettings.HasFlag(ConfigSettings.TrustedHost) &&
-			(csb.SslMode == SingleStoreSslMode.None ||
+			(csb.SslMode == SingleStoreSslMode.Disabled ||
 #if !BASELINE
 			csb.SslMode == SingleStoreSslMode.Preferred ||
 #endif
@@ -82,7 +82,7 @@ public static class TestUtilities
 
 		if (configSettings.HasFlag(ConfigSettings.KnownClientCertificate))
 		{
-			if (!((csb.CertificateFile?.EndsWith("ssl-client.pfx", StringComparison.OrdinalIgnoreCase) ?? false) || (csb.SslKey?.EndsWith("ssl-client-key.pem", StringComparison.OrdinalIgnoreCase) ?? false)))
+			if (!((csb.CertificateFile?.EndsWith("ssl-client.pfx", StringComparison.OrdinalIgnoreCase) is true) || (csb.SslKey?.EndsWith("ssl-client-key.pem", StringComparison.OrdinalIgnoreCase) is true)))
 				return "Requires CertificateFile=client.pfx in connection string";
 		}
 

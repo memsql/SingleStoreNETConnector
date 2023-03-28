@@ -887,7 +887,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	private string? m_cachedConnectionStringWithoutPassword;
 }
 
-internal abstract class SingleStoreConnectionStringOption
+internal abstract partial class SingleStoreConnectionStringOption
 {
 	// Connection Options
 	public static readonly SingleStoreConnectionStringReferenceOption<string> Server;
@@ -1059,7 +1059,7 @@ internal abstract class SingleStoreConnectionStringOption
 				Span<bool> versions = stackalloc bool[4];
 				foreach (var part in value!.TrimStart('[', '(').TrimEnd(')', ']').Split(','))
 				{
-					var match = s_tlsVersions.Match(part);
+					var match = TlsVersionsRegex().Match(part);
 					if (!match.Success)
 						throw new ArgumentException($"Unrecognized TlsVersion protocol version '{part}'; permitted versions are: TLS 1.0, TLS 1.1, TLS 1.2, TLS 1.3.");
 					var version = match.Groups[2].Value;
@@ -1251,7 +1251,14 @@ internal abstract class SingleStoreConnectionStringOption
 			defaultValue: true));
 	}
 
-	private static readonly Regex s_tlsVersions = new(@"\s*TLS( ?v?(1|1\.?0|1\.?1|1\.?2|1\.?3))?$", RegexOptions.IgnoreCase);
+	private const string c_tlsVersionsRegexPattern = @"\s*TLS( ?v?(1|1\.?0|1\.?1|1\.?2|1\.?3))?$";
+#if NET7_0_OR_GREATER
+	[GeneratedRegex(c_tlsVersionsRegexPattern, RegexOptions.IgnoreCase)]
+	private static partial Regex TlsVersionsRegex();
+#else
+	private static Regex TlsVersionsRegex() => s_tlsVersionsRegex;
+	private static readonly Regex s_tlsVersionsRegex = new(c_tlsVersionsRegexPattern, RegexOptions.IgnoreCase);
+#endif
 	private static readonly Dictionary<string, SingleStoreConnectionStringOption> s_options;
 
 	private readonly IReadOnlyList<string> m_keys;

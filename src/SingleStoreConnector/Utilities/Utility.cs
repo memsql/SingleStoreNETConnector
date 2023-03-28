@@ -139,7 +139,7 @@ internal static class Utility
 #endif
 
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-		var keyChars = key.AsSpan().Slice(keyStartIndex, keyEndIndex - keyStartIndex);
+		var keyChars = key.AsSpan()[keyStartIndex..keyEndIndex];
 		var bufferLength = keyChars.Length / 4 * 3;
 		byte[]? buffer = null;
 		Span<byte> bufferBytes = bufferLength <= 1024 ? stackalloc byte[bufferLength] : default;
@@ -154,11 +154,11 @@ internal static class Utility
 				throw new FormatException("The input is not a valid Base-64 string.");
 #if NET5_0_OR_GREATER
 			if (isPrivate)
-				rsa.ImportRSAPrivateKey(bufferBytes.Slice(0, bytesWritten), out var _);
+				rsa.ImportRSAPrivateKey(bufferBytes[..bytesWritten], out var _);
 			else
-				rsa.ImportSubjectPublicKeyInfo(bufferBytes.Slice(0, bytesWritten), out var _);
+				rsa.ImportSubjectPublicKeyInfo(bufferBytes[..bytesWritten], out var _);
 #else
-			return GetRsaParameters(bufferBytes.Slice(0, bytesWritten), isPrivate);
+			return GetRsaParameters(bufferBytes[..bytesWritten], isPrivate);
 #endif
 		}
 		finally
@@ -278,6 +278,7 @@ internal static class Utility
 	}
 #endif
 
+#if !NETSTANDARD2_1_OR_GREATER && !NETCOREAPP2_0_OR_GREATER
 	/// <summary>
 	/// Returns a new <see cref="ArraySegment{T}"/> that starts at index <paramref name="index"/> into <paramref name="arraySegment"/>.
 	/// </summary>
@@ -296,6 +297,7 @@ internal static class Utility
 	/// <returns>A new <see cref="ArraySegment{T}"/> of length <paramref name="length"/>, starting at the <paramref name="index"/>th element of <paramref name="arraySegment"/>.</returns>
 	public static ArraySegment<T> Slice<T>(this ArraySegment<T> arraySegment, int index, int length) =>
 		new ArraySegment<T>(arraySegment.Array!, arraySegment.Offset + index, length);
+#endif
 
 	/// <summary>
 	/// Returns a new <see cref="byte"/> array that is a slice of <paramref name="input"/> starting at <paramref name="offset"/>.
@@ -417,10 +419,10 @@ internal static class Utility
 
 		// parse (optional) leading minus sign
 		var isNegative = false;
-		if (value.Length > 0 && value[0] == 0x2D)
+		if (value is [0x2D, .. ])
 		{
 			isNegative = true;
-			value = value.Slice(1);
+			value = value[1..];
 		}
 
 		// parse hours (0-838)
@@ -435,7 +437,7 @@ internal static class Utility
 			goto InvalidTimeSpan;
 		if (value.Length < 3 || value[2] != 58)
 			goto InvalidTimeSpan;
-		value = value.Slice(3);
+		value = value[3..];
 
 		// parse seconds (0-59)
 		if (!Utf8Parser.TryParse(value, out int seconds, out bytesConsumed) || bytesConsumed != 2 || seconds < 0 || seconds > 59)
@@ -450,7 +452,7 @@ internal static class Utility
 		{
 			if (value[2] != 46)
 				goto InvalidTimeSpan;
-			value = value.Slice(3);
+			value = value[3..];
 			if (!Utf8Parser.TryParse(value, out microseconds, out bytesConsumed) || bytesConsumed != value.Length || microseconds < 0 || microseconds > 999_999)
 				goto InvalidTimeSpan;
 			for (; bytesConsumed < 6; bytesConsumed++)
@@ -464,7 +466,11 @@ internal static class Utility
 			seconds = -seconds;
 			microseconds = -microseconds;
 		}
+#if NET7_0_OR_GREATER
+		return new TimeSpan(0, hours, minutes, seconds, microseconds / 1000, microseconds % 1000);
+#else
 		return new TimeSpan(0, hours, minutes, seconds, microseconds / 1000) + TimeSpan.FromTicks(microseconds % 1000 * 10);
+#endif
 
 		InvalidTimeSpan:
 		throw new FormatException("Couldn't interpret '{0}' as a valid TimeSpan".FormatInvariant(Encoding.UTF8.GetString(originalValue)));
@@ -515,13 +521,13 @@ internal static class Utility
 
 	public static byte[] TrimZeroByte(byte[] value)
 	{
-		if (value[value.Length - 1] == 0)
+		if (value is [ .., 0])
 			Array.Resize(ref value, value.Length - 1);
 		return value;
 	}
 
 	public static ReadOnlySpan<byte> TrimZeroByte(ReadOnlySpan<byte> value) =>
-		value[value.Length - 1] == 0 ? value.Slice(0, value.Length - 1) : value;
+		value is [ .., 0 ] ? value[..^1] : value;
 
 #if NET45
 	public static bool TryGetBuffer(this MemoryStream memoryStream, out ArraySegment<byte> buffer)
@@ -687,13 +693,13 @@ internal static class Utility
 	private static bool TryReadAsnInteger(ReadOnlySpan<byte> data, out ReadOnlySpan<byte> number, out int bytesConsumed)
 	{
 		// integer tag is 2
-		if (data[0] != 0x02)
+		if (data is not [ 0x02, .. ])
 		{
 			number = default;
 			bytesConsumed = 0;
 			return false;
 		}
-		data = data.Slice(1);
+		data = data[1..];
 
 		// tag is followed by the length of the integer
 		if (!TryReadAsnLength(data, out var length, out var lengthBytesConsumed))
@@ -708,8 +714,8 @@ internal static class Utility
 		bytesConsumed = lengthBytesConsumed + length + 1;
 
 		// trim leading zero bytes
-		while (number.Length > 1 && number[0] == 0)
-			number = number.Slice(1);
+		while (number is [ 0, .. ])
+			number = number[1..];
 
 		return true;
 	}
