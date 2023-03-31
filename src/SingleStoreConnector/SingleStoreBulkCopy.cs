@@ -57,6 +57,11 @@ public sealed class SingleStoreBulkCopy
 	}
 
 	/// <summary>
+	/// A <see cref="SingleStoreBulkLoaderConflictOption"/> value that specifies how conflicts are resolved (default <see cref="SingleStoreBulkLoaderConflictOption.None"/>).
+	/// </summary>
+	public SingleStoreBulkLoaderConflictOption ConflictOption { get; set; }
+
+	/// <summary>
 	/// The number of seconds for the operation to complete before it times out, or <c>0</c> for no timeout.
 	/// </summary>
 	public int BulkCopyTimeout { get; set; }
@@ -247,6 +252,7 @@ public sealed class SingleStoreBulkCopy
 			Source = this,
 			TableName = tableName,
 			Timeout = BulkCopyTimeout,
+			ConflictOption = ConflictOption,
 		};
 
 		var closeConnection = false;
@@ -338,10 +344,10 @@ public sealed class SingleStoreBulkCopy
 
 		Log.Debug("Finished bulk copy to {0}", tableName);
 
-		if (!m_wasAborted && rowsInserted != m_rowsCopied)
+		if (!m_wasAborted && rowsInserted != m_rowsCopied && ConflictOption is SingleStoreBulkLoaderConflictOption.None)
 		{
 			Log.Error("Bulk copy to DestinationTableName={0} failed; RowsCopied={1}; RowsInserted={2}", tableName, m_rowsCopied, rowsInserted);
-			throw new SingleStoreException(SingleStoreErrorCode.BulkCopyFailed, "{0} rows were copied to {1} but only {2} were inserted.".FormatInvariant(m_rowsCopied, tableName, rowsInserted));
+			throw new SingleStoreException(SingleStoreErrorCode.BulkCopyFailed, "{0} rows {1} copied to {2} but only {3} {4} inserted.".FormatInvariant(m_rowsCopied, m_rowsCopied == 1 ? "was" : "were", tableName, rowsInserted, rowsInserted == 1 ? "was" : "were"));
 		}
 
 		return new(errors, rowsInserted);

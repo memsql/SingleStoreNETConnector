@@ -354,7 +354,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			if (mySqlDateTimeValue.IsValidDateTime)
 				writer.Write("timestamp('{0:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')".FormatInvariant(mySqlDateTimeValue.GetDateTime()));
 			else
-				writer.Write("timestamp('0000-00-00')");
+				writer.Write("timestamp('0000-00-00')"u8);
 		}
 #if NET6_0_OR_GREATER
 		else if (Value is DateOnly dateOnlyValue)

@@ -14,25 +14,27 @@ weight: 80
 
 `SingleStoreConnection.GetSchema` supports the following schemas:
 
-* `MetaDataCollections`—information about available schemas
+* `MetaDataCollections`—[information about available schemas](../schema/metadatacollections/)
 * `CharacterSets`
 * `Collations`
 * `CollationCharacterSetApplicability`
-* `Columns`
+* `Columns`—[information about columns (in all tables)](../schema/columns/)
 * `Databases`
-* `DataTypes`—information about available data types
+* `DataSourceInformation`
+* `DataTypes`—[information about available data types](../schema/datatypes/)
 * `Engines`
 * `KeyColumnUsage`
 * `KeyWords`
 * `Parameters`
 * `Partitions`
 * `Plugins`
-* `Procedures`—information about stored procedures
+* `Procedures`—[information about stored procedures](../schema/procedures/)
 * `ProcessList`
 * `Profiling`
 * `ReferentialConstraints`
-* `ReservedWords`—information about reserved words in the server's SQL syntax
+* `ReservedWords`—[information about reserved words in the server's SQL syntax](../schema/reservedwords/)
 * `ResourceGroups`
+* `Restrictions`—[information about the restrictions supported when retrieving schemas](../schema/restrictions/)
 * `SchemaPrivileges`
 * `Tables`
 * `TableConstraints`
@@ -41,5 +43,3 @@ weight: 80
 * `Triggers`
 * `UserPrivileges`
 * `Views`
-
-The `GetSchema(string, string[])` overload that specifies restrictions is not supported.

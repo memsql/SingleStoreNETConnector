@@ -580,22 +580,22 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	/// Returns schema information for the data source of this <see cref="SingleStoreConnection"/>.
 	/// </summary>
 	/// <returns>A <see cref="DataTable"/> containing schema information.</returns>
-	public override DataTable GetSchema() => GetSchemaProvider().GetSchemaAsync(IOBehavior.Synchronous, default).GetAwaiter().GetResult();
+	public override DataTable GetSchema() => GetSchemaProvider().GetSchemaAsync(IOBehavior.Synchronous, "MetaDataCollections", default, default).GetAwaiter().GetResult();
 
 	/// <summary>
 	/// Returns schema information for the data source of this <see cref="SingleStoreConnection"/>.
 	/// </summary>
 	/// <param name="collectionName">The name of the schema to return.</param>
 	/// <returns>A <see cref="DataTable"/> containing schema information.</returns>
-	public override DataTable GetSchema(string collectionName) => GetSchemaProvider().GetSchemaAsync(IOBehavior.Synchronous, collectionName, default).GetAwaiter().GetResult();
+	public override DataTable GetSchema(string collectionName) => GetSchemaProvider().GetSchemaAsync(IOBehavior.Synchronous, collectionName, default, default).GetAwaiter().GetResult();
 
 	/// <summary>
 	/// Returns schema information for the data source of this <see cref="SingleStoreConnection"/>.
 	/// </summary>
 	/// <param name="collectionName">The name of the schema to return.</param>
-	/// <param name="restrictionValues">The restrictions to apply to the schema; this parameter is currently ignored.</param>
+	/// <param name="restrictionValues">The restrictions to apply to the schema.</param>
 	/// <returns>A <see cref="DataTable"/> containing schema information.</returns>
-	public override DataTable GetSchema(string collectionName, string?[] restrictionValues) => GetSchemaProvider().GetSchemaAsync(IOBehavior.Synchronous, collectionName, default).GetAwaiter().GetResult();
+	public override DataTable GetSchema(string collectionName, string?[] restrictionValues) => GetSchemaProvider().GetSchemaAsync(IOBehavior.Synchronous, collectionName, restrictionValues, default).GetAwaiter().GetResult();
 #pragma warning restore CA2012
 
 	/// <summary>
@@ -609,7 +609,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 #else
 	public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
 #endif
-		=> GetSchemaProvider().GetSchemaAsync(AsyncIOBehavior, cancellationToken).AsTask();
+		=> GetSchemaProvider().GetSchemaAsync(AsyncIOBehavior,  "MetaDataCollections", default, cancellationToken).AsTask();
 
 	/// <summary>
 	/// Asynchronously returns schema information for the data source of this <see cref="SingleStoreConnection"/>.
@@ -623,13 +623,13 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 #else
 	public Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
 #endif
-		=> GetSchemaProvider().GetSchemaAsync(AsyncIOBehavior, collectionName, cancellationToken).AsTask();
+		=> GetSchemaProvider().GetSchemaAsync(AsyncIOBehavior, collectionName, default, cancellationToken).AsTask();
 
 	/// <summary>
 	/// Asynchronously returns schema information for the data source of this <see cref="SingleStoreConnection"/>.
 	/// </summary>
 	/// <param name="collectionName">The name of the schema to return.</param>
-	/// <param name="restrictionValues">The restrictions to apply to the schema; this parameter is currently ignored.</param>
+	/// <param name="restrictionValues">The restrictions to apply to the schema.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A <see cref="Task{DataTable}"/> containing schema information.</returns>
 	/// <remarks>The proposed ADO.NET API that this is based on is not finalized; this API may change in the future.</remarks>
@@ -638,7 +638,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 #else
 	public Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictionValues, CancellationToken cancellationToken = default)
 #endif
-		=> GetSchemaProvider().GetSchemaAsync(AsyncIOBehavior, collectionName, cancellationToken).AsTask();
+		=> GetSchemaProvider().GetSchemaAsync(AsyncIOBehavior, collectionName, restrictionValues, cancellationToken).AsTask();
 
 	private SchemaProvider GetSchemaProvider() => m_schemaProvider ??= new(this);
 
@@ -743,13 +743,13 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 
 	internal void Cancel(ICancellableCommand command, int commandId, bool isCancel)
 	{
-		if (m_session is null || State != ConnectionState.Open || !m_session.TryStartCancel(command))
+		if (m_session?.Id is not string sessionId || State != ConnectionState.Open || m_session?.TryStartCancel(command) is not true)
 		{
 			Log.Trace("Ignoring cancellation for closed connection or invalid CommandId {0}", commandId);
 			return;
 		}
 
-		Log.Debug("CommandId {0} for Session{1} has been canceled via {2}.", commandId, m_session.Id, isCancel ? "Cancel()" : "command timeout");
+		Log.Debug("CommandId {0} for Session{1} has been canceled via {2}.", commandId, sessionId, isCancel ? "Cancel()" : "command timeout");
 
 		try
 		{
@@ -759,8 +759,8 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 				AutoEnlist = false,
 				Pooling = false,
 			};
-			if (m_session.IPAddress is not null)
-				csb.Server = m_session.IPAddress.ToString();
+			if (m_session?.IPAddress is { } ipAddress)
+				csb.Server = ipAddress.ToString();
 			var cancellationTimeout = GetConnectionSettings().CancellationTimeout;
 			csb.ConnectionTimeout = cancellationTimeout < 1 ? 3u : (uint) cancellationTimeout;
 
@@ -768,20 +768,20 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 			connection.Open();
 			using var killCommand = new SingleStoreCommand("KILL QUERY {0}".FormatInvariant(command.Connection!.ServerThread), connection);
 			killCommand.CommandTimeout = cancellationTimeout < 1 ? 3 : cancellationTimeout;
-			m_session.DoCancel(command, killCommand);
+			m_session?.DoCancel(command, killCommand);
 		}
 		catch (InvalidOperationException ex)
 		{
 			// ignore a rare race condition where the connection is open at the beginning of the method, but closed by the time
 			// KILL QUERY is executed: https://github.com/mysql-net/MySqlConnector/issues/1002
-			Log.Info(ex, "Session{0} ignoring cancellation for closed connection.", m_session!.Id);
-			m_session.AbortCancel(command);
+			Log.Info(ex, "Session{0} ignoring cancellation for closed connection.", sessionId);
+			m_session?.AbortCancel(command);
 		}
 		catch (SingleStoreException ex)
 		{
 			// cancelling the query failed; setting the state back to 'Querying' will allow another call to 'Cancel' to try again
-			Log.Info(ex, "Session{0} cancelling CommandId {1} failed", m_session!.Id, command.CommandId);
-			m_session.AbortCancel(command);
+			Log.Info(ex, "Session{0} cancelling CommandId {1} failed", sessionId, command.CommandId);
+			m_session?.AbortCancel(command);
 		}
 	}
 

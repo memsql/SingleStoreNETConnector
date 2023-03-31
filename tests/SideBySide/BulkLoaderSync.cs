@@ -1113,6 +1113,63 @@ create table bulk_load_data_table(str varchar(5), number tinyint);", connection)
 		var bulkCopy = new SingleStoreBulkCopy(connection);
 		Assert.Throws<ArgumentNullException>(() => bulkCopy.WriteToServer(default(DbDataReader)));
 	}
+
+	[Theory]
+	[InlineData(SingleStoreBulkLoaderConflictOption.None, 0, "")]
+	[InlineData(SingleStoreBulkLoaderConflictOption.Ignore, 1, "one")]
+	[InlineData(SingleStoreBulkLoaderConflictOption.Replace, 3, "two")]
+	public void BulkCopyDataTableConflictOption(SingleStoreBulkLoaderConflictOption conflictOption, int expectedRowsInserted, string expected)
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("data", typeof(string)),
+			},
+			Rows =
+			{
+				new object[] { 1, "one" },
+				new object[] { 1, "two" },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create table bulk_load_data_table(a int not null primary key auto_increment, b text);", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			ConflictOption = conflictOption,
+			DestinationTableName = "bulk_load_data_table",
+		};
+
+		switch (conflictOption)
+		{
+		case SingleStoreBulkLoaderConflictOption.None:
+			var exception = Assert.Throws<SingleStoreException>(() => bulkCopy.WriteToServer(dataTable));
+			Assert.Equal(SingleStoreErrorCode.DuplicateKeyEntry, exception.ErrorCode);
+			return;
+
+		case SingleStoreBulkLoaderConflictOption.Replace:
+			var replaceResult = bulkCopy.WriteToServer(dataTable);
+			Assert.Equal(expectedRowsInserted, replaceResult.RowsInserted);
+			Assert.Empty(replaceResult.Warnings);
+			break;
+
+		case SingleStoreBulkLoaderConflictOption.Ignore:
+			var ignoreResult = bulkCopy.WriteToServer(dataTable);
+			Assert.Equal(expectedRowsInserted, ignoreResult.RowsInserted);
+			break;
+		}
+
+		using (var cmd = new SingleStoreCommand("select b from bulk_load_data_table;", connection))
+			Assert.Equal(expected, cmd.ExecuteScalar());
+	}
 #endif
 
 	internal static string GetConnectionString() => AppConfig.ConnectionString;

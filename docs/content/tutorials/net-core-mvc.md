@@ -379,5 +379,3 @@ GET https://localhost:5001/api/blog
 // Output:
 []
 ```
-
-If you would like to see all of this code and more on GitHub, check out [SingleStoreConnector.Performance](https://github.com/memsql/SingleStoreNETConnector/tree/master/tests/SingleStoreConnector.Performance).
