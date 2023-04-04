@@ -556,14 +556,10 @@ create table `{AppConfig.SecondaryDatabase}`.changedb2(value int not null);");
 		csb.SslMode = SingleStoreSslMode.Disabled;
 		csb.AllowPublicKeyRetrieval = true;
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
-#if NET45
-		Assert.Throws<NotImplementedException>(() => connection.Open());
-#else
 		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.RsaEncryption))
 			connection.Open();
 		else
 			Assert.Throws<SingleStoreException>(() => connection.Open());
-#endif
 	}
 
 	[Fact]

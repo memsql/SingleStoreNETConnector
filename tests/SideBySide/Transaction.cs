@@ -161,7 +161,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(new[] { 1, 2 }, results);
 	}
 
-#if !NET452 && !NET461 && !NET472
+#if !NET462 && !NET472
 	[Fact]
 	public async Task DbConnectionCommitAsync()
 	{
@@ -233,7 +233,7 @@ public class Transaction : IClassFixture<TransactionFixture>
 		Assert.Equal(new int[0], results);
 	}
 
-#if !NET452 && !NET461 && !NET472
+#if !NET462 && !NET472
 	[Fact]
 	public async Task DbConnectionRollbackAsync()
 	{

@@ -15,7 +15,7 @@ SingleStoreConnector uses a connection string in order to connect to your databa
 
 To connect to a database on `some_host` port `3306` with a user `admin`, password `Password123`, and default database `testdb`, the connection string would be:
 
-`host=some_host;port=3306;user id=admin;password=Password123;database=testdb;`
+`Host=some_host;Port=3306;User ID=admin;Password=Password123;Database=testdb;`
 
 
 

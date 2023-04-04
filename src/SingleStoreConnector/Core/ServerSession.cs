@@ -715,13 +715,8 @@ internal sealed class ServerSession
 		case "sha256_password":
 			if (!m_isSecureConnection && password.Length != 0)
 			{
-#if NET45
-				Log.Error("Session{0} can't use AuthenticationMethod '{1}' without secure connection on .NET 4.5", m_logArguments);
-				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Authentication method '{0}' requires a secure connection (prior to .NET 4.6).".FormatInvariant(switchRequest.Name));
-#else
 				var publicKey = await GetRsaPublicKeyAsync(switchRequest.Name, cs, ioBehavior, cancellationToken).ConfigureAwait(false);
 				return await SendEncryptedPasswordAsync(switchRequest, publicKey, password, ioBehavior, cancellationToken).ConfigureAwait(false);
-#endif
 			}
 			else
 			{
@@ -760,7 +755,6 @@ internal sealed class ServerSession
 		return await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 	}
 
-#if !NET45
 	private async Task<PayloadData> SendEncryptedPasswordAsync(
 		AuthenticationMethodSwitchRequestPayload switchRequest,
 		string rsaPublicKey,
@@ -811,9 +805,7 @@ internal sealed class ServerSession
 		await SendReplyAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 		return await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 	}
-#endif
 
-#if !NET45
 	private async Task<string> GetRsaPublicKeyAsync(string switchRequestName, ConnectionSettings cs, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (cs.ServerRsaPublicKeyFile.Length != 0)
@@ -844,7 +836,6 @@ internal sealed class ServerSession
 		Log.Error("Session{0} couldn't use AuthenticationMethod '{1}' because RSA key wasn't specified or couldn't be retrieved", m_logArguments);
 		throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Authentication method '{0}' failed. Either use a secure connection, specify the server's RSA public key with ServerRSAPublicKeyFile, or set AllowPublicKeyRetrieval=True.".FormatInvariant(switchRequestName));
 	}
-#endif
 
 	public async ValueTask<bool> TryPingAsync(bool logInfo, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
@@ -1010,8 +1001,9 @@ internal sealed class ServerSession
 	private async Task<bool> OpenTcpSocketAsync(ConnectionSettings cs, ILoadBalancer loadBalancer, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var hostNames = loadBalancer.LoadBalance(cs.HostNames!);
-		foreach (var hostName in hostNames)
+		for (var hostNameIndex = 0; hostNameIndex < hostNames.Count; hostNameIndex++)
 		{
+			var hostName = hostNames[hostNameIndex];
 			IPAddress[] ipAddresses;
 			try
 			{
@@ -1023,16 +1015,19 @@ internal sealed class ServerSession
 #endif
 					: Dns.GetHostAddresses(hostName);
 			}
-			catch (SocketException)
+			catch (SocketException ex)
 			{
 				// name couldn't be resolved
+				Log.Warn("Session{0} failed to resolve HostName '{1}' ({2} of {3}): {4}", m_logArguments[0], hostName, hostNameIndex + 1, hostNames.Count, ex.Message);
 				continue;
 			}
 
 			// need to try IP Addresses one at a time: https://github.com/dotnet/corefx/issues/5829
-			foreach (var ipAddress in ipAddresses)
+			for (var ipAddressIndex = 0; ipAddressIndex < ipAddresses.Length; ipAddressIndex++)
 			{
-				Log.Trace("Session{0} connecting to IpAddress {1} for HostName '{2}'", m_logArguments[0], ipAddress, hostName);
+				var ipAddress = ipAddresses[ipAddressIndex];
+				if (Log.IsTraceEnabled())
+					Log.Trace("Session{0} connecting to IpAddress {1} ({2} of {3}) for HostName '{4}' ({5} of {6})", m_logArguments[0], ipAddress, ipAddressIndex + 1, ipAddresses.Length, hostName, hostNameIndex + 1, hostNames.Count);
 				TcpClient? tcpClient = null;
 				try
 				{
@@ -1065,7 +1060,7 @@ internal sealed class ServerSession
 								}
 							}
 						}
-						catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
+						catch (Exception ex) when (cancellationToken.IsCancellationRequested && ex is ObjectDisposedException or SocketException)
 						{
 							SafeDispose(ref tcpClient);
 							Log.Info("Session{0} connect timeout expired connecting to IpAddress {1} for HostName '{2}'", m_logArguments[0], ipAddress, hostName);
@@ -1073,9 +1068,23 @@ internal sealed class ServerSession
 						}
 					}
 				}
-				catch (SocketException)
+				catch (SocketException ex)
 				{
 					SafeDispose(ref tcpClient);
+
+					// if this is the final IP address in the list, throw a fatal exception; otherwise try the next IP address
+					if (hostNameIndex == hostNames.Count - 1 && ipAddressIndex == ipAddresses.Length - 1)
+					{
+						lock (m_lock)
+							m_state = State.Failed;
+						if (hostNames.Count == 1 && ipAddresses.Length == 1)
+							Log.Info("Session{0} failed to connect to IpAddress {1} for HostName '{2}': {3}", m_logArguments[0], ipAddress, hostName, ex.Message);
+						else
+							Log.Info("Session{0} failed to connect to IpAddress {1} ({2} of {3}) for HostName '{4}' ({5} of {6}): {7}", m_logArguments[0], ipAddress, ipAddressIndex + 1, ipAddresses.Length, hostName, hostNameIndex + 1, hostNames.Count, ex.Message);
+						throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Unable to connect to any of the specified MySQL hosts.");
+					}
+
+					Log.Trace("Session{0} failed to connect to IpAddress {1} ({2} of {3}) for HostName '{4}' ({5} of {6}): {7}", m_logArguments[0], ipAddress, ipAddressIndex + 1, ipAddresses.Length, hostName, hostNameIndex + 1, hostNames.Count, ex.Message);
 					continue;
 				}
 
@@ -1170,13 +1179,7 @@ internal sealed class ServerSession
 		return false;
 	}
 
-#if NET45
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-#endif
 	private async Task<bool> OpenNamedPipeAsync(ConnectionSettings cs, int startTickCount, IOBehavior ioBehavior, CancellationToken cancellationToken)
-#if NET45
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-#endif
 	{
 		if (Log.IsTraceEnabled())
 			Log.Trace("Session{0} connecting to NamedPipe '{1}' on Server '{2}'", m_logArguments[0], cs.PipeName, cs.HostNames![0]);
@@ -1188,11 +1191,9 @@ internal sealed class ServerSession
 			{
 				try
 				{
-#if !NET45
 					if (ioBehavior == IOBehavior.Asynchronous)
 						await namedPipeStream.ConnectAsync(timeout, cancellationToken).ConfigureAwait(false);
 					else
-#endif
 						namedPipeStream.Connect(timeout);
 				}
 				catch (Exception ex) when ((ex is ObjectDisposedException && cancellationToken.IsCancellationRequested) || ex is TimeoutException)
@@ -1280,11 +1281,8 @@ internal sealed class ServerSession
 				var certificate = new X509Certificate2(cs.CertificateFile, cs.CertificatePassword, X509KeyStorageFlags.MachineKeySet);
 				if (!certificate.HasPrivateKey)
 				{
-#if NET45
-					certificate.Reset();
-#else
 					certificate.Dispose();
-#endif
+
 					m_logArguments[1] = cs.CertificateFile;
 					Log.Error("Session{0} no private key included with CertificateFile '{1}'", m_logArguments);
 					throw new SingleStoreException("CertificateFile does not contain a private key. " +
@@ -1357,7 +1355,11 @@ internal sealed class ServerSession
 						// load the certificate at this index; note that 'new X509Certificate' stops at the end of the first certificate it loads
 						m_logArguments[1] = index;
 						Log.Trace("Session{0} loading certificate at Index {1} in the CA certificate file.", m_logArguments);
+#if NET5_0_OR_GREATER
+						var caCertificate = new X509Certificate2(certificateBytes.AsSpan(index, (nextIndex == -1 ? certificateBytes.Length : nextIndex) - index), default(ReadOnlySpan<char>), X509KeyStorageFlags.MachineKeySet);
+#else
 						var caCertificate = new X509Certificate2(Utility.ArraySlice(certificateBytes, index, (nextIndex == -1 ? certificateBytes.Length : nextIndex) - index), default(string), X509KeyStorageFlags.MachineKeySet);
+#endif
 						certificateChain.ChainPolicy.ExtraStore.Add(caCertificate);
 					}
 					catch (CryptographicException ex)
@@ -1376,11 +1378,7 @@ internal sealed class ServerSession
 			}
 			finally
 			{
-#if NET45
-				certificateChain?.Reset();
-#else
 				certificateChain?.Dispose();
-#endif
 			}
 		}
 
@@ -1466,13 +1464,11 @@ internal sealed class ServerSession
 			{
 #if NET5_0_OR_GREATER
 				sslStream.AuthenticateAsClient(clientAuthenticationOptions);
-#elif NET45_OR_GREATER || NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_0_OR_GREATER
+#else
 				sslStream.AuthenticateAsClient(clientAuthenticationOptions.TargetHost,
 					clientAuthenticationOptions.ClientCertificates,
 					clientAuthenticationOptions.EnabledSslProtocols,
 					checkCertificateRevocation);
-#else
-				await sslStream.AuthenticateAsClientAsync(HostName, clientCertificates, sslProtocols, checkCertificateRevocation).ConfigureAwait(false);
 #endif
 			}
 			var sslByteHandler = new StreamByteHandler(sslStream);
@@ -1506,11 +1502,7 @@ internal sealed class ServerSession
 		}
 		finally
 		{
-#if NET45
-			caCertificateChain?.Reset();
-#else
 			caCertificateChain?.Dispose();
-#endif
 		}
 
 		// Returns a X509CertificateCollection containing the single certificate contained in 'sslKeyFile' (PEM private key) and 'sslCertificateFile' (PEM certificate).
@@ -1569,7 +1561,7 @@ internal sealed class ServerSession
 				}
 				rsa.ImportParameters(rsaParameters);
 
-#if NET45 || NET461 || NET471
+#if NET461 || NET471
 				var certificate = new X509Certificate2(sslCertificateFile, "", X509KeyStorageFlags.MachineKeySet)
 				{
 					PrivateKey = rsa,
@@ -1706,12 +1698,7 @@ internal sealed class ServerSession
 		Utility.Dispose(ref m_stream);
 		SafeDispose(ref m_tcpClient);
 		SafeDispose(ref m_socket);
-#if NET45
-		m_clientCertificate?.Reset();
-		m_clientCertificate = null;
-#else
 		Utility.Dispose(ref m_clientCertificate);
-#endif
 		m_activityTags.Clear();
 		m_activityTags.Add(ActivitySourceHelper.DatabaseSystemTagName, ActivitySourceHelper.DatabaseSystemValue);
 	}
@@ -1917,7 +1904,7 @@ internal sealed class ServerSession
 
 		protected override void OnStatementBegin(int index)
 		{
-			if (index + 10 < m_sql.Length && string.Equals("delimiter ", m_sql.Substring(index, 10), StringComparison.OrdinalIgnoreCase))
+			if (index + 10 < m_sql.Length && m_sql.AsSpan(index, 10).Equals("delimiter ".AsSpan(), StringComparison.OrdinalIgnoreCase))
 				HasDelimiter = true;
 		}
 

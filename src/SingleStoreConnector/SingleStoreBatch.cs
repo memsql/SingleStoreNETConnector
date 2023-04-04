@@ -151,7 +151,7 @@ public sealed class SingleStoreBatch :
 	private Task<SingleStoreDataReader> ExecuteReaderAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!IsValid(out var exception))
-		 	return Utility.TaskFromException<SingleStoreDataReader>(exception);
+		 	return Task.FromException<SingleStoreDataReader>(exception);
 
 		CurrentCommandBehavior = behavior;
 		foreach (SingleStoreBatchCommand batchCommand in BatchCommands)
@@ -366,7 +366,7 @@ public sealed class SingleStoreBatch :
 	private Task PrepareAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!NeedsPrepare(out var exception))
-			return exception is null ? Utility.CompletedTask : Utility.TaskFromException(exception);
+			return exception is null ? Task.CompletedTask : Task.FromException(exception);
 
 		return DoPrepareAsync(ioBehavior, cancellationToken);
 	}

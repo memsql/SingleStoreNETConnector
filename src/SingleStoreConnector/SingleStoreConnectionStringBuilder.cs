@@ -2,6 +2,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Linq;
 using System.Text.RegularExpressions;
 using SingleStoreConnector.Utilities;
 
@@ -187,6 +188,33 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
+	/// Uses a certificate from the specified Certificate Store on the machine. The default value of <see cref="SingleStoreCertificateStoreLocation.None"/> means the certificate store is not used; a value of <see cref="SingleStoreCertificateStoreLocation.CurrentUser"/> or <see cref="SingleStoreCertificateStoreLocation.LocalMachine"/> uses the specified store.
+	/// </summary>
+	[Category("TLS")]
+	[DefaultValue(SingleStoreCertificateStoreLocation.None)]
+	[Description("Uses a certificate from the specified Certificate Store on the machine.")]
+	[DisplayName("Certificate Store Location")]
+	public SingleStoreCertificateStoreLocation CertificateStoreLocation
+	{
+		get => SingleStoreConnectionStringOption.CertificateStoreLocation.GetValue(this);
+		set => SingleStoreConnectionStringOption.CertificateStoreLocation.SetValue(this, value);
+	}
+
+	/// <summary>
+	/// Specifies which certificate should be used from the Certificate Store specified in <see cref="CertificateStoreLocation"/>. This option must be used to indicate which certificate in the store should be used for authentication.
+	/// </summary>
+	[AllowNull]
+	[Category("TLS")]
+	[DisplayName("Certificate Thumbprint")]
+	[DefaultValue("")]
+	[Description("Specifies which certificate should be used from the certificate store specified in Certificate Store Location")]
+	public string CertificateThumbprint
+	{
+		get => SingleStoreConnectionStringOption.CertificateThumbprint.GetValue(this);
+		set => SingleStoreConnectionStringOption.CertificateThumbprint.SetValue(this, value);
+	}
+
+	/// <summary>
 	/// The path to the client’s SSL certificate file in PEM format. <see cref="SslKey"/> must also be specified, and <see cref="CertificateFile"/> should not be.
 	/// </summary>
 	[AllowNull]
@@ -240,33 +268,6 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	{
 		get => SingleStoreConnectionStringOption.SslCa.GetValue(this);
 		set => SingleStoreConnectionStringOption.SslCa.SetValue(this, value);
-	}
-
-	/// <summary>
-	/// Uses a certificate from the specified Certificate Store on the machine. The default value of <see cref="SingleStoreCertificateStoreLocation.None"/> means the certificate store is not used; a value of <see cref="SingleStoreCertificateStoreLocation.CurrentUser"/> or <see cref="SingleStoreCertificateStoreLocation.LocalMachine"/> uses the specified store.
-	/// </summary>
-	[Category("TLS")]
-	[DefaultValue(SingleStoreCertificateStoreLocation.None)]
-	[Description("Uses a certificate from the specified Certificate Store on the machine.")]
-	[DisplayName("Certificate Store Location")]
-	public SingleStoreCertificateStoreLocation CertificateStoreLocation
-	{
-		get => SingleStoreConnectionStringOption.CertificateStoreLocation.GetValue(this);
-		set => SingleStoreConnectionStringOption.CertificateStoreLocation.SetValue(this, value);
-	}
-
-	/// <summary>
-	/// Specifies which certificate should be used from the Certificate Store specified in <see cref="CertificateStoreLocation"/>. This option must be used to indicate which certificate in the store should be used for authentication.
-	/// </summary>
-	[AllowNull]
-	[Category("TLS")]
-	[DisplayName("Certificate Thumbprint")]
-	[DefaultValue("")]
-	[Description("Specifies which certificate should be used from the certificate store specified in Certificate Store Location")]
-	public string CertificateThumbprint
-	{
-		get => SingleStoreConnectionStringOption.CertificateThumbprint.GetValue(this);
-		set => SingleStoreConnectionStringOption.CertificateThumbprint.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -342,6 +343,19 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	/// This option is no longer supported.
 	/// </summary>
 	[Category("Obsolete")]
+	[DefaultValue(true)]
+	[DisplayName("Defer Connection Reset")]
+	[Obsolete("This option is no longer supported in MySqlConnector >= 1.4.0.")]
+	public bool DeferConnectionReset
+	{
+		get => SingleStoreConnectionStringOption.DeferConnectionReset.GetValue(this);
+		set => SingleStoreConnectionStringOption.DeferConnectionReset.SetValue(this, value);
+	}
+
+	/// <summary>
+	/// This option is no longer supported.
+	/// </summary>
+	[Category("Obsolete")]
 	[DefaultValue(0u)]
 	[DisplayName("Connection Idle Ping Time")]
 	[Obsolete("This option is no longer supported in SingleStoreConnector >= 1.4.0.")]
@@ -362,19 +376,6 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	{
 		get => SingleStoreConnectionStringOption.ConnectionIdleTimeout.GetValue(this);
 		set => SingleStoreConnectionStringOption.ConnectionIdleTimeout.SetValue(this, value);
-	}
-
-	/// <summary>
-	/// This option is no longer supported.
-	/// </summary>
-	[Category("Obsolete")]
-	[DefaultValue(true)]
-	[DisplayName("Defer Connection Reset")]
-	[Obsolete("This option is no longer supported in SingleStoreConnector >= 1.4.0.")]
-	public bool DeferConnectionReset
-	{
-		get => SingleStoreConnectionStringOption.DeferConnectionReset.GetValue(this);
-		set => SingleStoreConnectionStringOption.DeferConnectionReset.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -401,6 +402,19 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	{
 		get => SingleStoreConnectionStringOption.MaximumPoolSize.GetValue(this);
 		set => SingleStoreConnectionStringOption.MaximumPoolSize.SetValue(this, value);
+	}
+
+	/// <summary>
+	/// The number of seconds between checks for DNS changes, or 0 to disable periodic checks.
+	/// </summary>
+	[Category("Pooling")]
+	[DefaultValue(0u)]
+	[Description("The number of seconds between checks for DNS changes.")]
+	[DisplayName("DNS Check Interval")]
+	public uint DnsCheckInterval
+	{
+		get => SingleStoreConnectionStringOption.DnsCheckInterval.GetValue(this);
+		set => SingleStoreConnectionStringOption.DnsCheckInterval.SetValue(this, value);
 	}
 
 	// Other Options
@@ -485,6 +499,19 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
+	/// The length of time (in seconds) to wait for a query to be canceled when <see cref="SingleStoreCommand.CommandTimeout"/> expires, or zero for no timeout.
+	/// </summary>
+	[Category("Other")]
+	[DefaultValue(2)]
+	[Description("The length of time (in seconds) to wait for a query to be canceled when MySqlCommand.CommandTimeout expires, or zero for no timeout.")]
+	[DisplayName("Cancellation Timeout")]
+	public int CancellationTimeout
+	{
+		get => SingleStoreConnectionStringOption.CancellationTimeout.GetValue(this);
+		set => SingleStoreConnectionStringOption.CancellationTimeout.SetValue(this, value);
+	}
+
+	/// <summary>
 	/// Supported for backwards compatibility; SingleStoreConnector always uses <c>utf8mb4</c>.
 	/// </summary>
 	[AllowNull]
@@ -548,19 +575,6 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	{
 		get => SingleStoreConnectionStringOption.DefaultCommandTimeout.GetValue(this);
 		set => SingleStoreConnectionStringOption.DefaultCommandTimeout.SetValue(this, value);
-	}
-
-	/// <summary>
-	/// The length of time (in seconds) to wait for a query to be canceled when <see cref="SingleStoreCommand.CommandTimeout"/> expires, or zero for no timeout.
-	/// </summary>
-	[Category("Other")]
-	[DefaultValue(2)]
-	[Description("The length of time (in seconds) to wait for a query to be canceled when SingleStoreCommand.CommandTimeout expires, or zero for no timeout.")]
-	[DisplayName("Cancellation Timeout")]
-	public int CancellationTimeout
-	{
-		get => SingleStoreConnectionStringOption.CancellationTimeout.GetValue(this);
-		set => SingleStoreConnectionStringOption.CancellationTimeout.SetValue(this, value);
 	}
 
 	/// <summary>
@@ -801,6 +815,11 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	// Other Methods
 
 	/// <summary>
+	/// Returns an <see cref="ICollection"/> that contains the keys in the <see cref="SingleStoreConnectionStringBuilder"/>.
+	/// </summary>
+	public override ICollection Keys => base.Keys.Cast<string>().OrderBy(x => SingleStoreConnectionStringOption.OptionNames.IndexOf(x)).ToList();
+
+	/// <summary>
 	/// Whether this <see cref="SingleStoreConnectionStringBuilder"/> contains a set option with the specified name.
 	/// </summary>
 	/// <param name="keyword">The option name.</param>
@@ -889,6 +908,8 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 
 internal abstract partial class SingleStoreConnectionStringOption
 {
+	public static List<string> OptionNames { get; } = new();
+
 	// Connection Options
 	public static readonly SingleStoreConnectionStringReferenceOption<string> Server;
 	public static readonly SingleStoreConnectionStringValueOption<uint> Port;
@@ -905,9 +926,9 @@ internal abstract partial class SingleStoreConnectionStringOption
 	public static readonly SingleStoreConnectionStringReferenceOption<string> CertificatePassword;
 	public static readonly SingleStoreConnectionStringValueOption<SingleStoreCertificateStoreLocation> CertificateStoreLocation;
 	public static readonly SingleStoreConnectionStringReferenceOption<string> CertificateThumbprint;
-	public static readonly SingleStoreConnectionStringReferenceOption<string> SslCa;
 	public static readonly SingleStoreConnectionStringReferenceOption<string> SslCert;
 	public static readonly SingleStoreConnectionStringReferenceOption<string> SslKey;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> SslCa;
 	public static readonly SingleStoreConnectionStringReferenceOption<string> TlsVersion;
 	public static readonly SingleStoreConnectionStringReferenceOption<string> TlsCipherSuites;
 
@@ -920,6 +941,7 @@ internal abstract partial class SingleStoreConnectionStringOption
 	public static readonly SingleStoreConnectionStringValueOption<uint> ConnectionIdleTimeout;
 	public static readonly SingleStoreConnectionStringValueOption<uint> MinimumPoolSize;
 	public static readonly SingleStoreConnectionStringValueOption<uint> MaximumPoolSize;
+	public static readonly SingleStoreConnectionStringValueOption<uint> DnsCheckInterval;
 
 	// Other Options
 	public static readonly SingleStoreConnectionStringValueOption<bool> AllowLoadLocalInfile;
@@ -974,6 +996,7 @@ internal abstract partial class SingleStoreConnectionStringOption
 	{
 		foreach (string key in option.m_keys)
 			s_options.Add(key, option);
+		OptionNames.Add(option.m_keys[0]);
 	}
 
 #pragma warning disable CA1065 // Do not raise exceptions in unexpected locations
@@ -1028,8 +1051,12 @@ internal abstract partial class SingleStoreConnectionStringOption
 			keys: new[] { "Certificate Password", "CertificatePassword" },
 			defaultValue: ""));
 
-		AddOption(SslCa = new(
-			keys: new[] { "SSL CA", "CACertificateFile", "CA Certificate File", "SslCa", "Ssl-Ca" },
+		AddOption(CertificateStoreLocation = new(
+			keys: new[] { "Certificate Store Location", "CertificateStoreLocation" },
+			defaultValue: SingleStoreCertificateStoreLocation.None));
+
+		AddOption(CertificateThumbprint = new(
+			keys: new[] { "Certificate Thumbprint", "CertificateThumbprint", "Certificate Thumb Print" },
 			defaultValue: ""));
 
 		AddOption(SslCert = new(
@@ -1040,12 +1067,8 @@ internal abstract partial class SingleStoreConnectionStringOption
 			keys: new[] { "SSL Key", "SslKey", "Ssl-Key" },
 			defaultValue: ""));
 
-		AddOption(CertificateStoreLocation = new(
-			keys: new[] { "Certificate Store Location", "CertificateStoreLocation" },
-			defaultValue: SingleStoreCertificateStoreLocation.None));
-
-		AddOption(CertificateThumbprint = new(
-			keys: new[] { "Certificate Thumbprint", "CertificateThumbprint", "Certificate Thumb Print" },
+		AddOption(SslCa = new(
+			keys: new[] { "SSL CA", "CACertificateFile", "CA Certificate File", "SslCa", "Ssl-Ca" },
 			defaultValue: ""));
 
 		AddOption(TlsVersion = new(
@@ -1122,6 +1145,10 @@ internal abstract partial class SingleStoreConnectionStringOption
 		AddOption(MaximumPoolSize = new(
 			keys: new[] { "Maximum Pool Size", "Max Pool Size", "MaximumPoolSize", "maxpoolsize" },
 			defaultValue: 100u));
+
+		AddOption(DnsCheckInterval = new(
+			keys: new[] { "DNS Check Interval", "DnsCheckInterval" },
+			defaultValue: 0u));
 
 		// Other Options
 		AddOption(AllowLoadLocalInfile = new(

@@ -72,6 +72,51 @@ public class CancelTests : IClassFixture<CancelFixture>, IDisposable
 		task.Wait(); // shouldn't throw
 	}
 
+#if !BASELINE
+	[SkippableFact(ServerFeatures.Timeout)]
+	public async Task CancelCommandWithPasswordCallback()
+	{
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		var password = csb.Password;
+		csb.Password = null;
+		using var connection = new SingleStoreConnection(csb.ConnectionString)
+		{
+			ProvidePasswordCallback = _ => password,
+		};
+		await connection.OpenAsync();
+		using var command = new SingleStoreCommand("SELECT SLEEP(5)", connection);
+		var task = Task.Run(async () =>
+		{
+			await Task.Delay(TimeSpan.FromSeconds(0.5));
+			command.Cancel();
+		});
+
+		var stopwatch = Stopwatch.StartNew();
+		TestUtilities.AssertIsOne(await command.ExecuteScalarAsync());
+		Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500);
+
+		task.Wait(); // shouldn't throw
+	}
+
+	[SkippableFact(ServerFeatures.Timeout)]
+	public async Task CancelCommandCancellationTokenWithPasswordCallback()
+	{
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		var password = csb.Password;
+		csb.Password = null;
+		using var connection = new SingleStoreConnection(csb.ConnectionString)
+		{
+			ProvidePasswordCallback = _ => password,
+		};
+		await connection.OpenAsync();
+		using var command = new SingleStoreCommand("SELECT SLEEP(5)", connection);
+		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
+		var stopwatch = Stopwatch.StartNew();
+		TestUtilities.AssertIsOne(await command.ExecuteScalarAsync(cts.Token));
+		Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500);
+	}
+#endif
+
 	[SkippableFact(ServerFeatures.Timeout)]
 	public void CancelCommandBeforeRead()
 	{
@@ -164,7 +209,7 @@ public class CancelTests : IClassFixture<CancelFixture>, IDisposable
 		}
 	}
 
-	[SkippableFact(ServerFeatures.Timeout)]
+	[Fact]
 	public async Task CancelCommandWithTokenBeforeExecuteNonQuery()
 	{
 		using var cmd = new SingleStoreCommand("select 1;", m_database.Connection);
@@ -179,7 +224,7 @@ public class CancelTests : IClassFixture<CancelFixture>, IDisposable
 		}
 	}
 
-	[SkippableFact(ServerFeatures.Timeout)]
+	[Fact]
 	public async Task CancelCommandWithTokenBeforeExecuteReader()
 	{
 		using var cmd = new SingleStoreCommand("select 1;", m_database.Connection);
@@ -516,7 +561,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 		task.Wait(); // shouldn't throw
 	}
 
-	[SkippableFact(ServerFeatures.Timeout)]
+	[Fact]
 	public async Task CancelBatchWithTokenBeforeExecuteScalar()
 	{
 		using var batch = new SingleStoreBatch(m_database.Connection)
@@ -537,7 +582,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 		}
 	}
 
-	[SkippableFact(ServerFeatures.Timeout)]
+	[Fact]
 	public async Task CancelBatchWithTokenBeforeExecuteNonQuery()
 	{
 		using var batch = new SingleStoreBatch(m_database.Connection)
@@ -558,7 +603,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 		}
 	}
 
-	[SkippableFact(ServerFeatures.Timeout)]
+	[Fact]
 	public async Task CancelBatchWithTokenBeforeExecuteReader()
 	{
 		using var batch = new SingleStoreBatch(m_database.Connection)

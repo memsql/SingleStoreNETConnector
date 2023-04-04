@@ -20,6 +20,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SingleStoreConnector.Authen
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SingleStoreConnector.Tests", "tests\SingleStoreConnector.Tests\SingleStoreConnector.Tests.csproj", "{7A89FC1F-4DD2-4D84-A489-57BE246A1FB8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SchemaCollectionGenerator", "tools\SchemaCollectionGenerator\SchemaCollectionGenerator.csproj", "{1FFFFB30-013B-44DD-B016-7266CDC14A87}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +64,10 @@ Global
 		{7A89FC1F-4DD2-4D84-A489-57BE246A1FB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7A89FC1F-4DD2-4D84-A489-57BE246A1FB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7A89FC1F-4DD2-4D84-A489-57BE246A1FB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1FFFFB30-013B-44DD-B016-7266CDC14A87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FFFFB30-013B-44DD-B016-7266CDC14A87}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FFFFB30-013B-44DD-B016-7266CDC14A87}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FFFFB30-013B-44DD-B016-7266CDC14A87}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -95,14 +95,8 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 	}
 
 	public override bool IsNullable { get; set; }
-
-#if NET45
-	public byte Precision { get; set; }
-	public byte Scale { get; set; }
-#else
 	public override byte Precision { get; set; }
 	public override byte Scale { get; set; }
-#endif
 
 	[AllowNull]
 	public override string ParameterName
@@ -209,12 +203,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			ReadOnlySpan<byte> nullBytes = "NULL"u8;
 			writer.Write(nullBytes);
 		}
-#if NET45
-		else if (Value is string stringValue)
-		{
-			WriteString(writer, noBackslashEscapes, stringValue);
-		}
-#else
 		else if (Value is string stringValue)
 		{
 			WriteString(writer, noBackslashEscapes, writeDelimiters: true, stringValue.AsSpan());
@@ -227,7 +215,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			WriteString(writer, noBackslashEscapes, writeDelimiters: true, memoryChar.Span);
 		}
-#endif
 		else if (Value is char charValue)
 		{
 			writer.Write((byte) '\'');
@@ -452,8 +439,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			if (stringBuilder.Length != 0)
 				writer.Write("".AsSpan(), flush: true);
 			writer.Write((byte) '\'');
-#elif NET45
-			WriteString(writer, noBackslashEscapes, stringBuilder.ToString());
 #else
 			WriteString(writer, noBackslashEscapes, writeDelimiters: true, stringBuilder.ToString().AsSpan());
 #endif
@@ -495,19 +480,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			throw new NotSupportedException("Parameter type {0} is not supported; see https://fl.vu/mysql-param-type. Value: {1}".FormatInvariant(Value.GetType().Name, Value));
 		}
 
-#if NET45
-		static void WriteString(ByteBufferWriter writer, bool noBackslashEscapes, string value)
-		{
-			writer.Write((byte) '\'');
-
-			if (noBackslashEscapes)
-				writer.Write(value.Replace("'", "''"));
-			else
-				writer.Write(value.Replace("\\", "\\\\").Replace("'", "''"));
-
-			writer.Write((byte) '\'');
-		}
-#else
 		static void WriteString(ByteBufferWriter writer, bool noBackslashEscapes, bool writeDelimiters, ReadOnlySpan<char> value)
 		{
 			if (writeDelimiters)
@@ -539,7 +511,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			if (writeDelimiters)
 				writer.Write((byte) '\'');
 		}
-#endif
 	}
 
 	internal void AppendBinary(ByteBufferWriter writer, StatementPreparerOptions options)
@@ -722,7 +693,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 				writer.Advance(guidLength);
 			}
 		}
-#if !NET45
 		else if (Value is ReadOnlyMemory<char> readOnlyMemoryChar)
 		{
 			writer.WriteLengthEncodedString(readOnlyMemoryChar.Span);
@@ -731,7 +701,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			writer.WriteLengthEncodedString(memoryChar.Span);
 		}
-#endif
 		else if (Value is StringBuilder stringBuilder)
 		{
 			writer.WriteLengthEncodedString(stringBuilder);

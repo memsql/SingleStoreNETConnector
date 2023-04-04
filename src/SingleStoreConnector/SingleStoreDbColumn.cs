@@ -4,7 +4,7 @@ using SingleStoreConnector.Protocol;
 using SingleStoreConnector.Protocol.Payloads;
 using SingleStoreConnector.Protocol.Serialization;
 
-#if NET45 || NET461
+#if NET461
 #pragma warning disable CA1716 // Don't use reserved language keywords
 #pragma warning disable SA1402 // File may only contain a single type
 #pragma warning disable SA1403 // File may only contain a single namespace

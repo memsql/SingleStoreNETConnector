@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using SingleStoreConnector.Core;
+using SingleStoreConnector.Logging;
 using SingleStoreConnector.Protocol.Serialization;
 using SingleStoreConnector.Utilities;
 
@@ -10,7 +11,7 @@ namespace SingleStoreConnector;
 
 #pragma warning disable CA1010 // Generic interface should also be implemented
 
-#if NET45 || NET461
+#if NET461
 public sealed class SingleStoreDataReader : DbDataReader
 #else
 public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerator
@@ -226,6 +227,8 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
 		=> GetResultSet().GetCurrentRow().GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
 
+	public long GetBytes(string name, long dataOffset, byte[]? buffer, int bufferOffset, int length)
+		=> GetResultSet().GetCurrentRow().GetBytes(GetOrdinal(name), dataOffset, buffer, bufferOffset, length);
 	public override char GetChar(int ordinal) => GetResultSet().GetCurrentRow().GetChar(ordinal);
 	public char GetChar(string name) => GetChar(GetOrdinal(name));
 
@@ -614,9 +617,11 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 					{
 					}
 				}
-				catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
+				catch (SingleStoreException ex)
 				{
-					// ignore "Query execution was interrupted" exceptions when closing a data reader
+					// ignore "Query execution was interrupted" exceptions when closing a data reader; log other exceptions
+					if (ex.ErrorCode != SingleStoreErrorCode.QueryInterrupted)
+						Log.Warn("Session{0} ignoring exception in SingleStoreDataReader.DisposeAsync. Message: {1}. CommandText: {2}", Command.Connection.Session.Id, ex.Message, Command.CommandText);
 				}
 				m_resultSet = null;
 			}
@@ -681,6 +686,8 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 			throw new InvalidOperationException("There is no current result set.");
 		return m_resultSet;
 	}
+
+	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(SingleStoreDataReader));
 
 	private readonly CommandBehavior m_behavior;
 	private readonly ICommandPayloadCreator m_payloadCreator;

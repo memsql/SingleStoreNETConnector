@@ -115,7 +115,7 @@ public class SingleStoreConnectionStringBuilderTests
 				"allow zero datetime=true;" +
 				"auto enlist=False;" +
 				"certificate file=file.pfx;" +
-				"certificate password=Pass1234;" +
+				"certificate password=Pass2345;" +
 				"certificate store location=CurrentUser;" +
 				"certificate thumb print=thumbprint123;" +
 				"Character Set=latin1;" +
@@ -146,6 +146,7 @@ public class SingleStoreConnectionStringBuilderTests
 				"use xa transactions=false;" +
 				"tls cipher suites=TLS_AES_128_CCM_8_SHA256,TLS_RSA_WITH_RC4_128_MD5;" +
 				"ignore prepare=true;" +
+				"dnscheckinterval=15;" +
 #endif
 				"interactive=true;" +
 				"Keep Alive=90;" +
@@ -163,7 +164,7 @@ public class SingleStoreConnectionStringBuilderTests
 				"ssl-cert=client-cert.pem;" +
 				"ssl-key=client-key.pem;" +
 				"ssl mode=verifyca;" +
-				"tls version=Tls10, TLS v1.2;" +
+				"tls version=Tls12, TLS v1.3;" +
 				"Uid=username;" +
 				"useaffectedrows=true"
 		};
@@ -177,7 +178,7 @@ public class SingleStoreConnectionStringBuilderTests
 		// Connector/NET treats "CertificateFile" (client certificate) and "SslCa" (server CA) as aliases
 		Assert.Equal("file.pfx", csb.CertificateFile);
 #endif
-		Assert.Equal("Pass1234", csb.CertificatePassword);
+		Assert.Equal("Pass2345", csb.CertificatePassword);
 		Assert.Equal(SingleStoreCertificateStoreLocation.CurrentUser, csb.CertificateStoreLocation);
 		Assert.Equal("thumbprint123", csb.CertificateThumbprint);
 		Assert.Equal("latin1", csb.CharacterSet);
@@ -210,6 +211,7 @@ public class SingleStoreConnectionStringBuilderTests
 		Assert.False(csb.UseXaTransactions);
 		Assert.Equal("TLS_AES_128_CCM_8_SHA256,TLS_RSA_WITH_RC4_128_MD5", csb.TlsCipherSuites);
 		Assert.True(csb.IgnorePrepare);
+		Assert.Equal(15u, csb.DnsCheckInterval);
 #endif
 		Assert.True(csb.InteractiveSession);
 		Assert.Equal(90u, csb.Keepalive);
@@ -228,13 +230,30 @@ public class SingleStoreConnectionStringBuilderTests
 		Assert.Equal("client-key.pem", csb.SslKey);
 		Assert.Equal(SingleStoreSslMode.VerifyCA, csb.SslMode);
 #if BASELINE
-		Assert.Equal("Tls, Tls12", csb.TlsVersion);
+		Assert.Equal("Tls12, Tls13", csb.TlsVersion);
 #else
-		Assert.Equal("TLS 1.0, TLS 1.2", csb.TlsVersion);
+		Assert.Equal("TLS 1.2, TLS 1.3", csb.TlsVersion);
 #endif
 		Assert.True(csb.UseAffectedRows);
 		Assert.True(csb.UseCompression);
 		Assert.Equal("username", csb.UserID);
+
+#if !BASELINE
+		Assert.Equal("Server=db-server;Port=1234;User ID=username;Password=Pass1234;Database=schema_name;Load Balance=Random;" +
+		             "Connection Protocol=Pipe;Pipe Name=MyPipe;SSL Mode=VerifyCA;Certificate File=file.pfx;Certificate Password=Pass2345;" +
+		             "Certificate Store Location=CurrentUser;Certificate Thumbprint=thumbprint123;SSL Cert=client-cert.pem;SSL Key=client-key.pem;" +
+		             "SSL CA=ca.pem;TLS Version=\"TLS 1.2, TLS 1.3\";TLS Cipher Suites=TLS_AES_128_CCM_8_SHA256,TLS_RSA_WITH_RC4_128_MD5;" +
+		             "Pooling=False;Connection Lifetime=15;Connection Reset=False;Defer Connection Reset=True;Connection Idle Timeout=30;" +
+		             "Minimum Pool Size=5;Maximum Pool Size=15;DNS Check Interval=15;" +
+		             "Allow Load Local Infile=True;Allow Public Key Retrieval=True;Allow User Variables=True;" +
+		             "Allow Zero DateTime=True;Application Name=\"My Test Application\";Auto Enlist=False;Cancellation Timeout=-1;Character Set=latin1;" +
+		             "Connection Timeout=30;Convert Zero DateTime=True;DateTime Kind=Utc;Default Command Timeout=123;Force Synchronous=True;" +
+		             "TreatChar48AsGeographyPoint=True;GUID Format=TimeSwapBinary16;Ignore Command Transaction=True;Ignore Prepare=True;Interactive Session=True;" +
+		             "Keep Alive=90;No Backslash Escapes=True;Old Guids=True;Persist Security Info=True;Pipelining=False;Server Redirection Mode=Required;" +
+		             "Server RSA Public Key File=rsa.pem;Server SPN=mariadb/host.example.com@EXAMPLE.COM;Treat Tiny As Boolean=False;" +
+		             "Use Affected Rows=True;Use Compression=True;Use XA Transactions=False",
+			csb.ConnectionString.Replace("Protocol=NamedPipe", "Protocol=Pipe"));
+#endif
 	}
 
 	[Fact]
@@ -507,6 +526,7 @@ public class SingleStoreConnectionStringBuilderTests
 	[InlineData("Cancellation Timeout", 5)]
 	[InlineData("Connection Idle Timeout", 10u)]
 	[InlineData("DateTime Kind", SingleStoreDateTimeKind.Utc)]
+	[InlineData("DNS Check Interval", 15u)]
 	[InlineData("Force Synchronous", true)]
 	[InlineData("TreatChar48AsGeographyPoint", true)]
 	[InlineData("GUID Format", SingleStoreGuidFormat.Binary16)]
@@ -531,11 +551,14 @@ public class SingleStoreConnectionStringBuilderTests
 		{
 			var csb = new SingleStoreConnectionStringBuilder();
 #if !BASELINE
-			// Connector/NET sets all properties to default values
 			Assert.False(csb.ContainsKey(propertyName));
-#endif
 			Assert.False(csb.TryGetValue(propertyName, out var setValue));
 			Assert.Null(setValue);
+#else
+			// Connector/NET sets all properties to default values
+			Assert.True(csb.ContainsKey(propertyName));
+			Assert.True(csb.TryGetValue(propertyName, out var setValue));
+#endif
 
 			ICustomTypeDescriptor typeDescriptor = csb;
 			var propertyDescriptor = typeDescriptor.GetProperties().Cast<PropertyDescriptor>().SingleOrDefault(x => x.DisplayName == propertyName);
@@ -547,13 +570,18 @@ public class SingleStoreConnectionStringBuilderTests
 				csb.ConnectionString = propertyName + " = " + stringValue;
 
 			Assert.True(csb.ContainsKey(propertyName));
-#if !BASELINE
-			// https://bugs.mysql.com/bug.php?id=104910
-			Assert.True(csb.TryGetValue(propertyName, out setValue));
-			Assert.Equal(stringValue, setValue);
 
+			Assert.True(csb.TryGetValue(propertyName, out setValue));
+#if !BASELINE
+			Assert.Equal(stringValue, setValue);
+#else
+			Assert.Equal(value, setValue);
+#endif
 			var propertyDescriptorValue = propertyDescriptor.GetValue(csb);
+#if !BASELINE
 			Assert.Equal(stringValue, propertyDescriptorValue);
+#else
+			Assert.Equal(value, propertyDescriptorValue);
 #endif
 			Assert.Equal(value, csb[propertyName]);
 		}

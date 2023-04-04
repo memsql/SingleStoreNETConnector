@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <Title>SingleStoreConnector Ed25519 Authentication Plugin</Title>
     <Description>Implements the client_ed25519 authentication plugin for SingleStore.</Description>
     <Copyright>Copyright 2019–2021 Bradley Grainger</Copyright>

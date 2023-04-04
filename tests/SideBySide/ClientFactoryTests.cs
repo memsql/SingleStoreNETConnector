@@ -46,7 +46,7 @@ public class ClientFactoryTests
 	[Fact]
 	public void DbProviderFactoriesGetFactory()
 	{
-#if !NET452 && !NET461 && !NET472
+#if !NET462 && !NET472
 		DbProviderFactories.RegisterFactory("SingleStoreConnector", SingleStoreConnectorFactory.Instance);
 #endif
 #if BASELINE

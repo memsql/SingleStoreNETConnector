@@ -159,7 +159,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	private Task PrepareAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!NeedsPrepare(out var exception))
-			return exception is null ? Utility.CompletedTask : Utility.TaskFromException(exception);
+			return exception is null ? Task.CompletedTask : Task.FromException(exception);
 
 		return Connection!.Session.PrepareAsync(this, ioBehavior, cancellationToken);
 	}
@@ -346,7 +346,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	internal Task<SingleStoreDataReader> ExecuteReaderNoResetTimeoutAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!IsValid(out var exception))
-			return Utility.TaskFromException<SingleStoreDataReader>(exception);
+			return Task.FromException<SingleStoreDataReader>(exception);
 
 		var activity = NoActivity ? null : Connection!.Session.StartActivity(ActivitySourceHelper.ExecuteActivityName,
 			ActivitySourceHelper.DatabaseStatementTagName, CommandText);
@@ -374,7 +374,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 #if NETCOREAPP3_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 		return default;
 #else
-		return Utility.CompletedTask;
+		return Task.CompletedTask;
 #endif
 	}
 
