@@ -138,12 +138,11 @@ internal static class Utility
 		var keyChars = key.AsSpan()[keyStartIndex..keyEndIndex];
 		var bufferLength = keyChars.Length / 4 * 3;
 		byte[]? buffer = null;
-		Span<byte> bufferBytes = bufferLength <= 1024 ? stackalloc byte[bufferLength] : default;
+		scoped Span<byte> bufferBytes;
 		if (bufferLength > 1024)
-		{
-			buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
-			bufferBytes = buffer.AsSpan();
-		}
+			bufferBytes = buffer = ArrayPool<byte>.Shared.Rent(bufferLength);
+		else
+			 bufferBytes = stackalloc byte[bufferLength];
 		try
 		{
 			if (!System.Convert.TryFromBase64Chars(keyChars, bufferBytes, out var bytesWritten))
@@ -652,7 +651,7 @@ internal static class Utility
 		bytesConsumed = lengthBytesConsumed + length + 1;
 
 		// trim leading zero bytes
-		while (number is [ 0, .. ])
+		while (number is [ 0, _, .. ])
 			number = number[1..];
 
 		return true;

@@ -46,17 +46,17 @@ internal sealed class StatementPreparer
 	{
 		var index = m_parameters?.NormalizedIndexOf(name) ?? -1;
 		if (index == -1 && (Options & StatementPreparerOptions.AllowUserVariables) == 0)
-			throw new SingleStoreException("Parameter '{0}' must be defined. To use this as a variable, set 'Allow User Variables=true' in the connection string.".FormatInvariant(name));
+			throw new SingleStoreException($"Parameter '{name}' must be defined. To use this as a variable, set 'Allow User Variables=true' in the connection string.");
 		return index;
 	}
 
 	private SingleStoreParameter GetInputParameter(int index)
 	{
 		if (index >= (m_parameters?.Count ?? 0))
-			throw new SingleStoreException("Parameter index {0} is invalid when only {1} parameter{2} defined.".FormatInvariant(index, m_parameters?.Count ?? 0, m_parameters?.Count == 1 ? " is" : "s are"));
+			throw new SingleStoreException($"Parameter index {index} is invalid when only {m_parameters?.Count ?? 0} parameter{(m_parameters?.Count == 1 ? " is" : "s are")} defined.");
 		var parameter = m_parameters![index];
 		if (parameter.Direction != ParameterDirection.Input && (Options & StatementPreparerOptions.AllowOutputParameters) == 0)
-			throw new SingleStoreException("Only ParameterDirection.Input is supported when CommandType is Text (parameter name: {0})".FormatInvariant(parameter.ParameterName));
+			throw new SingleStoreException($"Only ParameterDirection.Input is supported when CommandType is Text (parameter name: {parameter.ParameterName})");
 		return parameter;
 	}
 
@@ -147,6 +147,7 @@ internal sealed class StatementPreparer
 
 			// store the parameter index
 			m_statements[m_statements.Count - 1].ParameterNames.Add(parameterName);
+			m_statements[m_statements.Count - 1].NormalizedParameterNames.Add(parameterName == null ? null : SingleStoreParameter.NormalizeParameterName(parameterName));
 			m_statements[m_statements.Count - 1].ParameterIndexes.Add(parameterIndex);
 		}
 

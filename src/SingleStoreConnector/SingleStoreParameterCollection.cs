@@ -90,11 +90,12 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 
 	// Finds the index of a parameter by name, regardless of whether 'parameterName' or the matching
 	// SingleStoreParameter.ParameterName has a leading '?' or '@'.
-	internal int NormalizedIndexOf(string? parameterName)
-	{
-		var normalizedName = SingleStoreParameter.NormalizeParameterName(parameterName ?? "");
-		return m_nameToIndex.TryGetValue(normalizedName, out var index) ? index : -1;
-	}
+	internal int NormalizedIndexOf(string? parameterName) =>
+		UnsafeIndexOf(SingleStoreParameter.NormalizeParameterName(parameterName ?? ""));
+
+	// Finds the index of a parameter by normalized name (i.e., the results of MySqlParameter.NormalizeParameterName).
+	internal int UnsafeIndexOf(string? normalizedParameterName) =>
+		m_nameToIndex.TryGetValue(normalizedParameterName ?? "", out var index) ? index : -1;
 
 	public override void Insert(int index, object value) => AddParameter((SingleStoreParameter) (value ?? throw new ArgumentNullException(nameof(value))), index);
 

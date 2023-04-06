@@ -116,12 +116,12 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 			var parameters = new SingleStoreParameter[commandParameterCount + attributeCount];
 			for (var i = 0; i < commandParameterCount; i++)
 			{
-				var parameterName = preparedStatement.Statement.ParameterNames![i];
-				var parameterIndex = parameterName is not null ? (parameterCollection?.NormalizedIndexOf(parameterName) ?? -1) : preparedStatement.Statement.ParameterIndexes[i];
+				var parameterName = preparedStatement.Statement.NormalizedParameterNames![i];
+				var parameterIndex = parameterName is not null ? (parameterCollection?.UnsafeIndexOf(parameterName) ?? -1) : preparedStatement.Statement.ParameterIndexes[i];
 				if (parameterIndex == -1 && parameterName is not null)
-					throw new SingleStoreException("Parameter '{0}' must be defined.".FormatInvariant(parameterName));
+					throw new SingleStoreException($"Parameter '{preparedStatement.Statement.ParameterNames![i]}' must be defined.");
 				else if (parameterIndex < 0 || parameterIndex >= (parameterCollection?.Count ?? 0))
-					throw new SingleStoreException("Parameter index {0} is invalid when only {1} parameter{2} defined.".FormatInvariant(parameterIndex, parameterCollection?.Count ?? 0, parameterCollection?.Count == 1 ? " is" : "s are"));
+					throw new SingleStoreException($"Parameter index {parameterIndex} is invalid when only {parameterCollection?.Count ?? 0} parameter{(parameterCollection?.Count == 1 ? " is" : "s are")} defined.");
 				parameters[i] = parameterCollection![parameterIndex];
 			}
 			for (var i = 0; i < attributeCount; i++)

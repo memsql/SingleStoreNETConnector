@@ -405,7 +405,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 				if (existingConnection is not null)
 				{
 					TakeSessionFrom(existingConnection);
-					CopyActivityTags(m_session!, activity);
+					ActivitySourceHelper.CopyTags(m_session!.ActivityTags, activity);
 					m_hasBeenOpened = true;
 					SetState(ConnectionState.Open);
 					return;
@@ -414,9 +414,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 
 			try
 			{
-				m_session = await CreateSessionAsync(pool, openStartTickCount, ioBehavior, cancellationToken).ConfigureAwait(false);
-				CopyActivityTags(m_session, activity);
-
+				m_session = await CreateSessionAsync(pool, openStartTickCount, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
 				m_hasBeenOpened = true;
 				SetState(ConnectionState.Open);
 			}
@@ -450,15 +448,6 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 			activity.SetException(ex);
 			throw;
 		}
-
-		static void CopyActivityTags(ServerSession session, Activity? activity)
-		{
-			if (activity is { IsAllDataRequested: true })
-			{
-				foreach (var tag in session.ActivityTags)
-					activity.SetTag(tag.Key, tag.Value);
-			}
-		}
 	}
 
 	/// <summary>
@@ -470,11 +459,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	/// It's known to be supported by MySQL Server 5.7.3 (and later), MariaDB 10.2.4 (and later),
 	/// SingleStore 7.5 and later. Calling this for SingleStore 7.5 and 7.6 resets the connection to no database selected.
 	/// Other MySQL-compatible servers or proxies may not support this command.</remarks>
-#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 	public async ValueTask ResetConnectionAsync(CancellationToken cancellationToken = default)
-#else
-	public async Task ResetConnectionAsync(CancellationToken cancellationToken = default)
-#endif
 	{
 		await Session.ResetConnectionAsync(AsyncIOBehavior, Database, cancellationToken).ConfigureAwait(false);
 	}
@@ -703,6 +688,11 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 		finally
 		{
 			m_isDisposed = true;
+
+			// Component implements the Dispose pattern, with some core logic implemented in Dispose(bool disposing). DbConnection
+			// adds DisposeAsync but doesn't implement the full DisposeAsyncCore pattern. Thus, although DisposeAsync is supposed
+			// to call Dispose(false), we call Dispose(true) here to execute that base class logic in both the sync and async paths.
+			base.Dispose(true);
 		}
 	}
 
@@ -907,7 +897,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 		}
 	}
 
-	private async ValueTask<ServerSession> CreateSessionAsync(ConnectionPool? pool, int startTickCount, IOBehavior? ioBehavior, CancellationToken cancellationToken)
+	private async ValueTask<ServerSession> CreateSessionAsync(ConnectionPool? pool, int startTickCount, Activity? activity, IOBehavior? ioBehavior, CancellationToken cancellationToken)
 	{
 		var connectionSettings = GetInitializedConnectionSettings();
 		var actualIOBehavior = ioBehavior ?? (connectionSettings.ForceSynchronous ? IOBehavior.Synchronous : IOBehavior.Asynchronous);
@@ -928,7 +918,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 			if (pool is not null)
 			{
 				// this returns an open session
-				return await pool.GetSessionAsync(this, startTickCount, actualIOBehavior, connectToken).ConfigureAwait(false);
+				return await pool.GetSessionAsync(this, startTickCount, activity, actualIOBehavior, connectToken).ConfigureAwait(false);
 			}
 			else
 			{
@@ -939,8 +929,16 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 				var session = new ServerSession();
 				session.OwningConnection = new WeakReference<SingleStoreConnection>(this);
 				Log.Debug("Created new non-pooled Session{0}", session.Id);
-				await session.ConnectAsync(connectionSettings, this, startTickCount, loadBalancer, actualIOBehavior, connectToken).ConfigureAwait(false);
-				return session;
+				try
+				{
+					await session.ConnectAsync(connectionSettings, this, startTickCount, loadBalancer, activity, actualIOBehavior, connectToken).ConfigureAwait(false);
+					return session;
+				}
+				catch (Exception)
+				{
+					await session.DisposeAsync(actualIOBehavior, default).ConfigureAwait(false);
+					throw;
+				}
 			}
 		}
 		catch (OperationCanceledException) when (timeoutSource?.IsCancellationRequested is true)
@@ -1089,11 +1087,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 		}
 	}
 
-#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 	private async ValueTask CloseDatabaseAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
-#else
-	private async Task CloseDatabaseAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
-#endif
 	{
 		if (m_activeReader is not null)
 			await m_activeReader.DisposeAsync(ioBehavior, cancellationToken).ConfigureAwait(false);

@@ -49,7 +49,7 @@ internal sealed class BinaryRow : Row
 					ColumnType.Short or ColumnType.Year => 2,
 					ColumnType.Tiny => 1,
 					ColumnType.Date or ColumnType.DateTime or ColumnType.NewDate or ColumnType.Timestamp or ColumnType.Time => reader.ReadByte(),
-					ColumnType.DateTime2 or ColumnType.Timestamp2 => throw new NotSupportedException("ColumnType {0} is not supported".FormatInvariant(columnDefinition.ColumnType)),
+					ColumnType.DateTime2 or ColumnType.Timestamp2 => throw new NotSupportedException($"ColumnType {columnDefinition.ColumnType} is not supported"),
 					_ => checked((int) reader.ReadLengthEncodedInteger()),
 				};
 
@@ -100,9 +100,9 @@ internal sealed class BinaryRow : Row
 			                ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet);
 
 			if (Connection.GuidFormat == SingleStoreGuidFormat.Char36 && columnLen == 36)
-				return Utf8Parser.TryParse(data, out Guid guid, out int guid36BytesConsumed, 'D') && guid36BytesConsumed == 36 ? guid : throw new FormatException("Could not parse CHAR(36) value as Guid: {0}".FormatInvariant(Encoding.UTF8.GetString(data)));
+				return Utf8Parser.TryParse(data, out Guid guid, out int guid36BytesConsumed, 'D') && guid36BytesConsumed == 36 ? guid : throw new FormatException($"Could not parse CHAR(36) value as Guid: {Encoding.UTF8.GetString(data)}");
 			if (Connection.GuidFormat == SingleStoreGuidFormat.Char32 && columnLen == 32)
-				return Utf8Parser.TryParse(data, out Guid guid, out int guid32BytesConsumed, 'N') && guid32BytesConsumed == 32 ? guid : throw new FormatException("Could not parse CHAR(32) value as Guid: {0}".FormatInvariant(Encoding.UTF8.GetString(data)));
+				return Utf8Parser.TryParse(data, out Guid guid, out int guid32BytesConsumed, 'N') && guid32BytesConsumed == 32 ? guid : throw new FormatException($"Could not parse CHAR(32) value as Guid: {Encoding.UTF8.GetString(data)}");
 			if (Connection.TreatChar48AsGeographyPoint && columnLen == 48)
 				goto case ColumnType.GeographyPoint;
 			if (columnLen == 1431655765)
@@ -160,7 +160,7 @@ internal sealed class BinaryRow : Row
 			return Encoding.UTF8.GetString(data);
 
 		default:
-			throw new NotImplementedException("Reading {0} not implemented".FormatInvariant(columnDefinition.ColumnType));
+			throw new NotImplementedException($"Reading {columnDefinition.ColumnType} not implemented");
 		}
 	}
 
@@ -206,7 +206,7 @@ internal sealed class BinaryRow : Row
 		}
 		catch (Exception ex)
 		{
-			throw new FormatException("Couldn't interpret value as a valid DateTime".FormatInvariant(Encoding.UTF8.GetString(value)), ex);
+			throw new FormatException($"Couldn't interpret value as a valid DateTime: {Encoding.UTF8.GetString(value)}", ex);
 		}
 	}
 

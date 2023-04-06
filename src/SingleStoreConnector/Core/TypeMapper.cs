@@ -303,7 +303,7 @@ internal sealed class TypeMapper
 			return SingleStoreDbType.Set;
 
 		default:
-			throw new NotImplementedException("ConvertToSingleStoreDbType for {0} is not implemented".FormatInvariant(columnDefinition.ColumnType));
+			throw new NotImplementedException($"ConvertToMySqlDbType for {columnDefinition.ColumnType} is not implemented");
 		}
 	}
 
@@ -339,7 +339,7 @@ internal sealed class TypeMapper
 			SingleStoreDbType.Geography => ColumnType.Geography,
 			SingleStoreDbType.GeographyPoint => ColumnType.GeographyPoint,
 			SingleStoreDbType.Null => ColumnType.Null,
-			_ => throw new NotImplementedException("ConvertToColumnTypeAndFlags for {0} is not implemented".FormatInvariant(dbType)),
+			_ => throw new NotImplementedException($"ConvertToColumnTypeAndFlags for {dbType} is not implemented"),
 		};
 		return (ushort) ((byte) columnType | (isUnsigned ? 0x8000 : 0));
 	}

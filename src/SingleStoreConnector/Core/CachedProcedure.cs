@@ -186,7 +186,7 @@ internal sealed class CachedProcedure
 		}
 		catch (NullReferenceException ex)
 		{
-			throw new SingleStoreException("Failed to parse stored procedure parameter '{0}'; extracted data type was {1}".FormatInvariant(originalSql, dataType), ex);
+			throw new SingleStoreException($"Failed to parse stored procedure parameter '{originalSql}'; extracted data type was {dataType}", ex);
 		}
 	}
 

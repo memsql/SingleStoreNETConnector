@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Reflection;
+using SingleStoreConnector.Core;
 
 namespace SingleStoreConnector.Utilities;
 
@@ -53,6 +54,15 @@ internal static class ActivitySourceHelper
 			{ "exception.message", exception.Message },
 			{ "exception.stacktrace", exception.ToString() },
 		}));
+	}
+
+	public static void CopyTags(IEnumerable<KeyValuePair<string, object?>> tags, Activity? activity)
+	{
+		if (activity is { IsAllDataRequested: true })
+		{
+			foreach (var tag in tags)
+				activity.SetTag(tag.Key, tag.Value);
+		}
 	}
 
 	private static ActivitySource ActivitySource { get; } = CreateActivitySource();
