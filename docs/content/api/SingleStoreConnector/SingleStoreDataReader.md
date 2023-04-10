@@ -13,7 +13,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 | override [HasRows](SingleStoreDataReader/HasRows.md) { get; } |  |
 | override [IsClosed](SingleStoreDataReader/IsClosed.md) { get; } |  |
 | override [Item](SingleStoreDataReader/Item.md) { get; } |  (2 indexers) |
-| override [RecordsAffected](SingleStoreDataReader/RecordsAffected.md) { get; } |  |
+| override [RecordsAffected](SingleStoreDataReader/RecordsAffected.md) { get; } | Gets the number of rows changed, inserted, or deleted by execution of the SQL statement. |
 | override [VisibleFieldCount](SingleStoreDataReader/VisibleFieldCount.md) { get; } |  |
 | override [Close](SingleStoreDataReader/Close.md)() |  |
 | override [DisposeAsync](SingleStoreDataReader/DisposeAsync.md)() |  |
@@ -22,6 +22,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 | override [GetByte](SingleStoreDataReader/GetByte.md)(…) |  |
 | [GetByte](SingleStoreDataReader/GetByte.md)(…) |  |
 | override [GetBytes](SingleStoreDataReader/GetBytes.md)(…) |  |
+| [GetBytes](SingleStoreDataReader/GetBytes.md)(…) |  |
 | override [GetChar](SingleStoreDataReader/GetChar.md)(…) |  |
 | [GetChar](SingleStoreDataReader/GetChar.md)(…) |  |
 | override [GetChars](SingleStoreDataReader/GetChars.md)(…) |  |

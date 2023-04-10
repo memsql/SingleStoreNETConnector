@@ -27,8 +27,8 @@ public sealed class SingleStoreCommand : DbCommand, ICloneable
 | [Clone](SingleStoreCommand/Clone.md)() |  |
 | [CreateParameter](SingleStoreCommand/CreateParameter.md)() |  |
 | override [DisposeAsync](SingleStoreCommand/DisposeAsync.md)() |  |
-| override [ExecuteNonQuery](SingleStoreCommand/ExecuteNonQuery.md)() |  |
-| override [ExecuteNonQueryAsync](SingleStoreCommand/ExecuteNonQueryAsync.md)(…) |  |
+| override [ExecuteNonQuery](SingleStoreCommand/ExecuteNonQuery.md)() | Executes this command on the associated [`SingleStoreConnection`](./SingleStoreConnection.md). |
+| override [ExecuteNonQueryAsync](SingleStoreCommand/ExecuteNonQueryAsync.md)(…) | Executes this command asynchronously on the associated [`SingleStoreConnection`](./SingleStoreConnection.md). |
 | [ExecuteReader](SingleStoreCommand/ExecuteReader.md)() |  |
 | [ExecuteReader](SingleStoreCommand/ExecuteReader.md)(…) |  |
 | [ExecuteReaderAsync](SingleStoreCommand/ExecuteReaderAsync.md)(…) |  (2 methods) |

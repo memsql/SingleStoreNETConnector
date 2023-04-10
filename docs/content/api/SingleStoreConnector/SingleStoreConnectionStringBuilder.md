@@ -33,6 +33,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 | [Database](SingleStoreConnectionStringBuilder/Database.md) { get; set; } | (Optional) The case-sensitive name of the initial database to use. This may be required if the SingleStore user account only has access rights to particular databases on the server. |
 | [DateTimeKind](SingleStoreConnectionStringBuilder/DateTimeKind.md) { get; set; } | The [`DateTimeKind`](./SingleStoreConnectionStringBuilder/DateTimeKind.md) to use when deserializing `DATETIME` values. |
 | [DefaultCommandTimeout](SingleStoreConnectionStringBuilder/DefaultCommandTimeout.md) { get; set; } | The length of time (in seconds) each command can execute before the query is cancelled on the server, or zero to disable timeouts. |
+| [DnsCheckInterval](SingleStoreConnectionStringBuilder/DnsCheckInterval.md) { get; set; } | The number of seconds between checks for DNS changes, or 0 to disable periodic checks. |
 | [ForceSynchronous](SingleStoreConnectionStringBuilder/ForceSynchronous.md) { get; set; } | Forces all async methods to execute synchronously. This can be useful for debugging. |
 | [GuidFormat](SingleStoreConnectionStringBuilder/GuidFormat.md) { get; set; } | Determines which column type (if any) should be read as a Guid. |
 | [IgnoreCommandTransaction](SingleStoreConnectionStringBuilder/IgnoreCommandTransaction.md) { get; set; } | Does not check the [`Transaction`](./SingleStoreCommand/Transaction.md) property for validity when executing a command. |
@@ -40,6 +41,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 | [InteractiveSession](SingleStoreConnectionStringBuilder/InteractiveSession.md) { get; set; } | Instructs the SingleStore server that this is an interactive session. |
 | override [Item](SingleStoreConnectionStringBuilder/Item.md) { get; set; } | Retrieves an option value by name. |
 | [Keepalive](SingleStoreConnectionStringBuilder/Keepalive.md) { get; set; } | TCP Keepalive idle time (in seconds), or 0 to use OS defaults. |
+| override [Keys](SingleStoreConnectionStringBuilder/Keys.md) { get; } | Returns an ICollection that contains the keys in the [`SingleStoreConnectionStringBuilder`](./SingleStoreConnectionStringBuilder.md). |
 | [LoadBalance](SingleStoreConnectionStringBuilder/LoadBalance.md) { get; set; } | Specifies how load is distributed across backend servers. |
 | [MaximumPoolSize](SingleStoreConnectionStringBuilder/MaximumPoolSize.md) { get; set; } | The maximum number of connections allowed in the pool. |
 | [MinimumPoolSize](SingleStoreConnectionStringBuilder/MinimumPoolSize.md) { get; set; } | The minimum number of connections to leave in the pool if [`ConnectionIdleTimeout`](./SingleStoreConnectionStringBuilder/ConnectionIdleTimeout.md) is reached. |

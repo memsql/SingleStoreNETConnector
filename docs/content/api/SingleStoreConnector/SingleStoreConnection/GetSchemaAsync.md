@@ -66,7 +66,7 @@ public override Task<DataTable> GetSchemaAsync(string collectionName, string?[] 
 | parameter | description |
 | --- | --- |
 | collectionName | The name of the schema to return. |
-| restrictionValues | The restrictions to apply to the schema; this parameter is currently ignored. |
+| restrictionValues | The restrictions to apply to the schema. |
 | cancellationToken | A token to cancel the asynchronous operation. |
 
 ## Return Value

@@ -24,7 +24,7 @@ public SingleStoreBulkCopyColumnMapping(int sourceOrdinal, string destinationCol
 
 | parameter | description |
 | --- | --- |
-| sourceOrdinal | The ordinal position of the source column. |
+| sourceOrdinal | The zero-based ordinal position of the source column. |
 | destinationColumn | The name of the destination column. |
 | expression | The optional expression to be used to set the destination column. |
 

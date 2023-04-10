@@ -3,7 +3,7 @@
 [`SingleStoreAttribute`](./SingleStoreAttribute.md) represents an attribute that can be sent with a SingleStore query.
 
 ```csharp
-public sealed class SingleStoreAttribute
+public sealed class SingleStoreAttribute : ICloneable
 ```
 
 ## Public Members
@@ -14,6 +14,7 @@ public sealed class SingleStoreAttribute
 | [SingleStoreAttribute](SingleStoreAttribute/SingleStoreAttribute.md)(…) | Initializes a new [`SingleStoreAttribute`](./SingleStoreAttribute.md) with the specified attribute name and value. |
 | [AttributeName](SingleStoreAttribute/AttributeName.md) { get; set; } | Gets or sets the attribute name. |
 | [Value](SingleStoreAttribute/Value.md) { get; set; } | Gets or sets the attribute value. |
+| [Clone](SingleStoreAttribute/Clone.md)() | Returns a new [`SingleStoreAttribute`](./SingleStoreAttribute.md) with the same property values as this instance. |
 
 ## Remarks
 

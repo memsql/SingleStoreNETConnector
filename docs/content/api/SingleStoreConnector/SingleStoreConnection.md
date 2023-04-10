@@ -20,6 +20,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 | [ProvideClientCertificatesCallback](SingleStoreConnection/ProvideClientCertificatesCallback.md) { get; set; } | Gets or sets the delegate used to provide client certificates for connecting to a server. |
 | [ProvidePasswordCallback](SingleStoreConnection/ProvidePasswordCallback.md) { get; set; } | Gets or sets the delegate used to generate a password for new database connections. |
 | [RemoteCertificateValidationCallback](SingleStoreConnection/RemoteCertificateValidationCallback.md) { get; set; } | Gets or sets the delegate used to verify that the server's certificate is valid. |
+| [S2ServerVersion](SingleStoreConnection/S2ServerVersion.md) { get; } |  |
 | [ServerThread](SingleStoreConnection/ServerThread.md) { get; } | The connection ID from SingleStore Server. |
 | override [ServerVersion](SingleStoreConnection/ServerVersion.md) { get; } |  |
 | override [State](SingleStoreConnection/State.md) { get; } |  |
