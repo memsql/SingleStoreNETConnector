@@ -2,6 +2,30 @@
 
 ## Release Notes
 
+###1.1.0
+
+*Support .NET 7.0
+
+*Speed up inserts with SingleStoreDataAdapter
+
+*Loop to read all data when decompressing
+
+*Fix deadlock when cancelling a command
+
+*Fix BulkCopy for DateOnly and TimeOnly
+
+*Fix unintentional TLS downgrade
+
+*Implement SingleStoreAttribute.Clone
+
+*Normalize the order of keys in the connection string returned by `SingleStoreConnectionStringBuilder.ConnectionString`
+
+*Drop support for .NET 4.5
+
+*Fix a race condition in recovering leaked sessions
+
+*Fix failure to dispose objects if an exception is thrown when connecting
+
 ###1.0.1
 
 *Allow RecordsAffected to be read after Close() in SingleStoreDataReader
