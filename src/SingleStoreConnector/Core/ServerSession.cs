@@ -543,7 +543,7 @@ internal sealed class ServerSession
 			} while (shouldRetrySsl);
 
 			if (m_supportsConnectionAttributes && cs.ConnectionAttributes is null)
-				cs.ConnectionAttributes = CreateConnectionAttributes(cs.ApplicationName);
+				cs.ConnectionAttributes = CreateConnectionAttributes(cs.ApplicationName, cs.ConnAttrsExtra);
 
 			var password = GetPassword(cs, connection);
 			using (var handshakeResponsePayload = HandshakeResponse41Payload.Create(initialHandshake, cs, password, m_useCompression, m_characterSet, m_supportsConnectionAttributes ? cs.ConnectionAttributes : null))
@@ -1822,12 +1822,12 @@ internal sealed class ServerSession
 
 	internal SslProtocols SslProtocol => m_sslStream?.SslProtocol ?? SslProtocols.None;
 
-	private byte[] CreateConnectionAttributes(string programName)
+	private byte[] CreateConnectionAttributes(string programName, string connAttrsExtra)
 	{
 		Log.Trace("Session{0} creating connection attributes", m_logArguments);
 		var attributesWriter = new ByteBufferWriter();
 		attributesWriter.WriteLengthEncodedString("_client_name");
-		attributesWriter.WriteLengthEncodedString("SingleStoreConnector");
+		attributesWriter.WriteLengthEncodedString("SingleStore .NET Connector");
 		attributesWriter.WriteLengthEncodedString("_client_version");
 
 		var version = typeof(ServerSession).GetTypeInfo().Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
@@ -1864,6 +1864,16 @@ internal sealed class ServerSession
 		{
 			attributesWriter.WriteLengthEncodedString("program_name");
 			attributesWriter.WriteLengthEncodedString(programName!);
+		}
+		if (connAttrsExtra.Length != 0)
+		{
+			foreach (var attr in connAttrsExtra.Split(','))
+			{
+				foreach (var attrPart in attr.Split(':'))
+				{
+					attributesWriter.WriteLengthEncodedString(attrPart);
+				}
+			}
 		}
 		using var connectionAttributesPayload = attributesWriter.ToPayloadData();
 		var connectionAttributes = connectionAttributesPayload.Span;

@@ -486,6 +486,20 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
+	/// Sets connection attributes passed to SingleStore Server.
+	/// </summary>
+	[AllowNull]
+	[Category("Other")]
+	[DefaultValue("")]
+	[Description("Sets connection attributes passed to SingleStore Server.")]
+	[DisplayName("Connection Attributes")]
+	public string ConnectionAttributes
+	{
+		get => SingleStoreConnectionStringOption.ConnectionAttributes.GetValue(this);
+		set => SingleStoreConnectionStringOption.ConnectionAttributes.SetValue(this, value);
+	}
+
+	/// <summary>
 	/// Automatically enlists this connection in any active <see cref="System.Transactions.TransactionScope"/>.
 	/// </summary>
 	[Category("Other")]
@@ -952,6 +966,7 @@ internal abstract partial class SingleStoreConnectionStringOption
 	public static readonly SingleStoreConnectionStringValueOption<bool> AutoEnlist;
 	public static readonly SingleStoreConnectionStringValueOption<int> CancellationTimeout;
 	public static readonly SingleStoreConnectionStringReferenceOption<string> CharacterSet;
+	public static readonly SingleStoreConnectionStringReferenceOption<string> ConnectionAttributes;
 	public static readonly SingleStoreConnectionStringValueOption<uint> ConnectionTimeout;
 	public static readonly SingleStoreConnectionStringValueOption<bool> ConvertZeroDateTime;
 	public static readonly SingleStoreConnectionStringValueOption<SingleStoreDateTimeKind> DateTimeKind;
@@ -1169,6 +1184,10 @@ internal abstract partial class SingleStoreConnectionStringOption
 
 		AddOption(ApplicationName = new(
 			keys: new[] { "Application Name", "ApplicationName" },
+			defaultValue: ""));
+
+		AddOption(ConnectionAttributes = new(
+			keys: new[] { "Connection Attributes", "ConnectionAttributes" },
 			defaultValue: ""));
 
 		AddOption(AutoEnlist = new(

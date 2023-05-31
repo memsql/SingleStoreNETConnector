@@ -129,6 +129,7 @@ internal sealed class ConnectionSettings
 		ApplicationName = csb.ApplicationName;
 		AutoEnlist = csb.AutoEnlist;
 		CancellationTimeout = csb.CancellationTimeout;
+		ConnAttrsExtra = csb.ConnectionAttributes;
 		ConnectionTimeout = ToSigned(csb.ConnectionTimeout);
 		ConvertZeroDateTime = csb.ConvertZeroDateTime;
 		DateTimeKind = (DateTimeKind) csb.DateTimeKind;
@@ -247,6 +248,7 @@ internal sealed class ConnectionSettings
 	public bool UseCompression { get; }
 	public bool UseXaTransactions { get; }
 
+	public string ConnAttrsExtra { get; set; }
 	public byte[]? ConnectionAttributes { get; set; }
 
 	// Helper Functions
@@ -311,6 +313,7 @@ internal sealed class ConnectionSettings
 		AllowZeroDateTime = other.AllowZeroDateTime;
 		ApplicationName = other.ApplicationName;
 		AutoEnlist = other.AutoEnlist;
+		ConnAttrsExtra = other.ConnAttrsExtra;
 		ConnectionTimeout = other.ConnectionTimeout;
 		ConvertZeroDateTime = other.ConvertZeroDateTime;
 		DateTimeKind = other.DateTimeKind;

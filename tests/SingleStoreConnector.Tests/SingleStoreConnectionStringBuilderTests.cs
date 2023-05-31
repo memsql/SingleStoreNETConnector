@@ -130,6 +130,7 @@ public class SingleStoreConnectionStringBuilderTests
 				"default command timeout=123;" +
 #if !BASELINE
 				"application name=My Test Application;" +
+				"ConnectionAttributes=my_attr_name:my_value;" +
 				"cancellation timeout = -1;" +
 				"connectionidletimeout=30;" +
 				"defer connection reset=true;" +
@@ -194,6 +195,7 @@ public class SingleStoreConnectionStringBuilderTests
 		Assert.Equal(123u, csb.DefaultCommandTimeout);
 #if !BASELINE
 		Assert.Equal("My Test Application", csb.ApplicationName);
+		Assert.Equal("my_attr_name:my_value", csb.ConnectionAttributes);
 		Assert.Equal(30u, csb.ConnectionIdleTimeout);
 #pragma warning disable 618
 		Assert.True(csb.DeferConnectionReset);
@@ -246,7 +248,7 @@ public class SingleStoreConnectionStringBuilderTests
 		             "Pooling=False;Connection Lifetime=15;Connection Reset=False;Defer Connection Reset=True;Connection Idle Timeout=30;" +
 		             "Minimum Pool Size=5;Maximum Pool Size=15;DNS Check Interval=15;" +
 		             "Allow Load Local Infile=True;Allow Public Key Retrieval=True;Allow User Variables=True;" +
-		             "Allow Zero DateTime=True;Application Name=\"My Test Application\";Auto Enlist=False;Cancellation Timeout=-1;Character Set=latin1;" +
+		             "Allow Zero DateTime=True;Application Name=\"My Test Application\";Connection Attributes=my_attr_name:my_value;Auto Enlist=False;Cancellation Timeout=-1;Character Set=latin1;" +
 		             "Connection Timeout=30;Convert Zero DateTime=True;DateTime Kind=Utc;Default Command Timeout=123;Force Synchronous=True;" +
 		             "TreatChar48AsGeographyPoint=True;GUID Format=TimeSwapBinary16;Ignore Command Transaction=True;Ignore Prepare=True;Interactive Session=True;" +
 		             "Keep Alive=90;No Backslash Escapes=True;Old Guids=True;Persist Security Info=True;Pipelining=False;Server Redirection Mode=Required;" +

@@ -280,6 +280,33 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 	}
 
 	[Fact]
+	public void ConnectionAttributes()
+	{
+		var attrs = "ConnectionAttributes=my_key_1:my_val_1,my_key_2:my_val_2";
+		using var connection = new SingleStoreConnection(AppConfig.ConnectionString + ";" + attrs);
+		connection.Open();
+
+		if (connection.Session.S2ServerVersion.Version.CompareTo(new Version(8, 1, 0)) >= 0)
+		{
+			using var cmd = connection.CreateCommand();
+			cmd.CommandText = "SELECT ATTRIBUTE_NAME, ATTRIBUTE_VALUE FROM information_schema.mv_connection_attributes;";
+
+			using var reader = cmd.ExecuteReader();
+			HashSet<Tuple<string, string>> dbConnAttrs = new HashSet<Tuple<string, string>>();
+			while (reader.Read())
+			{
+				dbConnAttrs.Add(new Tuple<string, string>(reader.GetString(0), reader.GetString(1)));
+			}
+			Tuple<string, string> expectedPair = new Tuple<string, string>("my_key_1", "my_val_1");
+			Assert.Contains(expectedPair, dbConnAttrs);
+			expectedPair = new Tuple<string, string>("my_key_2", "my_val_2");
+			Assert.Contains(expectedPair, dbConnAttrs);
+			expectedPair = new Tuple<string, string>("_client_name", "SingleStore .NET Connector");
+			Assert.Contains(expectedPair, dbConnAttrs);
+		}
+	}
+
+	[Fact]
 	public async Task ResetConnectionThrowsIfNotOpen()
 	{
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
