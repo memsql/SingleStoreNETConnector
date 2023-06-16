@@ -2,6 +2,10 @@
 
 ## Release Notes
 
+###1.1.1
+
+*Add ConnectionAttributes parameter
+
 ###1.1.0
 
 *Support .NET 7.0
