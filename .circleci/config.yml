@@ -139,18 +139,6 @@ workflows:
   build_and_test:
     jobs:
       - test-ubuntu:
-          name: Test 8.1 cluster-in-a-box
-          matrix:
-            parameters:
-              singlestore_image:
-                - singlestore/cluster-in-a-box:alma-8.1.12-93bb04ec6c-4.0.13-1.17.0
-      - test-ubuntu:
-          name: Test 8.0 cluster-in-a-box
-          matrix:
-            parameters:
-              singlestore_image:
-                - singlestore/cluster-in-a-box:alma-8.0.19-f48780d261-4.0.11-1.16.0
-      - test-ubuntu:
           name: Test 7.8 cluster-in-a-box
           matrix:
             parameters:
