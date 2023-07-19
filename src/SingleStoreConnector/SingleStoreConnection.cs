@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -763,14 +764,23 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 				AutoEnlist = false,
 				Pooling = false,
 			};
-			if (m_session?.IPAddress is { } ipAddress)
+			if (m_session.IPEndPoint is { Address: { } ipAddress, Port: { } port } )
+			{
 				csb.Server = ipAddress.ToString();
+				csb.Port = (uint) port;
+			}
+			csb.UserID = m_session.UserID;
 			var cancellationTimeout = GetConnectionSettings().CancellationTimeout;
 			csb.ConnectionTimeout = cancellationTimeout < 1 ? 3u : (uint) cancellationTimeout;
 
 			using var connection = CloneWith(csb.ConnectionString);
 			connection.Open();
-			using var killCommand = new SingleStoreCommand("KILL QUERY {0}".FormatInvariant(command.Connection!.ServerThread), connection);
+#if NET6_0_OR_GREATER
+			var killQuerySql = string.Create(CultureInfo.InvariantCulture, $"KILL QUERY {command.Connection!.ServerThread} {m_session.AggregatorId}");
+#else
+			var killQuerySql = FormattableString.Invariant($"KILL QUERY {command.Connection!.ServerThread} {m_session.AggregatorId}");
+#endif
+			using var killCommand = new SingleStoreCommand(killQuerySql, connection);
 			killCommand.CommandTimeout = cancellationTimeout < 1 ? 3 : cancellationTimeout;
 			m_session?.DoCancel(command, killCommand);
 		}
