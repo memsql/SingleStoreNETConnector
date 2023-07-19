@@ -1700,8 +1700,8 @@ internal sealed class ServerSession
 			// CONNECTION_ID(), VERSION(), @@memsql_version and @@aggregator_id columns
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false)
-			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false)
+			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 
 			if (!SupportsDeprecateEof)
 			{
