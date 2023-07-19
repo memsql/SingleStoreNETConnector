@@ -69,13 +69,14 @@ internal static class CommandExecutor
 				int megabytes = payload.Span.Length / 1_000_000;
 				throw new SingleStoreException($"Error submitting {megabytes}MB packet; ensure 'max_allowed_packet' is greater than {megabytes}MB.", ex);
 			}
+			catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
+			{
+				Log.Trace("Session{0} got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (CommandExecutor.cs)", connection.Session.Id);
+				throw;
+			}
 		}
 		catch (Exception ex) when (activity is { IsAllDataRequested: true })
 		{
-			if (ex is SingleStoreException s2Exception && s2Exception.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
-			{
-				Log.Trace("Got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (CommandExecutor.cs)");
-			}
 			activity.SetException(ex);
 			activity.Stop();
 			throw;
