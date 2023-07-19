@@ -123,6 +123,9 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 			if (mySqlException?.ErrorCode == SingleStoreErrorCode.QueryInterrupted && Command!.CancellableCommand.IsTimedOut)
 				throw SingleStoreException.CreateForTimeout(mySqlException);
 
+			if (mySqlException?.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
+				Log.Trace("Got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (SingleStoreDataReader.cs)");
+
 			if (mySqlException is not null)
 			{
 				ServerSession.ThrowIfStatementContainsDelimiter(mySqlException, Command!);
