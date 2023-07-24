@@ -1,4 +1,4 @@
-# Async SingleStore Connector for .NET and .NET Core 1.1.1
+# Async SingleStore Connector for .NET and .NET Core 1.1.2
 
 This is an [ADO.NET](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/) data
 provider for [SingleStore](https://www.singlestore.com/). It provides implementations of

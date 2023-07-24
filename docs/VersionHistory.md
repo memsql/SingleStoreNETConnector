@@ -2,6 +2,9 @@
 
 ## Release Notes
 
+###1.1.2
+*Add `node_id` to `KILL QUERY {connection_id} {node_id}` command used in `Connection.Cancel()`.
+
 ###1.1.1
 
 *Add ConnectionAttributes parameter
