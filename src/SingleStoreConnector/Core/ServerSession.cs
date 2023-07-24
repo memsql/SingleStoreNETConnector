@@ -333,6 +333,10 @@ internal sealed class ServerSession
 				{
 					Log.Debug("Session{0} cancelled dummy-command to clear pending cancellation", m_logArguments);
 				}
+				else
+				{
+					Log.Debug("Session{0} failed dummy-command to clear pending cancellation", m_logArguments);
+				}
 			}
 #pragma warning restore CA2012
 			OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
@@ -1759,11 +1763,15 @@ internal sealed class ServerSession
 				Log.Debug("Session{0} setting S2ServerVersion to {2}", m_logArguments[0], S2ServerVersion.OriginalString, newS2Version.OriginalString);
 				S2ServerVersion = newS2Version;
 			}
-			if (aggregator_id.HasValue && AggregatorId != aggregator_id.Value)
+			if (aggregator_id.HasValue)
 			{
-				Log.Debug("Session{0} changing aggregator_id from {1} to {2}",
-					m_logArguments[0], AggregatorId, aggregator_id.Value);
+				Log.Debug("Session{0} setting AggregatorId to {2}", m_logArguments[0], aggregator_id.Value);
 				AggregatorId = aggregator_id.Value;
+			}
+			else
+			{
+				// dummy value, @@aggregator_id should always be set
+				AggregatorId = -1;
 			}
 		}
 		catch (SingleStoreException ex)

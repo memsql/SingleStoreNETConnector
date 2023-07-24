@@ -361,7 +361,7 @@ internal sealed class ResultSet
 		return m_row ?? throw new InvalidOperationException("There is no current row.");
 	}
 
-	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(SingleStoreDataReader));
+	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(ResultSet));
 	public SingleStoreDataReader DataReader { get; }
 	public ExceptionDispatchInfo? ReadResultSetHeaderException { get; private set; }
 	public ISingleStoreCommand Command => DataReader.Command!;
