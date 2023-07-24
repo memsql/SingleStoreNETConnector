@@ -53,6 +53,7 @@ internal sealed class ServerSession
 	// SingleStore Server version
 	public ServerVersion S2ServerVersion { get; set; }
 
+	public int AggregatorId { get; private set; }
 	public int ActiveCommandId { get; private set; }
 	public int CancellationTimeout { get; private set; }
 	public int ConnectionId { get; set; }
@@ -63,7 +64,8 @@ internal sealed class ServerSession
 	public uint LastReturnedTicks { get; private set; }
 	public string? DatabaseOverride { get; set; }
 	public string HostName { get; private set; }
-	public IPAddress? IPAddress => (m_tcpClient?.Client.RemoteEndPoint as IPEndPoint)?.Address;
+	public IPEndPoint? IPEndPoint => m_tcpClient?.Client.RemoteEndPoint as IPEndPoint;
+	public string? UserID { get; private set; }
 	public WeakReference<SingleStoreConnection>? OwningConnection { get; set; }
 	public bool SupportsComMulti => m_supportsComMulti;
 	public bool SupportsDeprecateEof => m_supportsDeprecateEof;
@@ -320,8 +322,22 @@ internal sealed class ServerSession
 			Log.Debug("Session{0} sending 'SELECT SLEEP(0) INTO @dummy' command to clear pending cancellation", m_logArguments);
 			var payload = SupportsQueryAttributes ? s_sleepWithAttributesPayload : s_sleepNoAttributesPayload;
 #pragma warning disable CA2012 // Safe because method completes synchronously
-			SendAsync(payload, IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
-			payload = ReceiveReplyAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
+			try
+			{
+				SendAsync(payload, IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
+				payload = ReceiveReplyAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
+			}
+			catch (SingleStoreException ex)
+			{
+				if (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
+				{
+					Log.Debug("Session{0} cancelled dummy-command to clear pending cancellation", m_logArguments);
+				}
+				else
+				{
+					Log.Debug("Session{0} failed dummy-command to clear pending cancellation", m_logArguments);
+				}
+			}
 #pragma warning restore CA2012
 			OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
 		}
@@ -1676,16 +1692,17 @@ internal sealed class ServerSession
 
 	private async Task GetRealServerDetailsAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		Log.Debug("Session{0} is getting CONNECTION_ID(), VERSION(), S2Version from server", m_logArguments);
+		Log.Debug("Session{0} is getting CONNECTION_ID(), VERSION(), S2Version, aggregator_id from server", m_logArguments);
 		try
 		{
 			var payload = SupportsQueryAttributes ? s_selectConnectionIdVersionWithAttributesPayload : s_selectConnectionIdVersionNoAttributesPayload;
 			await SendAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 
-			// column count: 3
+			// column count: 4
 			await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
-			// CONNECTION_ID(), VERSION() and @@memsql_version columns
+			// CONNECTION_ID(), VERSION(), @@memsql_version and @@aggregator_id columns
+			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
@@ -1698,7 +1715,7 @@ internal sealed class ServerSession
 
 			// first (and only) row
 			payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-			static void ReadRow(ReadOnlySpan<byte> span, out int? connectionId, out byte[] serverVersion, out byte[] s2Version)
+			static void ReadRow(ReadOnlySpan<byte> span, out int? connectionId, out byte[] serverVersion, out byte[] s2Version, out int? aggregator_id)
 			{
 				var reader = new ByteArrayReader(span);
 				var length = reader.ReadLengthEncodedIntegerOrNull();
@@ -1713,8 +1730,13 @@ internal sealed class ServerSession
 #pragma warning disable CA1825 // Avoid zero-length array allocations
 				s2Version = length != -1 ? reader.ReadByteString(length).ToArray() : new byte[0];
 #pragma warning restore CA1825 // Avoid zero-length array allocations
+
+				length = reader.ReadLengthEncodedIntegerOrNull();
+#pragma warning disable CA1825 // Avoid zero-length array allocations
+				aggregator_id = (length != -1 && Utf8Parser.TryParse(reader.ReadByteString(length), out int node_id, out _)) ? node_id : default(int?);
+#pragma warning restore CA1825 // Avoid zero-length array allocations
 			}
-			ReadRow(payload.Span, out var connectionId, out var serverVersion, out var s2Version);
+			ReadRow(payload.Span, out var connectionId, out var serverVersion, out var s2Version, out var aggregator_id);
 
 			// OK/EOF payload
 			payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
@@ -1740,6 +1762,16 @@ internal sealed class ServerSession
 				var newS2Version = new ServerVersion(s2Version);
 				Log.Debug("Session{0} setting S2ServerVersion to {2}", m_logArguments[0], S2ServerVersion.OriginalString, newS2Version.OriginalString);
 				S2ServerVersion = newS2Version;
+			}
+			if (aggregator_id.HasValue)
+			{
+				Log.Debug("Session{0} setting AggregatorId to {2}", m_logArguments[0], aggregator_id.Value);
+				AggregatorId = aggregator_id.Value;
+			}
+			else
+			{
+				// dummy value, @@aggregator_id should always be set
+				AggregatorId = -1;
 			}
 		}
 		catch (SingleStoreException ex)
@@ -1985,8 +2017,8 @@ internal sealed class ServerSession
 	private static readonly PayloadData s_setNamesUtf8mb4WithAttributesPayload = QueryPayload.Create(true, "SET NAMES utf8mb4;"u8);
 	private static readonly PayloadData s_sleepNoAttributesPayload = QueryPayload.Create(false, "SELECT SLEEP(0) INTO @dummy;"u8);
 	private static readonly PayloadData s_sleepWithAttributesPayload = QueryPayload.Create(true, "SELECT SLEEP(0) INTO @dummy;"u8);
-	private static readonly PayloadData s_selectConnectionIdVersionNoAttributesPayload = QueryPayload.Create(false, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version;"u8);
-	private static readonly PayloadData s_selectConnectionIdVersionWithAttributesPayload = QueryPayload.Create(true, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version;"u8);
+	private static readonly PayloadData s_selectConnectionIdVersionNoAttributesPayload = QueryPayload.Create(false, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version, @@aggregator_id;"u8);
+	private static readonly PayloadData s_selectConnectionIdVersionWithAttributesPayload = QueryPayload.Create(true, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version, @@aggregator_id;"u8);
 	private static int s_lastId;
 
 	private readonly object m_lock;

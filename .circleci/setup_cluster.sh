@@ -37,6 +37,8 @@ singlestore-wait-start() {
       sleep 0.2
   done
   mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" -e "create database if not exists singlestoretest" >/dev/null 2>/dev/null
+  mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" -e "set global data_conversion_compatibility_level='6.0'" >/dev/null 2>/dev/null
+
   echo ". Success!"
 }
 

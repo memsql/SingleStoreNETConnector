@@ -53,9 +53,11 @@ internal static class CommandExecutor
 			try
 			{
 				await connection.Session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
-				return await SingleStoreDataReader.CreateAsync(commandListPosition, payloadCreator, cachedProcedures, command, behavior, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
+				return await SingleStoreDataReader.CreateAsync(commandListPosition, payloadCreator, cachedProcedures,
+					command, behavior, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
 			}
-			catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested)
+			catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted &&
+			                                      cancellationToken.IsCancellationRequested)
 			{
 				Log.Info("Session{0} query was interrupted", connection.Session.Id);
 				throw new OperationCanceledException(ex.Message, ex, cancellationToken);
@@ -66,6 +68,11 @@ internal static class CommandExecutor
 				// use "decimal megabytes" (to round up) when creating the exception message
 				int megabytes = payload.Span.Length / 1_000_000;
 				throw new SingleStoreException($"Error submitting {megabytes}MB packet; ensure 'max_allowed_packet' is greater than {megabytes}MB.", ex);
+			}
+			catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
+			{
+				Log.Trace("Session{0} got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (CommandExecutor.cs)", connection.Session.Id);
+				throw;
 			}
 		}
 		catch (Exception ex) when (activity is { IsAllDataRequested: true })

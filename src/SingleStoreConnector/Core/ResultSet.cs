@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.ExceptionServices;
+using SingleStoreConnector.Logging;
 using SingleStoreConnector.Protocol;
 using SingleStoreConnector.Protocol.Payloads;
 using SingleStoreConnector.Protocol.Serialization;
@@ -250,6 +251,8 @@ internal sealed class ResultSet
 					throw new OperationCanceledException(ex.Message, ex, token);
 				if (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted && resultSet.Command.CancellableCommand.IsTimedOut)
 					throw SingleStoreException.CreateForTimeout(ex);
+				if (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
+					Log.Trace("Got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (ResultSet.cs)");
 				throw;
 			}
 			return ScanRowAsyncRemainder(resultSet, payloadData, row);
@@ -358,6 +361,7 @@ internal sealed class ResultSet
 		return m_row ?? throw new InvalidOperationException("There is no current row.");
 	}
 
+	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(ResultSet));
 	public SingleStoreDataReader DataReader { get; }
 	public ExceptionDispatchInfo? ReadResultSetHeaderException { get; private set; }
 	public ISingleStoreCommand Command => DataReader.Command!;
