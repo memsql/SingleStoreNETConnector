@@ -653,7 +653,17 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 
 		using var command = new SingleStoreCommand("SELECT SLEEP(3) INTO @dummy", connection);
 		using var tokenSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
-		await command.ExecuteNonQueryAsync(tokenSource.Token);
+		var interrupted = false;
+		try
+		{
+			await command.ExecuteNonQueryAsync(tokenSource.Token);
+		}
+		catch (OperationCanceledException ex)
+		{
+			Assert.Contains("Query execution was interrupted", ex.Message);
+			interrupted = true;
+		}
+		Assert.True(interrupted);
 	}
 
 	[SkippableFact(Skip = "need XA transactions which are not supported in SingleStore", Baseline = "Multiple simultaneous connections or connections with different connection strings inside the same transaction are not currently supported.")]

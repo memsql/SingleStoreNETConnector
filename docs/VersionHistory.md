@@ -2,7 +2,12 @@
 
 ## Release Notes
 
+###1.1.3
+
+*Minor release that resolves CommandTimeout issue introduced in 1.1.2
+
 ###1.1.2
+
 *Add `node_id` to `KILL QUERY {connection_id} {node_id}` command used in `Connection.Cancel()`.
 
 ###1.1.1

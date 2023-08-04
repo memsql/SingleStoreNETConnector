@@ -421,6 +421,7 @@ internal sealed class ServerSession
 				VerifyState(State.Created);
 				m_state = State.Connecting;
 			}
+			UserID = cs.UserID;
 
 			// set activity tags
 			{
