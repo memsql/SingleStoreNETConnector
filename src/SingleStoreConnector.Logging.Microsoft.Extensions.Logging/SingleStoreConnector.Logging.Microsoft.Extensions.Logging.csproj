@@ -5,7 +5,7 @@
     <Title>SingleStoreConnector Logging Adapter for Microsoft.Extensions.Logging</Title>
     <Description>Writes SingleStoreConnector logging output to Microsoft.Extensions.Logging with one line of code.</Description>
     <Copyright>Copyright 2017–2021 Bradley Grainger</Copyright>
-    <Copyright>Copyright 2022 SingleStore Inc.</Copyright>
+    <Copyright>Copyright 2022-2023 SingleStore Inc.</Copyright>
     <Authors>Bradley Grainger</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>singlestore;singlestoreconnector;async;ado.net;database;netcore;logging</PackageTags>

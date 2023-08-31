@@ -15,13 +15,13 @@ internal sealed class ServerVersion
 		if (Utf8Parser.TryParse(versionString, out int major, out var bytesConsumed))
 		{
 			versionString = versionString[bytesConsumed..];
-			if (versionString is [0x2E, ..])
+			if (versionString is [0x2E, .. ])
 			{
 				versionString = versionString[1..];
 				if (Utf8Parser.TryParse(versionString, out minor, out bytesConsumed))
 				{
 					versionString = versionString[bytesConsumed..];
-					if (versionString is [0x2E, ..])
+					if (versionString is [0x2E, .. ])
 					{
 						versionString = versionString[1..];
 						if (Utf8Parser.TryParse(versionString, out build, out bytesConsumed))
@@ -36,7 +36,7 @@ internal sealed class ServerVersion
 		Version = new Version(major, minor, build);
 
 		// check for MariaDB version appended to a fake MySQL version
-		if (versionString is [0x2D, ..])
+		if (versionString is [ 0x2D, .. ])
 		{
 			versionString = versionString[1..];
 			ReadOnlySpan<byte> mariaDb = "-MariaDB"u8;

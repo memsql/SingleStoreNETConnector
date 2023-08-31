@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Protocol.Serialization;
+using SingleStoreConnector.Utilities;
 using Xunit;
 
 namespace SingleStoreConnector.Tests;
@@ -156,7 +157,11 @@ SELECT @'var' as R")]
 			new object[] { 3_456_789_012u, "3456789012" },
 			new object[] { -12_345_678_901L, "-12345678901" },
 			new object[] { 12_345_678_901UL, "12345678901" },
+#if NET481
+			new object[] { 1.0123456f, "1.01234555" },
+#else
 			new object[] { 1.0123456f, "1.0123456" },
+#endif
 			new object[] { 1.0123456789012346, "1.0123456789012346" },
 			new object[] { 123456789.123456789m, "123456789.123456789" },
 			new object[] { "1234", "'1234'" },

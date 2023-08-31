@@ -5,7 +5,7 @@
     <Title>SingleStoreConnector Ed25519 Authentication Plugin</Title>
     <Description>Implements the client_ed25519 authentication plugin for SingleStore.</Description>
     <Copyright>Copyright 2019–2021 Bradley Grainger</Copyright>
-    <Copyright>Copyright 2022 SingleStore Inc.</Copyright>
+    <Copyright>Copyright 2022-2023 SingleStore Inc.</Copyright>
     <Authors>Bradley Grainger</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>singlestore;singlestoreconnector;authentication;ed25519</PackageTags>

@@ -539,6 +539,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 #if !BASELINE
 	[InlineData("bool", 1)]
 	[InlineData("tinyint(1)", 1)]
+	[InlineData("decimal(10)", 10)]
 #endif
 	[InlineData("char(30)", 30)]
 	[InlineData("mediumtext", 0)]
@@ -583,6 +584,8 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	[InlineData("char(30)", SingleStoreDbType.String)]
 	[InlineData("mediumtext", SingleStoreDbType.MediumText)]
 	[InlineData("varchar(50)", SingleStoreDbType.VarChar)]
+	[InlineData("decimal(10, 0)", SingleStoreDbType.NewDecimal)]
+	[InlineData("decimal(10, 0) unsigned", SingleStoreDbType.NewDecimal)]
 	public void DeriveParametersParameterType(string parameterType, SingleStoreDbType expectedType)
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();

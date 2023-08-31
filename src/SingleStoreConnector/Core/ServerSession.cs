@@ -448,14 +448,15 @@ internal sealed class ServerSession
 			// (which is SslProtocols.None; see https://docs.microsoft.com/en-us/dotnet/framework/network-programming/tls),
 			// then fall back to SslProtocols.Tls11 if that fails and it's possible that the cause is a yaSSL server.
 			bool shouldRetrySsl;
+			var shouldUpdatePoolSslProtocols = false;
 			var sslProtocols = Pool?.SslProtocols ?? cs.TlsVersions;
 			PayloadData payload;
 			InitialHandshakePayload initialHandshake;
 			do
 			{
-				bool tls11or10Supported = (sslProtocols & (SslProtocols.Tls | SslProtocols.Tls11)) != SslProtocols.None;
-				bool tls12Supported = (sslProtocols & SslProtocols.Tls12) == SslProtocols.Tls12;
-				shouldRetrySsl = (sslProtocols == SslProtocols.None || (tls12Supported && tls11or10Supported)) && Utility.IsWindows();
+				var isTls11or10Supported = (sslProtocols & (SslProtocols.Tls | SslProtocols.Tls11)) != SslProtocols.None;
+				var isTls12Supported = (sslProtocols & SslProtocols.Tls12) == SslProtocols.Tls12;
+				shouldRetrySsl = (sslProtocols == SslProtocols.None || (isTls12Supported && isTls11or10Supported)) && Utility.IsWindows();
 
 				var connected = false;
 				if (cs.ConnectionProtocol == SingleStoreConnectionProtocol.Sockets)
@@ -538,19 +539,20 @@ internal sealed class ServerSession
 					{
 						await InitSslAsync(initialHandshake.ProtocolCapabilities, cs, connection, sslProtocols, ioBehavior, cancellationToken).ConfigureAwait(false);
 						shouldRetrySsl = false;
+						if (shouldUpdatePoolSslProtocols && Pool is not null)
+							Pool.SslProtocols = sslProtocols;
 					}
 					catch (ArgumentException ex) when (ex.ParamName == "sslProtocolType" && sslProtocols == SslProtocols.None)
 					{
 						Log.Debug(ex, "Session{0} doesn't support SslProtocols.None; falling back to explicitly specifying SslProtocols", m_logArguments);
 						sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
 					}
-					catch (Exception ex) when (shouldRetrySsl && ((ex is SingleStoreException && ex.InnerException is IOException) || ex is IOException))
+					catch (Exception ex) when (shouldRetrySsl && ((ex is SingleStoreException && ex.InnerException is AuthenticationException or IOException) || ex is AuthenticationException or IOException))
 					{
 						// negotiating TLS 1.2 with a yaSSL-based server throws an exception on Windows, see comment at top of method
-						Log.Debug(ex, "Session{0} failed negotiating TLS; falling back to TLS 1.1", m_logArguments);
+						Log.Warn(ex, "Session{0} failed negotiating TLS; falling back to TLS 1.1", m_logArguments);
 						sslProtocols = sslProtocols == SslProtocols.None ? SslProtocols.Tls | SslProtocols.Tls11 : (SslProtocols.Tls | SslProtocols.Tls11) & sslProtocols;
-						if (Pool is not null)
-							Pool.SslProtocols = sslProtocols;
+						shouldUpdatePoolSslProtocols = true;
 					}
 				}
 				else
@@ -1586,6 +1588,14 @@ internal sealed class ServerSession
 			throw new NotSupportedException("SslCert and SslKey connection string options are not supported in netstandard2.0.");
 #elif NET5_0_OR_GREATER
 			m_clientCertificate = X509Certificate2.CreateFromPemFile(sslCertificateFile, sslKeyFile);
+			if (Utility.IsWindows())
+			{
+				// Schannel has a bug where ephemeral keys can't be loaded: https://github.com/dotnet/runtime/issues/23749#issuecomment-485947319
+				// The workaround is to export the key (which may make it "Perphemeral"): https://github.com/dotnet/runtime/issues/23749#issuecomment-739895373
+				var oldCertificate = m_clientCertificate;
+				m_clientCertificate = new X509Certificate2(m_clientCertificate.Export(X509ContentType.Pkcs12));
+				oldCertificate.Dispose();
+			}
 			return new() { m_clientCertificate };
 #else
 			m_logArguments[1] = sslKeyFile;
@@ -1617,7 +1627,6 @@ internal sealed class ServerSession
 				RSA rsa;
 				try
 				{
-#pragma warning disable CA1416
 					// SslStream on Windows needs a KeyContainerName to be set
 					var csp = new CspParameters
 					{
@@ -1627,7 +1636,6 @@ internal sealed class ServerSession
 					{
 						PersistKeyInCsp = true,
 					};
-#pragma warning restore
 				}
 				catch (PlatformNotSupportedException)
 				{

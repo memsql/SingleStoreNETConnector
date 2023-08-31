@@ -54,6 +54,7 @@ public sealed class FakeSingleStoreServer
 	public bool SuppressAuthPluginNameTerminatingNull { get; set; }
 	public bool SendIncompletePostHandshakeResponse { get; set; }
 	public bool BlockOnConnect { get; set; }
+	public TimeSpan? ResetDelay { get; set; }
 
 	internal void CancelQuery(int connectionId)
 	{

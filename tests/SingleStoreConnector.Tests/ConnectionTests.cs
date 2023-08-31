@@ -203,6 +203,21 @@ public class ConnectionTests : IDisposable
 		}
 	}
 
+	/*[Fact]
+	public void ResetConnectionTimeout()
+	{
+		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString);
+		csb.ConnectionTimeout = 4;
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		connection.Open();
+		connection.Close();
+		m_server.ResetDelay = TimeSpan.FromSeconds(10);
+		var stopwatch = Stopwatch.StartNew();
+		var ex = Assert.Throws<SingleStoreException>(() => connection.Open());
+		Assert.InRange(stopwatch.ElapsedMilliseconds, 3900, 4100);
+		Assert.Equal(SingleStoreErrorCode.UnableToConnectToHost, (SingleStoreErrorCode) ex.Number);
+	}*/
+
 	[Fact]
 	public void ReadInfinity()
 	{
