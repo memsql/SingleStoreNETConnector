@@ -1104,7 +1104,11 @@ internal sealed class ServerSession
 						{
 							if (ioBehavior == IOBehavior.Asynchronous)
 							{
+#if NET5_0_OR_GREATER
+								await tcpClient.ConnectAsync(ipAddress, cs.Port, cancellationToken).ConfigureAwait(false);
+#else
 								await tcpClient.ConnectAsync(ipAddress, cs.Port).ConfigureAwait(false);
+#endif
 							}
 							else
 							{
