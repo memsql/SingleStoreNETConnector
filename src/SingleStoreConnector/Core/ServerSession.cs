@@ -100,7 +100,7 @@ internal sealed class ServerSession
 		{
 			if (ActiveCommandId != command.CommandId)
 				return false;
-			VerifyState(State.Querying, State.CancelingQuery, State.ClearingPendingCancellation, State.Closing, State.Closed, State.Failed);
+			VerifyState(State.Querying, State.CancelingQuery, State.Closing, State.Closed, State.Failed);
 			if (m_state != State.Querying)
 				return false;
 			if (command.CancelAttemptCount++ >= 10)
@@ -304,47 +304,10 @@ internal sealed class ServerSession
 	{
 		m_logArguments[1] = m_state;
 		Log.Trace("Session{0} entering FinishQuerying; SessionState={1}", m_logArguments);
-		bool clearConnection = false;
-		lock (m_lock)
-		{
-			if (m_state == State.CancelingQuery)
-			{
-				m_state = State.ClearingPendingCancellation;
-				clearConnection = true;
-			}
-		}
-
-		if (clearConnection)
-		{
-			// KILL QUERY will kill a subsequent query if the command it was intended to cancel has already completed.
-			// In order to handle this case, we issue a dummy query that will consume the pending cancellation.
-			// See https://bugs.mysql.com/bug.php?id=45679
-			Log.Debug("Session{0} sending 'SELECT SLEEP(0) INTO @dummy' command to clear pending cancellation", m_logArguments);
-			var payload = SupportsQueryAttributes ? s_sleepWithAttributesPayload : s_sleepNoAttributesPayload;
-#pragma warning disable CA2012 // Safe because method completes synchronously
-			try
-			{
-				SendAsync(payload, IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
-				payload = ReceiveReplyAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
-			}
-			catch (SingleStoreException ex)
-			{
-				if (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
-				{
-					Log.Debug("Session{0} cancelled dummy-command to clear pending cancellation", m_logArguments);
-				}
-				else
-				{
-					Log.Debug("Session{0} failed dummy-command to clear pending cancellation", m_logArguments);
-				}
-			}
-#pragma warning restore CA2012
-			OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
-		}
 
 		lock (m_lock)
 		{
-			if (m_state is State.Querying or State.ClearingPendingCancellation)
+			if (m_state is State.Querying)
 				m_state = State.Connected;
 			else
 				VerifyState(State.Failed);
@@ -1025,7 +988,7 @@ internal sealed class ServerSession
 		{
 			if (m_state == State.Closed)
 				throw new ObjectDisposedException(nameof(ServerSession));
-			if (m_state != State.Connected && m_state != State.Querying && m_state != State.CancelingQuery && m_state != State.ClearingPendingCancellation && m_state != State.Closing)
+			if (m_state != State.Connected && m_state != State.Querying && m_state != State.CancelingQuery && m_state != State.Closing)
 				throw new InvalidOperationException("ServerSession is not connected.");
 		}
 	}
@@ -1838,23 +1801,14 @@ internal sealed class ServerSession
 			connection.SetState(ConnectionState.Closed);
 	}
 
-	private void VerifyState(State state)
+	private void VerifyState(params State[] expectedStates)
 	{
-		if (m_state != state)
-		{
-			Log.Error("Session{0} should have SessionStateExpected {1} but was SessionState {2}", m_logArguments[0], state, m_state);
-			throw new InvalidOperationException("Expected state to be {0} but was {1}.".FormatInvariant(state, m_state));
-		}
-	}
-
-	private void VerifyState(State state1, State state2, State state3, State state4, State state5, State state6)
-	{
-		if (m_state != state1 && m_state != state2 && m_state != state3 && m_state != state4 && m_state != state5 && m_state != state6)
-		{
-			Log.Error("Session{0} should have SessionStateExpected {1} or SessionStateExpected2 {2} or SessionStateExpected3 {3} or SessionStateExpected4 {4} or SessionStateExpected5 {5} or SessionStateExpected6 {6} but was SessionState {7}",
-				m_logArguments[0], state1, state2, state3, state4, state5, state6, m_state);
-			throw new InvalidOperationException("Expected state to be ({0}|{1}|{2}|{3}|{4}|{5}) but was {6}.".FormatInvariant(state1, state2, state3, state4, state5, state6, m_state));
-		}
+	    if (!expectedStates.Contains(m_state))
+	    {
+	        var expectedStatesString = string.Join(" or ", expectedStates.Select(s => s.ToString()));
+	        Log.Error("Session{0} should have SessionStateExpected {1} but was SessionState {2}", m_logArguments[0], expectedStatesString, m_state);
+	        throw new InvalidOperationException($"Expected state to be ({0}) but was {1}.".FormatInvariant(expectedStatesString, m_state));
+	    }
 	}
 
 	internal bool SslIsEncrypted => m_sslStream?.IsEncrypted is true;
@@ -1990,9 +1944,6 @@ internal sealed class ServerSession
 		// The session is connected to a server and the active query is being cancelled.
 		CancelingQuery,
 
-		// A cancellation is pending on the server and needs to be cleared.
-		ClearingPendingCancellation,
-
 		// The session is closing.
 		Closing,
 
@@ -2028,8 +1979,6 @@ internal sealed class ServerSession
 	private static readonly PayloadData s_setNamesUtf8mb4NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8mb4;"u8);
 	private static readonly PayloadData s_setNamesUtf8WithAttributesPayload = QueryPayload.Create(true, "SET NAMES utf8;"u8);
 	private static readonly PayloadData s_setNamesUtf8mb4WithAttributesPayload = QueryPayload.Create(true, "SET NAMES utf8mb4;"u8);
-	private static readonly PayloadData s_sleepNoAttributesPayload = QueryPayload.Create(false, "SELECT SLEEP(0) INTO @dummy;"u8);
-	private static readonly PayloadData s_sleepWithAttributesPayload = QueryPayload.Create(true, "SELECT SLEEP(0) INTO @dummy;"u8);
 	private static readonly PayloadData s_selectConnectionIdVersionNoAttributesPayload = QueryPayload.Create(false, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version, @@aggregator_id;"u8);
 	private static readonly PayloadData s_selectConnectionIdVersionWithAttributesPayload = QueryPayload.Create(true, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version, @@aggregator_id;"u8);
 	private static int s_lastId;
