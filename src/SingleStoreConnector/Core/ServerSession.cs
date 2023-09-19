@@ -307,7 +307,7 @@ internal sealed class ServerSession
 
 		lock (m_lock)
 		{
-			if (m_state is State.Querying)
+			if (m_state is State.Querying or State.CancelingQuery)
 				m_state = State.Connected;
 			else
 				VerifyState(State.Failed);
@@ -1807,7 +1807,7 @@ internal sealed class ServerSession
 	    {
 	        var expectedStatesString = string.Join(" or ", expectedStates.Select(s => s.ToString()));
 	        Log.Error("Session{0} should have SessionStateExpected {1} but was SessionState {2}", m_logArguments[0], expectedStatesString, m_state);
-	        throw new InvalidOperationException($"Expected state to be ({0}) but was {1}.".FormatInvariant(expectedStatesString, m_state));
+	        throw new InvalidOperationException("Expected state to be ({0}) but was {1}.".FormatInvariant(expectedStatesString, m_state));
 	    }
 	}
 
