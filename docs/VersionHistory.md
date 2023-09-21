@@ -2,52 +2,56 @@
 
 ## Release Notes
 
-###1.1.3
+### 1.1.4
 
-*Minor release that resolves CommandTimeout issue introduced in 1.1.2
+* Get rid of a fix for MySQL KILL QUERY bug
 
-###1.1.2
+### 1.1.3
 
-*Add `node_id` to `KILL QUERY {connection_id} {node_id}` command used in `Connection.Cancel()`.
+* Minor release that resolves CommandTimeout issue introduced in 1.1.2
 
-###1.1.1
+### 1.1.2
 
-*Add ConnectionAttributes parameter
+* Add `node_id` to `KILL QUERY {connection_id} {node_id}` command used in `Connection.Cancel()`.
 
-###1.1.0
+### 1.1.1
 
-*Support .NET 7.0
+* Add ConnectionAttributes parameter
 
-*Speed up inserts with SingleStoreDataAdapter
+### 1.1.0
 
-*Loop to read all data when decompressing
+* Support .NET 7.0
 
-*Fix deadlock when cancelling a command
+* Speed up inserts with SingleStoreDataAdapter
 
-*Fix BulkCopy for DateOnly and TimeOnly
+* Loop to read all data when decompressing
 
-*Fix unintentional TLS downgrade
+* Fix deadlock when cancelling a command
 
-*Implement SingleStoreAttribute.Clone
+* Fix BulkCopy for DateOnly and TimeOnly
 
-*Normalize the order of keys in the connection string returned by `SingleStoreConnectionStringBuilder.ConnectionString`
+* Fix unintentional TLS downgrade
 
-*Drop support for .NET 4.5
+* Implement SingleStoreAttribute.Clone
 
-*Fix a race condition in recovering leaked sessions
+* Normalize the order of keys in the connection string returned by `SingleStoreConnectionStringBuilder.ConnectionString`
 
-*Fix failure to dispose objects if an exception is thrown when connecting
+* Drop support for .NET 4.5
 
-###1.0.1
+* Fix a race condition in recovering leaked sessions
 
-*Allow RecordsAffected to be read after Close() in SingleStoreDataReader
+* Fix failure to dispose objects if an exception is thrown when connecting
 
-*Strong name the assembly
+### 1.0.1
 
-###1.0.0
+* Allow RecordsAffected to be read after Close() in SingleStoreDataReader
 
-*Add support for `GEOGRAPHY` and `GEOGRAPHYPOINT`
+* Strong name the assembly
 
-###0.1.2-beta
+### 1.0.0
 
-*Initial beta release of SingleStore .NET connector
+* Add support for `GEOGRAPHY` and `GEOGRAPHYPOINT`
+
+### 0.1.2-beta
+
+* Initial beta release of SingleStore .NET connector
