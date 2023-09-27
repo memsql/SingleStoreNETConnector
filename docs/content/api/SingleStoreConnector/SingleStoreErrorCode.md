@@ -668,6 +668,7 @@ public enum SingleStoreErrorCode
 | CannotExecuteInReadOnlyTransaction | `1792` | ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION |
 | InnodbReadOnly | `1874` | ER_INNODB_READ_ONLY |
 | TableCorrupt | `1877` | ER_TABLE_CORRUPT |
+| WarningDataOutOfRangeUnspecific | `2312` | ER_WARN_DATA_OUT_OF_RANGE_UNSPECIFIC |
 | TempFileWriteFailure | `1878` | ER_TEMP_FILE_WRITE_FAILURE |
 | ExplainNotSupported | `3012` | ER_EXPLAIN_NOT_SUPPORTED |
 | InvalidFieldSize | `3013` | ER_INVALID_FIELD_SIZE |
