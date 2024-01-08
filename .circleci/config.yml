@@ -5,7 +5,7 @@ parameters:
     default: "1.1.4"
   dotnet-version:
     type: string
-    default: "7.0.14"
+    default: "7.0.404"
 
 orbs:
   win: circleci/windows@2.4.0
