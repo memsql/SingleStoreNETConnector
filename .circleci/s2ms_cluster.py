@@ -1,107 +1,81 @@
-import json
 import os
-import pymysql
-import requests
-from requests.adapters import HTTPAdapter
+import singlestoredb as s2
+import uuid
 import sys
-from time import sleep
+import time
 from typing import Dict, Optional
-from urllib3 import Retry
-
-BASE_URL = "https://api.singlestore.com"
-CLUSTERS_PATH = "/v0beta/clusters"
 
 SQL_USER_PASSWORD = os.getenv("SQL_USER_PASSWORD")  # project UI env-var reference
 S2MS_API_KEY = os.getenv("S2MS_API_KEY")  # project UI env-var reference
 
-HEADERS = {
-    "Authorization": f"Bearer {S2MS_API_KEY}",
-    "Content-Type": "application/json",
-    "Accept": "application/json"
-}
-
-CLUSTER_NAME = ".NET-connector-ci-test-cluster"
-AWS_EU_CENTRAL_REGION = "7e7ffd27-20f7-44b6-87e6-e72828a81ac7"
+WORKSPACE_GROUP_BASE_NAME = ".NET-connector-ci-test-cluster"
+WORKSPACE_NAME = "tests"
+AWS_US_WEST_REGION = "1c1de314-2cc0-4c74-bd54-5047ff90842e"
 AUTO_TERMINATE_MINUTES = 60
-
-PAYLOAD_FOR_CREATE = {
-    "name": CLUSTER_NAME,
-    "regionID": AWS_EU_CENTRAL_REGION,
-    "adminPassword": SQL_USER_PASSWORD,
-    "expiresAt": f"{AUTO_TERMINATE_MINUTES}m",
-    "firewallRanges": [
-        "0.0.0.0/0"
-    ],
-    "size": "S-00"
-}
-HOSTNAME_TMPL = "svc-{}-ddl.aws-frankfurt-1.svc.singlestore.com"
-CLUSTER_ID_FILE = "CLUSTER_ID"
+WORKSPACE_ENDPOINT_FILE = "WORKSPACE_ENDPOINT_FILE"
+WORKSPACE_GROUP_ID_FILE = "WORKSPACE_GROUP_ID_FILE"
 
 TOTAL_RETRIES = 5
-S2MS_REQUEST_TIMEOUT = 60
+
+def retry(func):
+     for i in range(TOTAL_RETRIES):
+        try:
+            return func()
+        except Exception as e:
+            if i == TOTAL_RETRIES - 1:
+                raise
+            print(f"Attempt {i+1} failed with error: {e}.")
 
 
-def request_with_retry(request_method, url, data=None, headers=HEADERS):
-    try:
-        with requests.Session() as s:
-            retries = Retry(
-                total=TOTAL_RETRIES,
-                backoff_factor=0.2,
-                status_forcelist=[500, 502, 503, 504])
+def create_workspace(workspace_manager):
+    w_group_name = WORKSPACE_GROUP_BASE_NAME + "-" + uuid.uuid4().hex
+    def create_workspace_group():
+        return workspace_manager.create_workspace_group(
+            name=w_group_name,
+            region=AWS_US_WEST_REGION,
+            firewall_ranges=["0.0.0.0/0"],
+            admin_password=SQL_USER_PASSWORD,
+            expires_at="60m"
+        )
+    workspace_group = retry(create_workspace_group)
 
-            s.mount('http://', HTTPAdapter(max_retries=retries))
-            s.mount('https://', HTTPAdapter(max_retries=retries))
+    with open(WORKSPACE_GROUP_ID_FILE, "w") as f:
+        f.write(workspace_group.id)
+    print("Created workspace group {}".format(w_group_name))
 
-            return s.request(request_method, url, data=data, headers=headers, timeout=S2MS_REQUEST_TIMEOUT)
-    except requests.exceptions.RequestException as e:
-        raise SystemExit(e)
+    workspace = workspace_group.create_workspace(name=WORKSPACE_NAME, size="S-00", wait_on_active=True, wait_timeout=600)
 
+    with open(WORKSPACE_ENDPOINT_FILE, "w") as f:
+        f.write(workspace.endpoint)
 
-def create_cluster() -> str:
-    cl_id_response = request_with_retry("POST", BASE_URL + CLUSTERS_PATH, data=json.dumps(PAYLOAD_FOR_CREATE))
-    cl_id_response.raise_for_status()
-    return cl_id_response.json()["clusterID"]
-
-
-def get_cluster_info(cluster_id: str) -> Dict:
-    cl_id = request_with_retry("GET", BASE_URL + CLUSTERS_PATH + f"/{cluster_id}")
-    return cl_id.json()
+    return workspace
 
 
-def is_cluster_active(cluster_id: str) -> bool:
-    cl_info = get_cluster_info(cluster_id)
-    return cl_info["state"] == "Active"
+def terminate_workspace(workspace_manager) -> None:
+    with open(WORKSPACE_GROUP_ID_FILE, "r") as f:
+        workspace_group_id = f.read()
+    workspace_group = workspace_manager.get_workspace_group(workspace_group_id)
+
+    for workspace in workspace_group.workspaces:
+        workspace.terminate(wait_on_terminated=True)
+    workspace_group.terminate()
 
 
-def wait_start(cluster_id: str) -> None:
-    print(f"Waiting for cluster {cluster_id} to be available for connection..", end="", flush=True)
-    time_wait = 0
-    while (not is_cluster_active(cluster_id) and time_wait < 600):
-        print(".", end="", flush=True)
-        sleep(5)
-        time_wait += 5
-    if time_wait < 600:
-        print("\nCluster is active!")
-    else:
-        print(f"\nTimeout error: can't connect to {cluster_id} for more than 10 minutes!")
+def check_and_update_connection(create_db: Optional[str] = None):
+    with open(WORKSPACE_GROUP_ID_FILE, "r") as f:
+        workspace_group_id = f.read()
+    workspace_group = workspace_manager.get_workspace_group(workspace_group_id)
+    workspace = workspace_group.workspaces[0]
 
-
-def terminate_cluster(cluster_id: str) -> None:
-    request_with_retry("DELETE", BASE_URL + CLUSTERS_PATH + f"/{cluster_id}")
-
-
-def check_connection(cluster_id: str, create_db: Optional[str] = None):
-    conn = pymysql.connect(
-        user="admin",
-        password=SQL_USER_PASSWORD,
-        host=HOSTNAME_TMPL.format(cluster_id),
-        port=3306)
+    def connect_to_workspace():
+        return workspace.connect(user="admin", password=SQL_USER_PASSWORD, port=3306)
+    conn = retry(connect_to_workspace)
 
     cur = conn.cursor()
     try:
         cur.execute("SELECT NOW():>TEXT")
         res = cur.fetchall()
-        print(f"Successfully connected to {cluster_id} at {res[0][0]}")
+        print(f"Successfully connected to {workspace.id} at {res[0][0]}")
 
         if create_db is not None:
             cur.execute(f"DROP DATABASE IF EXISTS {create_db}")
@@ -121,16 +95,18 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         db_name = sys.argv[2]
 
+    workspace_manager = s2.manage_workspaces(access_token=S2MS_API_KEY)
+
     if command == "start":
-        new_cl_id = create_cluster()
-        with open(CLUSTER_ID_FILE, "w") as f:
-            f.write(new_cl_id)
-        wait_start(new_cl_id)
-        check_connection(new_cl_id, db_name)
+        create_workspace(workspace_manager)
+        check_and_update_connection(db_name)
         exit(0)
 
     if command == "terminate":
-        with open(CLUSTER_ID_FILE, "r") as f:
-            cl_id = f.read()
-        terminate_cluster(cl_id)
+        terminate_workspace(workspace_manager)
         exit(0)
+
+    if command == "update":
+        check_and_update_connection(db_name)
+        exit(0)
+

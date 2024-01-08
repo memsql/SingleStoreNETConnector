@@ -156,18 +156,6 @@ workflows:
             parameters:
               singlestore_image:
                 - singlestore/cluster-in-a-box:alma-7.8.9-e94a66258d-4.0.7-1.13.9
-      - test-ubuntu:
-          name: Test 7.6 cluster-in-a-box
-          matrix:
-            parameters:
-              singlestore_image:
-                - singlestore/cluster-in-a-box:centos-7.6.9-7d7e13942a-4.0.3-1.13.4
-      - test-ubuntu:
-          name: Test 7.5 cluster-in-a-box
-          matrix:
-            parameters:
-              singlestore_image:
-                - singlestore/cluster-in-a-box:centos-7.5.12-3112a491c2-4.0.0-1.12.5
       - test-windows:
           name: Test S2MS on Windows
   publish:
