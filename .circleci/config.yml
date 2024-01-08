@@ -3,6 +3,9 @@ parameters:
   connector-version:
     type: string
     default: "1.1.4"
+  dotnet-version:
+    type: string
+    default: "7.0.14"
 
 orbs:
   win: circleci/windows@2.4.0
@@ -50,12 +53,12 @@ jobs:
       - run:
           name: Build project binaries
           command: |
-            choco upgrade dotnet-sdk
+            choco install dotnet-sdk --version=<< pipeline.parameters.dotnet-version >>
             dotnet.exe build -c Release
       - run:
           name: Start SingleStore for SideBySide tests
           command: |
-            pip install pymysql
+            pip install singlestoredb
             python.exe .circleci\s2ms_cluster.py start singlestoretest
       - run:
           name: Fill test config
@@ -121,7 +124,7 @@ jobs:
       - run:
           name: Build project binaries
           command: |
-            choco upgrade dotnet-sdk
+            choco install dotnet-sdk --version=<< pipeline.parameters.dotnet-version >>
             dotnet.exe build
       - run:
           name: Creating CI Artifacts directory
