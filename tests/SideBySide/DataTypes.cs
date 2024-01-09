@@ -1487,6 +1487,7 @@ end;";
 			command.ExecuteNonQuery();
 		}
 
+		// USING THIS ROW_ID IS NOT WHAT WE NEED WHEN WE USE MS, BECAUSE AUTO_INCR DOESN'T WORK this way
 		using (var command = Connection.CreateCommand())
 		{
 			command.CommandText = $"sp_{column}";
@@ -1772,23 +1773,17 @@ end;";
 			Assert.False(reader.NextResult());
 		}
 
-		if (!omitWhereTest)
-		{
-			cmd.CommandText = $"select rowid from datatypes_{table} where {column} = @value order by rowid";
-			var p = cmd.CreateParameter();
-			p.ParameterName = "@value";
-			p.Value = expected.Last();
-			cmd.Parameters.Add(p);
-			var result = cmd.ExecuteScalar();
-			// SingleStore uses bigint type for integer primary key with enabled auto_increment, used for rowid
-			Assert.Equal((System.Int64) Array.IndexOf(expected, p.Value) + 1, result);
+		// We're adding this assert, because SingleStore's AUTO_INCREMENT only guarantees that automatically-generated values are unique
+		string countTotalRows = $"SELECT COUNT(*) FROM datatypes_{table}";
+		string countUniqueRowIds = $"SELECT COUNT(DISTINCT rowid) FROM datatypes_{table}";
 
-			if (!omitWherePrepareTest)
-			{
-				cmd.Prepare();
-				result = cmd.ExecuteScalar();
-				Assert.Equal((System.Int64) Array.IndexOf(expected, p.Value) + 1, result);
-			}
+		using (var command = new SingleStoreCommand(countTotalRows, connection))
+		{
+			var totalRows = Convert.ToInt32(command.ExecuteScalar());
+
+			cmd.CommandText = countUniqueRowIds;
+			var uniqueRowIds = Convert.ToInt32(command.ExecuteScalar());
+			Assert.Equal(totalRows, uniqueRowIds);
 		}
 	}
 

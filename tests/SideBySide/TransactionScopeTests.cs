@@ -278,16 +278,18 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		};
 		using (var scope = new TransactionScope(TransactionScopeOption.Required, transactionOptions, TransactionScopeAsyncFlowOption.Enabled))
 		{
+			SingleStoreCommand command;
 			using (var connection = new SingleStoreConnection(connectionString))
 			{
 				connection.Open();
-				connection.Execute("insert into transaction_scope_test(value) values('four'),('five'),('six');");
+				command = new SingleStoreCommand("insert into transaction_scope_test(value) values('four'),('five'),('six');", connection);
+				command.ExecuteNonQuery();
 			}
 
 			using (var connection = new SingleStoreConnection(connectionString))
 			{
 				connection.Open();
-				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = 4 });
+				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = command.LastInsertedId });
 			}
 
 			scope.Complete();
@@ -349,24 +351,26 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		{
 			connection.Open();
 			connection.Execute(@"drop table if exists transaction_scope_test;
-create table transaction_scope_test(rowid integer not null auto_increment primary key, value text);
+create table transaction_scope_test(rowid bigint not null auto_increment primary key, value text);
 insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		}
 
 		using (var transaction = new CommittableTransaction())
 		{
+			SingleStoreCommand command;
 			using (var connection = new SingleStoreConnection(connectionString))
 			{
 				connection.Open();
 				connection.EnlistTransaction(transaction);
-				connection.Execute("insert into transaction_scope_test(value) values('four'),('five'),('six');");
+				command = new SingleStoreCommand("insert into transaction_scope_test(value) values('four'),('five'),('six');", connection);
+				command.ExecuteNonQuery();
 			}
 
 			using (var connection = new SingleStoreConnection(connectionString))
 			{
 				connection.Open();
 				connection.EnlistTransaction(transaction);
-				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = 4 });
+				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = command.LastInsertedId});
 			}
 
 			transaction.Commit();
@@ -461,11 +465,12 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 			using (var connection = new SingleStoreConnection(connectionString))
 			{
 				connection.Open();
-				connection.Execute("insert into transaction_scope_test(value) values('four'),('five'),('six');");
+				var command = new SingleStoreCommand("insert into transaction_scope_test(value) values('four'),('five'),('six');", connection);
+				command.ExecuteNonQuery();
 				connection.Close();
 
 				connection.Open();
-				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = 4 });
+				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = command.LastInsertedId });
 			}
 
 			scope.Complete();
@@ -535,12 +540,13 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 			{
 				connection.Open();
 				connection.EnlistTransaction(transaction);
-				connection.Execute("insert into transaction_scope_test(value) values('four'),('five'),('six');");
+				var command = new SingleStoreCommand("insert into transaction_scope_test(value) values('four'),('five'),('six');", connection);
+				command.ExecuteNonQuery();
 				connection.Close();
 
 				connection.Open();
 				connection.EnlistTransaction(transaction);
-				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = 4 });
+				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = command.LastInsertedId });
 			}
 
 			transaction.Commit();
