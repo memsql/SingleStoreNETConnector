@@ -10,7 +10,7 @@ S2MS_API_KEY = os.getenv("S2MS_API_KEY")  # project UI env-var reference
 
 WORKSPACE_GROUP_BASE_NAME = ".NET-connector-ci-test-cluster"
 WORKSPACE_NAME = "tests"
-AWS_US_WEST_REGION = "1c1de314-2cc0-4c74-bd54-5047ff90842e"
+
 AUTO_TERMINATE_MINUTES = 60
 WORKSPACE_ENDPOINT_FILE = "WORKSPACE_ENDPOINT_FILE"
 WORKSPACE_GROUP_ID_FILE = "WORKSPACE_GROUP_ID_FILE"
@@ -28,6 +28,10 @@ def retry(func):
 
 
 def create_workspace(workspace_manager):
+    for reg in workspace_manager.regions:
+        if 'US' in reg.name:
+            region = reg
+            break
     w_group_name = WORKSPACE_GROUP_BASE_NAME + "-" + uuid.uuid4().hex
     def create_workspace_group():
         return workspace_manager.create_workspace_group(

@@ -1473,7 +1473,10 @@ create table schema_table({createColumn});");
 #endif
 	public void StoredProcedureParameter(string column, string table, string dataTypeName, Type dataType, int rowid, object expectedValue)
 	{
-		if (table == "datatypes_json_core" && !AppConfig.SupportsJson)
+		// We're skipping this test block when we're running tests on Managed Service due to the specifics of
+		// how AUTO_INCREMENT works (https://docs.singlestore.com/cloud/reference/sql-reference/data-definition-language-ddl/create-table/#auto-increment-behavior)
+		// We can't know 'rowid' beforehand, so therefore this test doesn't make any sense while running on Managed Service
+		if ((table == "datatypes_json_core" && !AppConfig.SupportsJson) || AppConfig.ManagedService)
 			return;
 
 		using (var command = Connection.CreateCommand())
@@ -1487,7 +1490,6 @@ end;";
 			command.ExecuteNonQuery();
 		}
 
-		// USING THIS ROW_ID IS NOT WHAT WE NEED WHEN WE USE MS, BECAUSE AUTO_INCR DOESN'T WORK this way
 		using (var command = Connection.CreateCommand())
 		{
 			command.CommandText = $"sp_{column}";
