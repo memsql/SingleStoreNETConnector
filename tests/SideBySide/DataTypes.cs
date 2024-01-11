@@ -767,7 +767,7 @@ insert into date_time_kind(d, dt0, dt6) values(?, ?, ?)", connection)
 #endif
 
 	[Theory]
-	[InlineData("`Year`", "YEAR", new object[] { null, 1901, 2155, 0, 2016 })]
+	[InlineData("`Year`", "YEAR", new object[] { null, 1901, 2155, null, 2016 })]
 	public void QueryYear(string column, string dataTypeName, object[] expected)
 	{
 		Func<SingleStoreDataReader, object> getValue = reader => reader.GetInt32(0);

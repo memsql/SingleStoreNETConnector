@@ -32,11 +32,12 @@ def create_workspace(workspace_manager):
         if 'US' in reg.name:
             region = reg
             break
+
     w_group_name = WORKSPACE_GROUP_BASE_NAME + "-" + uuid.uuid4().hex
     def create_workspace_group():
         return workspace_manager.create_workspace_group(
             name=w_group_name,
-            region=AWS_US_WEST_REGION,
+            region=region.id,
             firewall_ranges=["0.0.0.0/0"],
             admin_password=SQL_USER_PASSWORD,
             expires_at="60m"
