@@ -588,7 +588,7 @@ create table bulk_load_data_table(str varchar(5), number tinyint);", connection)
 			DestinationTableName = "bulk_load_data_table",
 		};
 
-		// Starting with version 8.0.24, SingleStore has 'data_conversion_compatibility_level' variable that controls the way
+		// Starting with version 8.0, SingleStore has 'data_conversion_compatibility_level' variable that controls the way
 		// certain data conversions are performed, so it won't allow the truncation of the data described in this test
 		if (connection.Session.S2ServerVersion.Version.CompareTo(S2Versions.HasDataConversionCompatibilityLevelParameter) >= 0)
 		{
