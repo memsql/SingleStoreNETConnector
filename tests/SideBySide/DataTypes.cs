@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using SingleStoreConnector.Core;
 #if BASELINE
 using MySql.Data.Types;
 #endif
@@ -1560,6 +1561,14 @@ end;";
 
 		using var connection1 = new SingleStoreConnection(AppConfig.ConnectionString);
 		connection1.Open();
+
+		// Starting with version 8.0.24, SingleStore has 'data_conversion_compatibility_level' variable that controls the way
+		// certain data conversions are performed. SingleStoreDataReader will round values that are stored in 'BigDecimal' column.
+		// For instance, a value like 99999999999999999999.999999999999999999999999999999 will be rounded to 100000000000000000000.00000000
+		// However, this rounded value exceeds the storage capacity of a DECIMAL(50, 30) field, leading to an error,
+		// because truncating values is prohibited by 'data_conversion_compatibility_level' parameter
+		if (dataTypeName == "DECIMAL(50,30)" && connection1.Session.S2ServerVersion.Version.CompareTo(S2Versions.HasDataConversionCompatibilityLevelParameter) >= 0)
+			return;
 
 		var bulkCopyTable = "bulk_copy_" + table;
 		using (var command = new SingleStoreCommand($@"drop table if exists `{bulkCopyTable}`; create table `{bulkCopyTable}`

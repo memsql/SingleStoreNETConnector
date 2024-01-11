@@ -1,3 +1,4 @@
+using SingleStoreConnector.Core;
 using Xunit.Sdk;
 
 namespace SideBySide;
@@ -586,9 +587,19 @@ create table bulk_load_data_table(str varchar(5), number tinyint);", connection)
 		{
 			DestinationTableName = "bulk_load_data_table",
 		};
-		var result = await bulkCopy.WriteToServerAsync(dataTable);
-		Assert.Equal(2, result.RowsInserted);
-		Assert.Empty(result.Warnings);
+
+		// Starting with version 8.0.24, SingleStore has 'data_conversion_compatibility_level' variable that controls the way
+		// certain data conversions are performed, so it won't allow the truncation of the data described in this test
+		if (connection.Session.S2ServerVersion.Version.CompareTo(S2Versions.HasDataConversionCompatibilityLevelParameter) >= 0)
+		{
+			await Assert.ThrowsAsync<SingleStoreException>(async () => await bulkCopy.WriteToServerAsync(dataTable));
+		}
+		else
+		{
+			var result = await bulkCopy.WriteToServerAsync(dataTable);
+			Assert.Equal(2, result.RowsInserted);
+			Assert.Empty(result.Warnings);
+		}
 
 		// SingleStore doesn't show warnings on data conversion in LOAD DATA
 		// Assert.Equal(2, result.Warnings.Count);
