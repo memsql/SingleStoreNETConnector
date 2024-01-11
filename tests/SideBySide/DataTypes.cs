@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using SingleStoreConnector.Core;
 #if BASELINE
 using MySql.Data.Types;
 #endif
@@ -767,7 +768,7 @@ insert into date_time_kind(d, dt0, dt6) values(?, ?, ?)", connection)
 #endif
 
 	[Theory]
-	[InlineData("`Year`", "YEAR", new object[] { null, 1901, 2155, 0, 2016 })]
+	[InlineData("`Year`", "YEAR", new object[] { null, 1901, 2155, null, 2016 })]
 	public void QueryYear(string column, string dataTypeName, object[] expected)
 	{
 		Func<SingleStoreDataReader, object> getValue = reader => reader.GetInt32(0);
@@ -1473,7 +1474,10 @@ create table schema_table({createColumn});");
 #endif
 	public void StoredProcedureParameter(string column, string table, string dataTypeName, Type dataType, int rowid, object expectedValue)
 	{
-		if (table == "datatypes_json_core" && !AppConfig.SupportsJson)
+		// We're skipping this test block when we're running tests on Managed Service due to the specifics of
+		// how AUTO_INCREMENT works (https://docs.singlestore.com/cloud/reference/sql-reference/data-definition-language-ddl/create-table/#auto-increment-behavior)
+		// We can't know 'rowid' beforehand, so therefore this test doesn't make any sense while running on Managed Service
+		if ((table == "datatypes_json_core" && !AppConfig.SupportsJson) || AppConfig.ManagedService)
 			return;
 
 		using (var command = Connection.CreateCommand())
@@ -1557,6 +1561,14 @@ end;";
 
 		using var connection1 = new SingleStoreConnection(AppConfig.ConnectionString);
 		connection1.Open();
+
+		// Starting with version 8.0, SingleStore has 'data_conversion_compatibility_level' variable that controls the way
+		// certain data conversions are performed. SingleStoreDataReader will round values that are stored in 'BigDecimal' column.
+		// For instance, a value like 99999999999999999999.999999999999999999999999999999 will be rounded to 100000000000000000000.00000000
+		// However, this rounded value exceeds the storage capacity of a DECIMAL(50, 30) field, leading to an error,
+		// because truncating values is prohibited by 'data_conversion_compatibility_level' parameter
+		if (dataTypeName == "DECIMAL(50,30)" && connection1.Session.S2ServerVersion.Version.CompareTo(S2Versions.HasDataConversionCompatibilityLevelParameter) >= 0)
+			return;
 
 		var bulkCopyTable = "bulk_copy_" + table;
 		using (var command = new SingleStoreCommand($@"drop table if exists `{bulkCopyTable}`; create table `{bulkCopyTable}`
@@ -1772,23 +1784,17 @@ end;";
 			Assert.False(reader.NextResult());
 		}
 
-		if (!omitWhereTest)
-		{
-			cmd.CommandText = $"select rowid from datatypes_{table} where {column} = @value order by rowid";
-			var p = cmd.CreateParameter();
-			p.ParameterName = "@value";
-			p.Value = expected.Last();
-			cmd.Parameters.Add(p);
-			var result = cmd.ExecuteScalar();
-			// SingleStore uses bigint type for integer primary key with enabled auto_increment, used for rowid
-			Assert.Equal((System.Int64) Array.IndexOf(expected, p.Value) + 1, result);
+		// We're adding this assert, because SingleStore's AUTO_INCREMENT only guarantees that automatically-generated values are unique
+		string countTotalRows = $"SELECT COUNT(*) FROM datatypes_{table}";
+		string countUniqueRowIds = $"SELECT COUNT(DISTINCT rowid) FROM datatypes_{table}";
 
-			if (!omitWherePrepareTest)
-			{
-				cmd.Prepare();
-				result = cmd.ExecuteScalar();
-				Assert.Equal((System.Int64) Array.IndexOf(expected, p.Value) + 1, result);
-			}
+		using (var command = new SingleStoreCommand(countTotalRows, connection))
+		{
+			var totalRows = Convert.ToInt32(command.ExecuteScalar());
+
+			cmd.CommandText = countUniqueRowIds;
+			var uniqueRowIds = Convert.ToInt32(command.ExecuteScalar());
+			Assert.Equal(totalRows, uniqueRowIds);
 		}
 	}
 

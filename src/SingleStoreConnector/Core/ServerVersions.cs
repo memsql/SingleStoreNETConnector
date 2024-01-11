@@ -22,4 +22,5 @@ internal static class S2Versions
 {
 	public static readonly Version SupportsUtf8Mb4 = new(7, 5, 0);
 	public static readonly Version SupportsResetConnection = new(7, 5, 0);
+	public static readonly Version HasDataConversionCompatibilityLevelParameter = new(8, 0, 0);
 }

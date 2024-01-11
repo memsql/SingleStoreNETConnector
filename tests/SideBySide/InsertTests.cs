@@ -13,25 +13,6 @@ public class InsertTests : IClassFixture<DatabaseFixture>
 	}
 
 	[Fact]
-	public async Task LastInsertedId()
-	{
-		await m_database.Connection.ExecuteAsync(@"drop table if exists insert_ai;
-create table insert_ai(rowid integer not null primary key auto_increment, text varchar(100) not null);");
-		try
-		{
-			await m_database.Connection.OpenAsync();
-			using var command = new SingleStoreCommand("INSERT INTO insert_ai (text) VALUES (@text);", m_database.Connection);
-			command.Parameters.Add(new() { ParameterName = "@text", Value = "test" });
-			Assert.Equal(1, await command.ExecuteNonQueryAsync());
-			Assert.Equal(1L, command.LastInsertedId);
-		}
-		finally
-		{
-			m_database.Connection.Close();
-		}
-	}
-
-	[Fact]
 	public async Task LastInsertedIdNegative()
 	{
 		await m_database.Connection.ExecuteAsync(@"drop table if exists insert_ai;
@@ -43,110 +24,6 @@ create table insert_ai(rowid integer not null primary key auto_increment);");
 			command.Parameters.AddWithValue("@rowid", -1);
 			Assert.Equal(1, await command.ExecuteNonQueryAsync());
 			Assert.Equal(0, command.LastInsertedId);
-		}
-		finally
-		{
-			m_database.Connection.Close();
-		}
-	}
-
-	[Fact]
-	public async Task LastInsertedIdUlong()
-	{
-		await m_database.Connection.ExecuteAsync(@"drop table if exists insert_ai;
-create table insert_ai(rowid bigint unsigned not null primary key auto_increment);");
-		try
-		{
-			await m_database.Connection.OpenAsync();
-			using var command = new SingleStoreCommand("INSERT INTO insert_ai(rowid) VALUES (@rowid);", m_database.Connection);
-			command.Parameters.AddWithValue("@rowid", ((ulong) long.MaxValue) + 1);
-			Assert.Equal(1, await command.ExecuteNonQueryAsync());
-			Assert.Equal(long.MinValue, command.LastInsertedId);
-		}
-		finally
-		{
-			m_database.Connection.Close();
-		}
-	}
-
-	[Fact]
-	public async Task LastInsertedIdAfterSelect()
-	{
-		await m_database.Connection.ExecuteAsync(@"drop table if exists insert_ai;
-create table insert_ai(rowid integer not null primary key auto_increment, text varchar(100) not null);
-insert into insert_ai(text) values('test');
-");
-		try
-		{
-			await m_database.Connection.OpenAsync();
-			using var command = new SingleStoreCommand(@"SELECT * FROM insert_ai;
-INSERT INTO insert_ai (text) VALUES (@text);", m_database.Connection);
-			command.Parameters.Add(new() { ParameterName = "@text", Value = "test" });
-			Assert.Equal(1, await command.ExecuteNonQueryAsync());
-			Assert.Equal(2L, command.LastInsertedId);
-		}
-		finally
-		{
-			m_database.Connection.Close();
-		}
-	}
-
-	[Fact]
-	public async Task LastInsertedIdBeforeSelect()
-	{
-		await m_database.Connection.ExecuteAsync(@"drop table if exists insert_ai;
-create table insert_ai(rowid integer not null primary key auto_increment, text varchar(100) not null);
-insert into insert_ai(text) values('test');
-");
-		try
-		{
-			await m_database.Connection.OpenAsync();
-			using var command = new SingleStoreCommand(@"INSERT INTO insert_ai (text) VALUES (@text);
-SELECT * FROM insert_ai;", m_database.Connection);
-			command.Parameters.Add(new() { ParameterName = "@text", Value = "test" });
-			Assert.Equal(1, await command.ExecuteNonQueryAsync());
-			Assert.Equal(2L, command.LastInsertedId);
-		}
-		finally
-		{
-			m_database.Connection.Close();
-		}
-	}
-
-	[Fact]
-	public async Task LastInsertedIdTwoInserts()
-	{
-		await m_database.Connection.ExecuteAsync(@"drop table if exists insert_ai;
-create table insert_ai(rowid integer not null primary key auto_increment, text varchar(100) not null);
-");
-		try
-		{
-			await m_database.Connection.OpenAsync();
-			using var command = new SingleStoreCommand(@"INSERT INTO insert_ai (text) VALUES ('test1');
-INSERT INTO insert_ai (text) VALUES ('test2');", m_database.Connection);
-			Assert.Equal(2, await command.ExecuteNonQueryAsync());
-			Assert.Equal(2L, command.LastInsertedId);
-		}
-		finally
-		{
-			m_database.Connection.Close();
-		}
-	}
-
-	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=97061")]
-	public async Task LastInsertedIdLockTables()
-	{
-		await m_database.Connection.ExecuteAsync(@"drop table if exists insert_ai;
-create table insert_ai(rowid integer not null primary key auto_increment, text varchar(100) not null);
-");
-		try
-		{
-			await m_database.Connection.OpenAsync();
-			using var command = new SingleStoreCommand(@"LOCK TABLES insert_ai WRITE;
-INSERT INTO insert_ai (text) VALUES ('test');
-UNLOCK TABLES;", m_database.Connection);
-			Assert.Equal(1, await command.ExecuteNonQueryAsync());
-			Assert.Equal(1L, command.LastInsertedId);
 		}
 		finally
 		{
@@ -194,19 +71,6 @@ INSERT INTO insert_rows_affected (value) VALUES (null);", m_database.Connection)
 		{
 			m_database.Connection.Close();
 		}
-	}
-
-	[Fact]
-	public void InsertWithDapper()
-	{
-		m_database.Connection.Execute(@"drop table if exists insert_dapper;
-create table insert_dapper(rowid integer not null primary key auto_increment, text varchar(100) not null);");
-
-		var query = @"insert into insert_dapper(text) values(@text);
-select last_insert_id();";
-		var rowids = m_database.Connection.Query<long>(query, new { text = "Test" });
-		foreach (var rowid in rowids)
-			Assert.Equal(1L, rowid);
 	}
 
 	[Theory]

@@ -1,9 +1,6 @@
 import json
 import os
-
-
-CLUSTER_ID_FILE = "CLUSTER_ID"
-HOSTNAME_TMPL = "svc-{}-ddl.aws-frankfurt-1.svc.singlestore.com"
+from s2ms_cluster import WORKSPACE_ENDPOINT_FILE
 
 NET_FRAMEWORKS = ["net462", "net472", "netcoreapp3.1", "net6.0", "net7.0"]
 
@@ -14,10 +11,8 @@ if __name__ == "__main__":
     if home_dir is None:
         home_dir = os.getenv("HOME")
 
-    with open(CLUSTER_ID_FILE, "r") as f:
-        cluster_id = f.read().strip()
-
-    hostname = HOSTNAME_TMPL.format(cluster_id)
+    with open(WORKSPACE_ENDPOINT_FILE, "r") as f:
+        hostname = f.read()
     password = os.getenv("SQL_USER_PASSWORD")
 
     with open("./.circleci/SideBySide/config.json", "r") as f_in:

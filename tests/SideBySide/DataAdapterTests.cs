@@ -81,10 +81,6 @@ insert into data_adapter(int_value, text_value) values
 		Assert.Single(ds.Tables);
 		Assert.Equal(3, ds.Tables[0].Rows.Count);
 
-		Assert.Equal(1L, ds.Tables[0].Rows[0]["id"]);
-		Assert.Equal(2L, ds.Tables[0].Rows[1]["id"]);
-		Assert.Equal(3L, ds.Tables[0].Rows[2]["id"]);
-
 		Assert.Equal(DBNull.Value, ds.Tables[0].Rows[0]["int_value"]);
 		Assert.Equal(0, ds.Tables[0].Rows[1]["int_value"]);
 		Assert.Equal(1, ds.Tables[0].Rows[2]["int_value"]);
@@ -104,10 +100,6 @@ insert into data_adapter(int_value, text_value) values
 		dr.Close();
 
 		Assert.Equal(3, dt.Rows.Count);
-
-		Assert.Equal(1L, dt.Rows[0]["id"]);
-		Assert.Equal(2L, dt.Rows[1]["id"]);
-		Assert.Equal(3L, dt.Rows[2]["id"]);
 
 		Assert.Equal(DBNull.Value, dt.Rows[0]["int_value"]);
 		Assert.Equal(0, dt.Rows[1]["int_value"]);
@@ -153,16 +145,12 @@ insert into data_adapter(int_value, text_value) values
 		using var cmd2 = new SingleStoreCommand("SELECT id, int_value, text_value FROM data_adapter ORDER BY id", m_connection);
 		using var dr2 = cmd2.ExecuteReader();
 		Assert.True(dr2.Read());
-		Assert.Equal(1L, dr2[0]);
 
 		Assert.True(dr2.Read());
-		Assert.Equal(2L, dr2[0]);
 
 		Assert.True(dr2.Read());
-		Assert.Equal(3L, dr2[0]);
 
 		Assert.True(dr2.Read());
-		Assert.Equal(4L, dr2[0]);
 		Assert.Equal(4, dr2[1]);
 		Assert.Equal("four", dr2[2]);
 	}

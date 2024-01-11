@@ -44,6 +44,8 @@ public static class AppConfig
 
 	public static bool SupportsJson => SupportedFeatures.HasFlag(ServerFeatures.Json);
 
+	public static bool ManagedService => Config.GetValue<bool>("Data:ManagedService");
+
 	public static string SingleStoreBulkLoaderCsvFile => Config.GetValue<string>("Data:SingleStoreBulkLoaderCsvFile");
 	public static string SingleStoreBulkLoaderLocalCsvFile => Config.GetValue<string>("Data:SingleStoreBulkLoaderLocalCsvFile");
 	public static string SingleStoreBulkLoaderTsvFile => Config.GetValue<string>("Data:SingleStoreBulkLoaderTsvFile");
