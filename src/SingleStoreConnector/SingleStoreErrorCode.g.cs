@@ -3286,6 +3286,11 @@ public enum SingleStoreErrorCode
 	TempFileWriteFailure = 1878,
 
 	/// <summary>
+	/// ER_WARN_DATA_OUT_OF_RANGE_UNSPECIFIC
+	/// </summary>
+	WarningDataOutOfRangeUnspecific = 2312,
+
+	/// <summary>
 	/// ER_EXPLAIN_NOT_SUPPORTED
 	/// </summary>
 	ExplainNotSupported = 3012,

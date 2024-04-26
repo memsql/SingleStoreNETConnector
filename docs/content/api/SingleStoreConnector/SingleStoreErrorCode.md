@@ -669,6 +669,7 @@ public enum SingleStoreErrorCode
 | InnodbReadOnly | `1874` | ER_INNODB_READ_ONLY |
 | TableCorrupt | `1877` | ER_TABLE_CORRUPT |
 | TempFileWriteFailure | `1878` | ER_TEMP_FILE_WRITE_FAILURE |
+| WarningDataOutOfRangeUnspecific | `2312` | ER_WARN_DATA_OUT_OF_RANGE_UNSPECIFIC |
 | ExplainNotSupported | `3012` | ER_EXPLAIN_NOT_SUPPORTED |
 | InvalidFieldSize | `3013` | ER_INVALID_FIELD_SIZE |
 | QueryTimeout | `3024` | ER_QUERY_TIMEOUT |
