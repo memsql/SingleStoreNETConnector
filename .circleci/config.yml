@@ -28,6 +28,8 @@ commands:
             sudo apt-get install -y dotnet-sdk-7.0
             dotnet --info
             dotnet --list-sdks
+            ls /usr/share/dotnet/
+            ls /usr/share/dotnet/sdk/
   run-tests-win:
     description: Run tests on Windows
     parameters:
