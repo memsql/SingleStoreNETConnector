@@ -23,9 +23,10 @@ commands:
             sudo apt-get update
             sudo apt-get install -y apt-transport-https
             sudo apt-get update
-            sudo apt-get install -y mariadb-client-core-10.6 mariadb-client-10.6
+            sudo apt-get install -y mariadb-client-core-10.3
             sudo apt-get install -y dotnet-sdk-7.0
             dotnet --info
+            dotnet --list-sdks
   run-tests-win:
     description: Run tests on Windows
     parameters:
