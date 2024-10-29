@@ -27,8 +27,8 @@ commands:
             sudo apt-get install -y mariadb-client-10.6
             sudo apt-get install -y dotnet-sdk-7.0
             dotnet --info
+            which dotnet
             echo $DOTNET_ROOT
-	    which dotnet
   run-tests-win:
     description: Run tests on Windows
     parameters:
