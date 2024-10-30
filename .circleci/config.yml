@@ -25,9 +25,9 @@ commands:
             sudo apt-get update
             sudo apt-get install -y mariadb-client-core-10.6
             sudo apt-get install -y mariadb-client-10.6
+            sudo apt remove 'dotnet*' && sudo apt remove 'aspnetcore*' && sudo rm /etc/apt/sources.list.d/microsoft-prod.list && sudo apt update
             sudo apt-get install -y dotnet-sdk-7.0
             dotnet --info
-            export DOTNET_ROOT=/usr/share/dotnet
   run-tests-win:
     description: Run tests on Windows
     parameters:
