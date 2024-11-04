@@ -81,8 +81,9 @@ VALUES ('a'), ('b'), ('c'), ('d'), ('e'), ('f'), ('g'), ('h'), ('i'), ('j');");
 		/*
 		 Default value for @@collation_connection in SingleStore is "utf8_general_ci"
 		 (https://docs.singlestore.com/db/v7.6/en/reference/configuration-reference/engine-variables/list-of-engine-variables.html#collation_connection)
+		 Starting from 8.7 the default value is "utf8mb4_general_ci"
 		 */
-		var expected = "utf8_general_ci";
+		var expected = connection.Session.S2ServerVersion.Version.CompareTo(new Version(8, 7, 0)) < 0? "utf8_general_ci" : "utf8mb4_general_ci";
 		Assert.Equal(expected, collation);
 	}
 

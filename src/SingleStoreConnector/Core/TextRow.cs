@@ -34,6 +34,8 @@ internal sealed class TextRow : Row
 	protected override object GetValueCore(ReadOnlySpan<byte> data, ColumnDefinitionPayload columnDefinition)
 	{
 		var isUnsigned = (columnDefinition.ColumnFlags & ColumnFlags.Unsigned) != 0;
+		var geographyColumnLen = Connection.Session.S2ServerVersion.Version.CompareTo(new Version(8, 7, 0)) < 0? 1431655765 : 1073741823;
+
 		switch (columnDefinition.ColumnType)
 		{
 		/*
@@ -65,10 +67,9 @@ internal sealed class TextRow : Row
 				return Utf8Parser.TryParse(data, out Guid guid, out int guid32BytesConsumed, 'N') && guid32BytesConsumed == 32 ? guid : throw new FormatException($"Could not parse CHAR(32) value as Guid: {Encoding.UTF8.GetString(data)}");
 			if (Connection.TreatChar48AsGeographyPoint && columnLen == 48)
 				goto case ColumnType.GeographyPoint;
-			if (columnLen == 1431655765)
+			if (columnLen == geographyColumnLen)
 				goto case ColumnType.Geography;
 			goto case ColumnType.VarString;
-
 		case ColumnType.VarString:
 		case ColumnType.VarChar:
 		case ColumnType.TinyBlob:
