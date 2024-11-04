@@ -31,7 +31,6 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	{
 		GC.SuppressFinalize(this);
 		m_connectionString = connectionString ?? "";
-		geographyColumnSize = Session.S2ServerVersion.Version.CompareTo(new Version(8, 7, 0)) < 0? 1431655765 : 1073741823;
 	}
 
 #if NET7_0_OR_GREATER
@@ -1135,6 +1134,4 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	private SchemaProvider? m_schemaProvider;
 	private SingleStoreDataReader? m_activeReader;
 	private EnlistedTransactionBase? m_enlistedTransaction;
-
-	private int geographyColumnSize;
 }
