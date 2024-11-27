@@ -2,6 +2,10 @@
 
 ## Release Notes
 
+### 1.1.5
+
+* Resolved an issue where a package was being packed in the Debug configuration instead of Release.
+
 ### 1.1.4
 
 * Get rid of a fix for MySQL KILL QUERY bug
