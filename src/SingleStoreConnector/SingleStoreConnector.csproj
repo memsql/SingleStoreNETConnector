@@ -4,7 +4,7 @@
     <TargetFrameworks>net461;net471;netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net7.0</TargetFrameworks>
     <Description>A truly async SingleStore ADO.NET provider.</Description>
     <Copyright>Copyright 2016–2021 Bradley Grainger</Copyright>
-    <Copyright>Copyright 2022-2023 SingleStore Inc.</Copyright>
+    <Copyright>Copyright 2022-2024 SingleStore Inc.</Copyright>
     <Authors>SingleStore Inc.</Authors>
     <AssemblyName>SingleStoreConnector</AssemblyName>
     <PackageId>SingleStoreConnector</PackageId>

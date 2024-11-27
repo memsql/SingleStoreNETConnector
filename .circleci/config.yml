@@ -2,7 +2,7 @@ version: 2.1
 parameters:
   connector-version:
     type: string
-    default: "1.1.4"
+    default: "1.1.5"
   dotnet-version:
     type: string
     default: "7.0.404"
@@ -23,7 +23,9 @@ commands:
             sudo apt-get update
             sudo apt-get install -y apt-transport-https
             sudo apt-get update
-            sudo apt-get install -y mariadb-client-core-10.3
+            sudo apt-get install -y mariadb-client-core-10.6
+            sudo apt-get install -y mariadb-client-10.6
+            sudo apt remove 'dotnet*' && sudo apt remove 'aspnetcore*' && sudo rm /etc/apt/sources.list.d/microsoft-prod.list && sudo apt update
             sudo apt-get install -y dotnet-sdk-7.0
             dotnet --info
   run-tests-win:
@@ -75,7 +77,7 @@ jobs:
       singlestore_image:
         type: string
     machine:
-      image: ubuntu-2004:202104-01
+      image: ubuntu-2204:2024.05.1
       docker_layer_caching: true
     environment:
       SINGLESTORE_IMAGE: << parameters.singlestore_image >>
@@ -125,7 +127,7 @@ jobs:
           name: Build project binaries
           command: |
             choco install dotnet-sdk --version=<< pipeline.parameters.dotnet-version >>
-            dotnet.exe build
+            dotnet.exe build -c Release
       - run:
           name: Creating CI Artifacts directory
           command: |
@@ -142,11 +144,17 @@ workflows:
   build_and_test:
     jobs:
       - test-ubuntu:
+          name: Test 8.5 cluster-in-a-box
+          matrix:
+            parameters:
+              singlestore_image:
+                - singlestore/cluster-in-a-box:alma-8.5.22-fe61f40cd1-4.1.0-1.17.11
+      - test-ubuntu:
           name: Test 8.1 cluster-in-a-box
           matrix:
             parameters:
               singlestore_image:
-                - singlestore/cluster-in-a-box:alma-8.1.12-93bb04ec6c-4.0.13-1.17.0
+                - singlestore/cluster-in-a-box:alma-8.1.32-e3d3cde6da-4.0.16-1.17.6
       - test-ubuntu:
           name: Test 8.0 cluster-in-a-box
           matrix:
