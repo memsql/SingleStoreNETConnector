@@ -984,13 +984,11 @@ internal sealed class ServerSession
 
 	private void VerifyConnected()
 	{
-		lock (m_lock)
-		{
-			if (m_state == State.Closed)
-				throw new ObjectDisposedException(nameof(ServerSession));
-			if (m_state != State.Connected && m_state != State.Querying && m_state != State.CancelingQuery && m_state != State.Closing)
-				throw new InvalidOperationException("ServerSession is not connected.");
-		}
+		State state = m_state;
+		if (state == State.Closed)
+			throw new ObjectDisposedException(nameof(ServerSession));
+		if (state != State.Connected && state != State.Querying && state != State.CancelingQuery && state != State.Closing)
+			throw new InvalidOperationException("ServerSession is not connected.");
 	}
 
 	private async Task<bool> OpenTcpSocketAsync(ConnectionSettings cs, ILoadBalancer loadBalancer, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
@@ -1987,7 +1985,7 @@ internal sealed class ServerSession
 	private readonly object?[] m_logArguments;
 	private readonly ArraySegmentHolder<byte> m_payloadCache;
 	private readonly ActivityTagsCollection m_activityTags;
-	private State m_state;
+	private volatile State m_state;
 	private TcpClient? m_tcpClient;
 	private Socket? m_socket;
 	private Stream? m_stream;
