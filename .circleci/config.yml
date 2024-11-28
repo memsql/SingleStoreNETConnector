@@ -135,7 +135,7 @@ jobs:
       - run:
           name: Build NuGet package
           command: |
-            dotnet pack --output /net_connector -p:PackageVersion=<< pipeline.parameters.connector-version >>
+            dotnet pack -c Release --output /net_connector -p:PackageVersion=<< pipeline.parameters.connector-version >>
       - store_artifacts:
           path: /net_connector
 
