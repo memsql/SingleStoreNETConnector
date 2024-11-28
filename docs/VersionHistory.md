@@ -2,7 +2,7 @@
 
 ## Release Notes
 
-### 1.1.5
+### 1.1.6
 
 * Resolved an issue where a package was being packed in the Debug configuration instead of Release.
 
