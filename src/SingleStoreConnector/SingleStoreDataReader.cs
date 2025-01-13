@@ -26,7 +26,8 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	public override bool Read()
 	{
 		VerifyNotDisposed();
-		Command!.CancellableCommand.ResetCommandTimeout();
+
+		// Command!.CancellableCommand.ResetCommandTimeout();
 		return m_resultSet!.Read();
 	}
 
