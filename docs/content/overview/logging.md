@@ -17,7 +17,7 @@ the existing logging framework, and install it by setting `SingleStoreConnector.
 
 The `SingleStoreConnectorLogManager.Provider` property may only be set once, and must be set before any other SingleStoreConnector library methods are called.
 
-Debug-level logging is useful for diagnosing problems with SingleStoreConnector itself; it is recommend that applications limit SingleStoreConnector
+Debug-level logging is useful for diagnosing problems with SingleStoreConnector itself; it is recommended that applications limit SingleStoreConnector
 logging to Info or higher.
 
 ### Existing Logging Providers

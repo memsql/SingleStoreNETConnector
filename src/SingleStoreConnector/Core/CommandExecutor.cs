@@ -8,26 +8,25 @@ namespace SingleStoreConnector.Core;
 
 internal static class CommandExecutor
 {
-	public static async Task<SingleStoreDataReader> ExecuteReaderAsync(IReadOnlyList<ISingleStoreCommand> commands, ICommandPayloadCreator payloadCreator, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	public static async ValueTask<SingleStoreDataReader> ExecuteReaderAsync(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		try
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			var commandListPosition = new CommandListPosition(commands);
-			var command = commands[0];
+			var command = commandListPosition.CommandAt(0);
 
 			// pre-requisite: Connection is non-null must be checked before calling this method
 			var connection = command.Connection!;
 
-			if (Log.IsTraceEnabled())
-				Log.Trace("Session{0} ExecuteReader {1} CommandCount: {2}", connection.Session.Id, ioBehavior, commands.Count);
+			Log.CommandExecutorExecuteReader(command.Logger, connection.Session.Id, ioBehavior, commandListPosition.CommandCount);
 
 			Dictionary<string, CachedProcedure?>? cachedProcedures = null;
-			foreach (var command2 in commands)
+			for (var commandIndex = 0; commandIndex < commandListPosition.CommandCount; commandIndex++)
 			{
+				var command2 = commandListPosition.CommandAt(commandIndex);
 				if (command2.CommandType == CommandType.StoredProcedure)
 				{
-					cachedProcedures ??= new();
+					cachedProcedures ??= [];
 					var commandText = command2.CommandText!;
 					if (!cachedProcedures.ContainsKey(commandText))
 					{
@@ -48,18 +47,18 @@ internal static class CommandExecutor
 			cancellationToken.ThrowIfCancellationRequested();
 
 			using var payload = writer.ToPayloadData();
-			connection.Session.StartQuerying(command.CancellableCommand);
+			var session = connection.Session;
+			session.StartQuerying(command.CancellableCommand);
 			command.SetLastInsertedId(0);
 			try
 			{
-				await connection.Session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
-				return await SingleStoreDataReader.CreateAsync(commandListPosition, payloadCreator, cachedProcedures,
-					command, behavior, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
+				await session.SendAsync(payload, ioBehavior, CancellationToken.None).ConfigureAwait(false);
+				await session.DataReader.InitAsync(commandListPosition, payloadCreator, cachedProcedures, command, behavior, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
+				return session.DataReader;
 			}
-			catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted &&
-			                                      cancellationToken.IsCancellationRequested)
+			catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted && cancellationToken.IsCancellationRequested)
 			{
-				Log.Info("Session{0} query was interrupted", connection.Session.Id);
+				Log.QueryWasInterrupted(command.Logger, session.Id);
 				throw new OperationCanceledException(ex.Message, ex, cancellationToken);
 			}
 			catch (Exception ex) when (payload.Span.Length > 4_194_304 && (ex is SocketException or IOException or SingleStoreProtocolException))
@@ -82,6 +81,4 @@ internal static class CommandExecutor
 			throw;
 		}
 	}
-
-	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(CommandExecutor));
 }

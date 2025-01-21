@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace SingleStoreConnector.Core;
 
 /// <summary>
@@ -18,6 +20,7 @@ internal interface ISingleStoreCommand
 	SingleStoreParameterCollection? OutParameters { get; set; }
 	SingleStoreParameter? ReturnParameter { get; set; }
 	ICancellableCommand CancellableCommand { get; }
+	ILogger Logger { get; }
 }
 
 internal static class ISingleStoreCommandExtensions

@@ -1,6 +1,5 @@
 using System.Net.Security;
 using System.Security.Authentication;
-using SingleStoreConnector.Logging;
 using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector.Core;
@@ -12,7 +11,7 @@ internal sealed class ConnectionSettings
 		ConnectionStringBuilder = csb;
 		ConnectionString = csb.ConnectionString;
 
-		if (csb.ConnectionProtocol == SingleStoreConnectionProtocol.UnixSocket || (!Utility.IsWindows() && (csb.Server.StartsWith("/", StringComparison.Ordinal) || csb.Server.StartsWith("./", StringComparison.Ordinal))))
+		if (csb.ConnectionProtocol == SingleStoreConnectionProtocol.UnixSocket || (!Utility.IsWindows() && (csb.Server.StartsWith('/') || csb.Server.StartsWith("./", StringComparison.Ordinal))))
 		{
 			if (csb.LoadBalance != SingleStoreLoadBalance.RoundRobin)
 				throw new NotSupportedException("LoadBalance not supported when ConnectionProtocol=UnixSocket");
@@ -27,7 +26,7 @@ internal sealed class ConnectionSettings
 			if (csb.LoadBalance != SingleStoreLoadBalance.RoundRobin)
 				throw new NotSupportedException("LoadBalance not supported when ConnectionProtocol=NamedPipe");
 			ConnectionProtocol = SingleStoreConnectionProtocol.NamedPipe;
-			HostNames = (csb.Server == "." || string.Equals(csb.Server, "localhost", StringComparison.OrdinalIgnoreCase)) ? s_localhostPipeServer : new[] { csb.Server };
+			HostNames = (csb.Server == "." || string.Equals(csb.Server, "localhost", StringComparison.OrdinalIgnoreCase)) ? s_localhostPipeServer : [ csb.Server ];
 			PipeName = csb.PipeName;
 		}
 		else if (csb.ConnectionProtocol == SingleStoreConnectionProtocol.SharedMemory)
@@ -73,7 +72,7 @@ internal sealed class ConnectionSettings
 					TlsVersions |= SslProtocols.Tls11;
 				else if (minorVersion == '2')
 					TlsVersions |= SslProtocols.Tls12;
-#if NETCOREAPP3_0_OR_GREATER
+#if NETCOREAPP3_0_OR_GREATER || NET48_OR_GREATER
 				else if (minorVersion == '3')
 					TlsVersions |= SslProtocols.Tls13;
 #endif
@@ -111,10 +110,6 @@ internal sealed class ConnectionSettings
 		ConnectionLifeTime = Math.Min(csb.ConnectionLifeTime, uint.MaxValue / 1000) * 1000;
 		ConnectionReset = csb.ConnectionReset;
 		ConnectionIdleTimeout = (int) csb.ConnectionIdleTimeout;
-#pragma warning disable 618
-		if (!csb.DeferConnectionReset)
-			Log.Warn("DeferConnectionReset=false is not supported; using regular connection reset behavior.");
-#pragma warning restore 618
 		if (csb.MinimumPoolSize > csb.MaximumPoolSize)
 			throw new SingleStoreException("MaximumPoolSize must be greater than or equal to MinimumPoolSize");
 		MinimumPoolSize = ToSigned(csb.MinimumPoolSize);
@@ -161,19 +156,19 @@ internal sealed class ConnectionSettings
 	{
 		switch (guidFormat)
 		{
-		case SingleStoreGuidFormat.Default:
-			return oldGuids ? SingleStoreGuidFormat.LittleEndianBinary16 : SingleStoreGuidFormat.Char36;
-		case SingleStoreGuidFormat.None:
-		case SingleStoreGuidFormat.Char36:
-		case SingleStoreGuidFormat.Char32:
-		case SingleStoreGuidFormat.Binary16:
-		case SingleStoreGuidFormat.TimeSwapBinary16:
-		case SingleStoreGuidFormat.LittleEndianBinary16:
-			if (oldGuids)
-				throw new SingleStoreException("OldGuids cannot be used with GuidFormat");
-			return guidFormat;
-		default:
-			throw new SingleStoreException("Unknown GuidFormat");
+			case SingleStoreGuidFormat.Default:
+				return oldGuids ? SingleStoreGuidFormat.LittleEndianBinary16 : SingleStoreGuidFormat.Char36;
+			case SingleStoreGuidFormat.None:
+			case SingleStoreGuidFormat.Char36:
+			case SingleStoreGuidFormat.Char32:
+			case SingleStoreGuidFormat.Binary16:
+			case SingleStoreGuidFormat.TimeSwapBinary16:
+			case SingleStoreGuidFormat.LittleEndianBinary16:
+				if (oldGuids)
+					throw new SingleStoreException("OldGuids cannot be used with GuidFormat");
+				return guidFormat;
+			default:
+				throw new SingleStoreException("Unknown GuidFormat");
 		}
 	}
 
@@ -281,7 +276,7 @@ internal sealed class ConnectionSettings
 		ConnectionString = other.ConnectionString;
 
 		ConnectionProtocol = SingleStoreConnectionProtocol.Sockets;
-		HostNames = new[] { host };
+		HostNames = [host];
 		LoadBalance = other.LoadBalance;
 		Port = port;
 		PipeName = other.PipeName;
@@ -337,6 +332,5 @@ internal sealed class ConnectionSettings
 		UseXaTransactions = other.UseXaTransactions;
 	}
 
-	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(ConnectionSettings));
 	private static readonly string[] s_localhostPipeServer = { "." };
 }

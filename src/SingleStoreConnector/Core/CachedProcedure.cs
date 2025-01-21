@@ -1,19 +1,20 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Logging;
 using SingleStoreConnector.Protocol.Serialization;
-using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector.Core;
 
 internal sealed class CachedProcedure
 {
-	public static async Task<CachedProcedure?> FillAsync(IOBehavior ioBehavior, SingleStoreConnection connection, string schema, string component, CancellationToken cancellationToken)
+	public static async Task<CachedProcedure?> FillAsync(IOBehavior ioBehavior, SingleStoreConnection connection, string schema, string component, ILogger logger, CancellationToken cancellationToken)
 	{
 		if (connection.Session.MySqlCompatVersion.Version < ServerVersions.SupportsProcedureCache)
 		{
-			Log.Info("Session{0} ServerVersion={1} does not support cached procedures", connection.Session.Id, connection.Session.MySqlCompatVersion.OriginalString);
+			Log.ServerDoesNotSupportCachedProcedures(logger, connection.Session.Id, connection.Session.ServerVersion.OriginalString);
 			return null;
 		}
 
@@ -51,8 +52,7 @@ internal sealed class CachedProcedure
 			}
 		}
 
-		if (Log.IsTraceEnabled())
-			Log.Trace("Procedure for Schema={0} Component={1} has RoutineCount={2}, ParameterCount={3}", schema, component, routineCount, parameters.Count);
+		Log.ProcedureHasRoutineCount(logger, schema, component, routineCount, parameters.Count);
 		return routineCount == 0 ? null : new CachedProcedure(schema, component, parameters);
 	}
 
@@ -88,7 +88,7 @@ internal sealed class CachedProcedure
 			if (!alignParam.HasSetDbType)
 				alignParam.SingleStoreDbType = cachedParam.SingleStoreDbType;
 
-			// cached parameters are oredered by ordinal position
+			// cached parameters are ordered by ordinal position
 			alignedParams.Add(alignParam);
 		}
 
@@ -105,7 +105,7 @@ internal sealed class CachedProcedure
 		parametersSql = s_multipleSpaces.Replace(parametersSql, " ");
 
 		if (string.IsNullOrWhiteSpace(parametersSql))
-			return new List<CachedParameter>();
+			return [];
 
 		// strip precision specifier containing comma
 		parametersSql = s_numericTypes.Replace(parametersSql, @"$1");
@@ -160,7 +160,7 @@ internal sealed class CachedProcedure
 			sql = s_length.Replace(sql, "");
 		}
 
-		var list = sql.Trim().Split(new[] { ' ' });
+		var list = sql.Trim().Split(' ');
 		var type = string.Empty;
 
 		if (list.Length < 2 || !s_typeMapping.TryGetValue(list[0] + ' ' + list[1], out type))
@@ -192,7 +192,7 @@ internal sealed class CachedProcedure
 
 	private string FullyQualified => $"`{m_schema}`.`{m_component}`";
 
-	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(CachedProcedure));
+	[SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance", Justification = "Avoid mutable static field")]
 	private static readonly IReadOnlyDictionary<string, string> s_typeMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 	{
 		{ "BOOL", "TINYINT" },
