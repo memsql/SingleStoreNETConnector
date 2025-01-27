@@ -1,6 +1,7 @@
 using System.Buffers.Text;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.IO.Pipes;
 using System.Net;
@@ -11,6 +12,7 @@ using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Authentication;
 using SingleStoreConnector.Logging;
 using SingleStoreConnector.Protocol;
@@ -22,15 +24,16 @@ namespace SingleStoreConnector.Core;
 
 #pragma warning disable CA1001 // Types that own disposable fields should be disposable
 
-internal sealed class ServerSession
+internal sealed partial class ServerSession
 {
-	public ServerSession()
-		: this(null, 0, Interlocked.Increment(ref s_lastId))
+	public ServerSession(ILogger logger)
+		: this(logger, null, 0, Interlocked.Increment(ref s_lastId))
 	{
 	}
 
-	public ServerSession(ConnectionPool? pool, int poolGeneration, int id)
+	public ServerSession(ILogger logger, ConnectionPool? pool, int poolGeneration, int id)
 	{
+		m_logger = logger;
 		m_lock = new();
 		m_payloadCache = new();
 		Id = (pool?.Id ?? 0) + "." + id;
@@ -40,9 +43,9 @@ internal sealed class ServerSession
 		Pool = pool;
 		PoolGeneration = poolGeneration;
 		HostName = "";
-		m_logArguments = new object?[] { Id.ToString(CultureInfo.InvariantCulture), null };
-		m_activityTags = new ActivityTagsCollection();
-		Log.Trace("Session{0} created new session", m_logArguments);
+		m_activityTags = [];
+		DataReader = new();
+		Log.CreatedNewSession(m_logger, Id);
 	}
 
 	public string Id { get; }
@@ -61,28 +64,30 @@ internal sealed class ServerSession
 	public uint CreatedTicks { get; }
 	public ConnectionPool? Pool { get; }
 	public int PoolGeneration { get; }
+	public uint LastLeasedTicks { get; set; }
 	public uint LastReturnedTicks { get; private set; }
 	public string? DatabaseOverride { get; set; }
 	public string HostName { get; private set; }
 	public IPEndPoint? IPEndPoint => m_tcpClient?.Client.RemoteEndPoint as IPEndPoint;
 	public string? UserID { get; private set; }
 	public WeakReference<SingleStoreConnection>? OwningConnection { get; set; }
-	public bool SupportsComMulti => m_supportsComMulti;
 	public bool SupportsDeprecateEof => m_supportsDeprecateEof;
+	public bool SupportsCachedPreparedMetadata { get; private set; }
 	public bool SupportsQueryAttributes { get; private set; }
 	public bool SupportsSessionTrack => m_supportsSessionTrack;
 	public bool ProcAccessDenied { get; set; }
 	public ICollection<KeyValuePair<string, object?>> ActivityTags => m_activityTags;
+	public SingleStoreDataReader DataReader { get; }
 
 	public ValueTask ReturnToPoolAsync(IOBehavior ioBehavior, SingleStoreConnection? owningConnection)
 	{
-		if (Log.IsTraceEnabled())
-		{
-			m_logArguments[1] = Pool?.Id;
-			Log.Trace("Session{0} returning to Pool{1}", m_logArguments);
-		}
+		Log.ReturningToPool(m_logger, Id, Pool?.Id ?? 0);
 		LastReturnedTicks = unchecked((uint) Environment.TickCount);
-		return Pool is null ? default : Pool.ReturnAsync(ioBehavior, this);
+		if (Pool is null)
+			return default;
+		MetricsReporter.RecordUseTime(Pool, unchecked(LastReturnedTicks - LastLeasedTicks));
+		LastLeasedTicks = 0;
+		return Pool.ReturnAsync(ioBehavior, this);
 	}
 
 	public bool IsConnected
@@ -108,18 +113,18 @@ internal sealed class ServerSession
 			m_state = State.CancelingQuery;
 		}
 
-		Log.Debug("Session{0} will cancel CommandId: {1} (CancelledAttempts={2}) CommandText: {3}", m_logArguments[0], command.CommandId, command.CancelAttemptCount, (command as SingleStoreCommand)?.CommandText);
+		Log.WillCancelCommand(m_logger, Id, command.CommandId, command.CancelAttemptCount, (command as SingleStoreCommand)?.CommandText);
 		return true;
 	}
 
 	public void DoCancel(ICancellableCommand commandToCancel, SingleStoreCommand killCommand)
 	{
-		Log.Info("Session{0} canceling CommandId {1} from Session{2}; CommandText: {3}", m_logArguments[0], commandToCancel.CommandId, killCommand.Connection!.Session.Id, (commandToCancel as SingleStoreCommand)?.CommandText);
+		Log.CancelingCommandFromSession(m_logger, Id, commandToCancel.CommandId, killCommand.Connection!.Session.Id, (commandToCancel as SingleStoreCommand)?.CommandText);
 		lock (m_lock)
 		{
 			if (ActiveCommandId != commandToCancel.CommandId)
 			{
-				Log.Debug("Session{0} ActiveCommandId {1} is not the CommandId {2} being canceled; ignoring cancellation.", m_logArguments[0], ActiveCommandId, commandToCancel.CommandId);
+				Log.IgnoringCancellationForInactiveCommand(m_logger, Id, ActiveCommandId, commandToCancel.CommandId);
 				return;
 			}
 
@@ -129,7 +134,7 @@ internal sealed class ServerSession
 			// command would be killed (because "KILL QUERY" specifies the connection whose command should be killed, not
 			// a unique identifier of the command itself). As a mitigation, we set the CommandTimeout to a low value to avoid
 			// blocking the other thread for an extended duration.
-			Log.Debug("Session{0} canceling CommandId {1} with CommandText {2}", killCommand.Connection!.Session.Id, commandToCancel.CommandId, killCommand.CommandText);
+			Log.CancelingCommand(m_logger, killCommand.Connection!.Session.Id, commandToCancel.CommandId, killCommand.CommandText);
 			killCommand.ExecuteNonQuery();
 		}
 	}
@@ -241,7 +246,7 @@ internal sealed class ServerSession
 					var payloadLength = payload.Span.Length;
 					Utility.Resize(ref columnsAndParameters, columnsAndParametersSize + payloadLength);
 					payload.Span.CopyTo(columnsAndParameters.AsSpan(columnsAndParametersSize));
-					parameters[i] = ColumnDefinitionPayload.Create(new(columnsAndParameters, columnsAndParametersSize, payloadLength));
+					ColumnDefinitionPayload.Initialize(ref parameters[i], new(columnsAndParameters, columnsAndParametersSize, payloadLength));
 					columnsAndParametersSize += payloadLength;
 				}
 				if (!SupportsDeprecateEof)
@@ -261,7 +266,7 @@ internal sealed class ServerSession
 					var payloadLength = payload.Span.Length;
 					Utility.Resize(ref columnsAndParameters, columnsAndParametersSize + payloadLength);
 					payload.Span.CopyTo(columnsAndParameters.AsSpan(columnsAndParametersSize));
-					columns[i] = ColumnDefinitionPayload.Create(new(columnsAndParameters, columnsAndParametersSize, payloadLength));
+					ColumnDefinitionPayload.Initialize(ref columns[i], new(columnsAndParameters, columnsAndParametersSize, payloadLength));
 					columnsAndParametersSize += payloadLength;
 				}
 				if (!SupportsDeprecateEof)
@@ -274,7 +279,7 @@ internal sealed class ServerSession
 			preparedStatements.Add(new(response.StatementId, statement, columns, parameters));
 		}
 
-		m_preparedStatements ??= new();
+		m_preparedStatements ??= [];
 		m_preparedStatements.Add(commandText, new(preparedStatements, parsedStatements));
 	}
 
@@ -287,8 +292,7 @@ internal sealed class ServerSession
 		{
 			if (m_state is State.Querying or State.CancelingQuery)
 			{
-				m_logArguments[1] = m_state;
-				Log.Error("Session{0} can't execute new command when in SessionState: {1}", m_logArguments[0], m_state);
+				CannotExecuteNewCommandInState(m_logger, Id, m_state);
 				throw new InvalidOperationException("This SingleStoreConnection is already in use. See https://fl.vu/mysql-conn-reuse");
 			}
 

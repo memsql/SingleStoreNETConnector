@@ -1,23 +1,17 @@
 using System.Globalization;
 using SingleStoreConnector.Protocol.Serialization;
-using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector.Core;
 
-internal sealed partial class SchemaProvider
+internal sealed partial class SchemaProvider(SingleStoreConnection connection)
 {
-	public SchemaProvider(SingleStoreConnection connection)
-	{
-		m_connection = connection;
-	}
-
 	private void DoFillDataSourceInformation(DataTable dataTable)
 	{
 		var row = dataTable.NewRow();
 		row["CompositeIdentifierSeparatorPattern"] = @"\.";
 		row["DataSourceProductName"] = "MySQL";
-		row["DataSourceProductVersion"] = m_connection.ServerVersion;
-		row["DataSourceProductVersionNormalized"] = GetVersion(m_connection.Session.MySqlCompatVersion.Version);
+		row["DataSourceProductVersion"] = connection.ServerVersion;
+		row["DataSourceProductVersionNormalized"] = GetVersion(connection.Session.MySqlCompatVersion.Version);
 		row["GroupByBehavior"] = GroupByBehavior.Unrelated;
 		row["IdentifierPattern"] = @"(^\[\p{Lo}\p{Lu}\p{Ll}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Nd}@$#_]*$)|(^\[[^\]\0]|\]\]+\]$)|(^\""[^\""\0]|\""\""+\""$)";
 		row["IdentifierCase"] = IdentifierCase.Insensitive;
@@ -104,12 +98,12 @@ internal sealed partial class SchemaProvider
 	{
 		// Note:
 		// For MySQL 8.0, the INFORMATION_SCHEMA.KEYWORDS table could be used to load the list at runtime,
-		// unfortunately this bug https://bugs.mysql.com/bug.php?id=90160 makes it impratical to do it
+		// unfortunately this bug https://bugs.mysql.com/bug.php?id=90160 makes it impractical to do it
 		// (the bug is marked as fixed in MySQL 8.0.13, not published yet at the time of writing this note).
 		//
 		// Note:
 		// Once the previously mentioned bug will be fixed, for versions >= 8.0.13 reserved words could be
-		// loaded at runtime form INFORMATION_SCHEMA.KEYWORDS, and for other versions the hard coded list
+		// loaded at runtime from INFORMATION_SCHEMA.KEYWORDS, and for other versions the hard coded list
 		// could be used (notice the list could change with the release, adopting the 8.0.12 list is a
 		// suboptimal one-size-fits-it-all solution.
 		// To get the current MySQL version at runtime one could query SELECT VERSION(); which returns a
@@ -117,8 +111,8 @@ internal sealed partial class SchemaProvider
 		// (but has a higher version number)
 
 		// select word from information_schema.keywords where reserved = 1; on MySQL Server 8.0.18
-		var reservedWords = new[]
-		{
+		string[] reservedWords =
+		[
 			"ACCESSIBLE",
 			"ADD",
 			"ALL",
@@ -381,7 +375,7 @@ internal sealed partial class SchemaProvider
 			"XOR",
 			"YEAR_MONTH",
 			"ZEROFILL",
-		};
+		];
 
 		foreach (string word in reservedWords)
 			dataTable.Rows.Add(word);
@@ -390,29 +384,29 @@ internal sealed partial class SchemaProvider
 	private async Task FillDataTableAsync(IOBehavior ioBehavior, DataTable dataTable, string tableName, List<KeyValuePair<string, string>>? columns, CancellationToken cancellationToken)
 	{
 		Action? close = null;
-		if (m_connection.State != ConnectionState.Open)
+		if (connection.State != ConnectionState.Open)
 		{
-			await m_connection.OpenAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			close = m_connection.Close;
+			await connection.OpenAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			close = connection.Close;
 		}
 
 		// remove columns that the server doesn't support
 		if (dataTable.TableName == "Columns")
 		{
-			using (var command = new SingleStoreCommand("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'information_schema' AND table_name = 'COLUMNS' AND column_name = 'GENERATION_EXPRESSION';", m_connection))
+			using (var command = new SingleStoreCommand("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'information_schema' AND table_name = 'COLUMNS' AND column_name = 'GENERATION_EXPRESSION';", connection))
 			{
 				if (await command.ExecuteScalarAsync(ioBehavior, cancellationToken).ConfigureAwait(false) is null)
 					dataTable.Columns.Remove("GENERATION_EXPRESSION");
 			}
 
-			using (var command = new SingleStoreCommand("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'information_schema' AND table_name = 'COLUMNS' AND column_name = 'SRS_ID';", m_connection))
+			using (var command = new SingleStoreCommand("SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'information_schema' AND table_name = 'COLUMNS' AND column_name = 'SRS_ID';", connection))
 			{
 				if (await command.ExecuteScalarAsync(ioBehavior, cancellationToken).ConfigureAwait(false) is null)
 					dataTable.Columns.Remove("SRS_ID");
 			}
 		}
 
-		using (var command = m_connection.CreateCommand())
+		using (var command = connection.CreateCommand())
 		{
 #pragma warning disable CA2100
 			command.CommandText = "SELECT " + string.Join(", ", dataTable.Columns.Cast<DataColumn>().Select(static x => x!.ColumnName)) + " FROM INFORMATION_SCHEMA." + tableName;
@@ -435,6 +429,4 @@ internal sealed partial class SchemaProvider
 
 		close?.Invoke();
 	}
-
-	private readonly SingleStoreConnection m_connection;
 }
