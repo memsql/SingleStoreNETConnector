@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Core;
 
 namespace SingleStoreConnector;
@@ -45,7 +46,21 @@ public sealed class SingleStoreBatchCommand :
 #else
 	public SingleStoreParameterCollection Parameters =>
 #endif
-		m_parameterCollection ??= new();
+		m_parameterCollection ??= [];
+
+#pragma warning disable CA1822 // Mark members as static
+	public
+#if NET8_0_OR_GREATER
+		override
+#endif
+		DbParameter CreateParameter() => new SingleStoreParameter();
+
+	public
+#if NET8_0_OR_GREATER
+		override
+#endif
+		bool CanCreateParameter => true;
+#pragma warning restore CA1822 // Mark members as static
 
 #if NET6_0_OR_GREATER
 	protected override DbParameterCollection DbParameterCollection => Parameters;
@@ -72,6 +87,7 @@ public sealed class SingleStoreBatchCommand :
 	SingleStoreParameter? ISingleStoreCommand.ReturnParameter { get; set; }
 
 	ICancellableCommand ISingleStoreCommand.CancellableCommand => Batch!;
+	ILogger ISingleStoreCommand.Logger => Batch!.Connection!.LoggingConfiguration.CommandLogger;
 
 	internal SingleStoreBatch? Batch { get; set; }
 

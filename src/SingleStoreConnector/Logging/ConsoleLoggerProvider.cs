@@ -16,15 +16,9 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 
 	public ISingleStoreConnectorLogger CreateLogger(string name) => new ConsoleLogger(this, name);
 
-	private sealed class ConsoleLogger : ISingleStoreConnectorLogger
+	private sealed class ConsoleLogger(ConsoleLoggerProvider provider, string name) : ISingleStoreConnectorLogger
 	{
-		public ConsoleLogger(ConsoleLoggerProvider provider, string name)
-		{
-			m_provider = provider;
-			m_name = name;
-		}
-
-		public bool IsEnabled(SingleStoreConnectorLogLevel level) => level >= m_provider.m_minimumLevel && level <= SingleStoreConnectorLogLevel.Fatal;
+		public bool IsEnabled(SingleStoreConnectorLogLevel level) => level >= Provider.m_minimumLevel && level <= SingleStoreConnectorLogLevel.Fatal;
 
 		public void Log(SingleStoreConnectorLogLevel level, string message, object?[]? args = null, Exception? exception = null)
 		{
@@ -34,7 +28,7 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 			var sb = new StringBuilder();
 			sb.Append(s_levels[(int) level]);
 			sb.Append('\t');
-			sb.Append(m_name);
+			sb.Append(Name);
 			sb.Append('\t');
 
 			if (args is null || args.Length == 0)
@@ -46,19 +40,19 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 			if (exception is not null)
 				sb.AppendLine(exception.ToString());
 
-			if (m_provider.m_isColored)
+			if (Provider.m_isColored)
 			{
-				lock (m_provider)
+				lock (Provider)
 				{
 					var oldColor = Console.ForegroundColor;
 					Console.ForegroundColor = s_colors[(int) level];
-					Console.Write(sb.ToString());
+					Console.Error.Write(sb.ToString());
 					Console.ForegroundColor = oldColor;
 				}
 			}
 			else
 			{
-				Console.Write(sb.ToString());
+				Console.Error.Write(sb.ToString());
 			}
 		}
 
@@ -84,8 +78,8 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 			ConsoleColor.Red,
 		};
 
-		private readonly ConsoleLoggerProvider m_provider;
-		private readonly string m_name;
+		private ConsoleLoggerProvider Provider { get; } = provider;
+		private string Name { get; } = name;
 	}
 
 	private readonly SingleStoreConnectorLogLevel m_minimumLevel;

@@ -1,18 +1,20 @@
 #pragma warning disable SA1520 // Use braces consistently
 
-using SingleStoreConnector.Utilities;
-
 namespace SingleStoreConnector.Core;
 
-internal abstract class SqlParser
+internal abstract class SqlParser(StatementPreparer preparer)
 {
-	protected StatementPreparer Preparer { get; }
-
-	protected SqlParser(StatementPreparer preparer) => Preparer = preparer;
+	protected StatementPreparer Preparer { get; } = preparer;
 
 	public void Parse(string sql)
 	{
-		OnBeforeParse(sql ?? throw new ArgumentNullException(nameof(sql)));
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(sql);
+#else
+		if (sql is null)
+			throw new ArgumentNullException(nameof(sql));
+#endif
+		OnBeforeParse(sql);
 
 		int parameterStartIndex = -1;
 		var noBackslashEscapes = (Preparer.Options & StatementPreparerOptions.NoBackslashEscapes) == StatementPreparerOptions.NoBackslashEscapes;

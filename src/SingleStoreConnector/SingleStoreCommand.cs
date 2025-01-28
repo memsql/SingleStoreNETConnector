@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Core;
-using SingleStoreConnector.Logging;
 using SingleStoreConnector.Protocol.Serialization;
 using SingleStoreConnector.Utilities;
 
@@ -81,14 +81,14 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	/// <summary>
 	/// The collection of <see cref="SingleStoreParameter"/> objects for this command.
 	/// </summary>
-	public new SingleStoreParameterCollection Parameters => m_parameterCollection ??= new();
+	public new SingleStoreParameterCollection Parameters => m_parameterCollection ??= [];
 
 	SingleStoreParameterCollection? ISingleStoreCommand.RawParameters => m_parameterCollection;
 
 	/// <summary>
 	/// The collection of <see cref="SingleStoreAttribute"/> objects for this command.
 	/// </summary>
-	public SingleStoreAttributeCollection Attributes => m_attributeCollection ??= new();
+	public SingleStoreAttributeCollection Attributes => m_attributeCollection ??= [];
 
 	SingleStoreAttributeCollection? ISingleStoreCommand.RawAttributes => m_attributeCollection;
 
@@ -97,6 +97,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	/// <inheritdoc/>
 	public override void Cancel() => Connection?.Cancel(this, m_commandId, true);
 
+#pragma warning disable CA2012 // OK to read .Result because the ValueTask is completed
 	/// <summary>
 	/// Executes this command on the associated <see cref="SingleStoreConnection"/>.
 	/// </summary>
@@ -104,14 +105,14 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	/// <remarks>For UPDATE, INSERT, and DELETE statements, the return value is the number of rows affected by the command.
 	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
 	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
-	public override int ExecuteNonQuery() => ExecuteNonQueryAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
+	public override int ExecuteNonQuery() => ExecuteNonQueryAsync(IOBehavior.Synchronous, CancellationToken.None).Result;
 
-	/// <inheritdoc/>
-	public override object? ExecuteScalar() => ExecuteScalarAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
+	public override object? ExecuteScalar() => ExecuteScalarAsync(IOBehavior.Synchronous, CancellationToken.None).Result;
 
-	public new SingleStoreDataReader ExecuteReader() => ExecuteReaderAsync(default, IOBehavior.Synchronous, default).GetAwaiter().GetResult();
+	public new SingleStoreDataReader ExecuteReader() => ExecuteReaderAsync(default, IOBehavior.Synchronous, default).Result;
 
 	public new SingleStoreDataReader ExecuteReader(CommandBehavior commandBehavior) => ExecuteReaderAsync(commandBehavior, IOBehavior.Synchronous, default).GetAwaiter().GetResult();
+#pragma warning restore CA2012 // OK to read .Result because the ValueTask is completed
 
 	/// <inheritdoc/>
 	public override void Prepare()
@@ -171,7 +172,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 		if (Connection is null)
 			exception = new InvalidOperationException("Connection property must be non-null.");
 		else if (Connection.State != ConnectionState.Open)
-			exception = new InvalidOperationException("Connection must be Open; current state is {0}".FormatInvariant(Connection.State));
+			exception = new InvalidOperationException($"Connection must be Open; current state is {Connection.State}");
 		else if (string.IsNullOrWhiteSpace(CommandText))
 			exception = new InvalidOperationException("CommandText must be specified");
 		else if (Connection?.HasActiveReader is true)
@@ -229,7 +230,13 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 		get => Math.Min(m_commandTimeout ?? Connection?.DefaultCommandTimeout ?? 0, int.MaxValue / 1000);
 		set
 		{
-			m_commandTimeout = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(value), "CommandTimeout must be greater than or equal to zero.");
+#if NET8_0_OR_GREATER
+			ArgumentOutOfRangeException.ThrowIfNegative(value);
+#else
+			if (value < 0)
+				throw new ArgumentOutOfRangeException(nameof(value), "CommandTimeout must be greater than or equal to zero.");
+#endif
+			m_commandTimeout = value;
 			((ICancellableCommand) this).EffectiveCommandTimeout = null;
 		}
 }
@@ -278,8 +285,10 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 
 	protected override DbParameter CreateDbParameter() => new SingleStoreParameter();
 
+#pragma warning disable CA2012 // OK to read .Result because the ValueTask is completed
 	protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) =>
-		ExecuteReaderAsync(behavior, IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
+		ExecuteReaderAsync(behavior, IOBehavior.Synchronous, CancellationToken.None).Result;
+#pragma warning restore CA2012
 
 	/// <summary>
 	/// Executes this command asynchronously on the associated <see cref="SingleStoreConnection"/>.
@@ -290,9 +299,9 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
 	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
 	public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) =>
-		ExecuteNonQueryAsync(AsyncIOBehavior, cancellationToken);
+		ExecuteNonQueryAsync(AsyncIOBehavior, cancellationToken).AsTask();
 
-	internal async Task<int> ExecuteNonQueryAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+	internal async ValueTask<int> ExecuteNonQueryAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		Volatile.Write(ref m_commandTimedOut, false);
 		this.ResetCommandTimeout();
@@ -308,9 +317,9 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	}
 
 	public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken) =>
-		ExecuteScalarAsync(AsyncIOBehavior, cancellationToken);
+		ExecuteScalarAsync(AsyncIOBehavior, cancellationToken).AsTask();
 
-	internal async Task<object?> ExecuteScalarAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+	internal async ValueTask<object?> ExecuteScalarAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		Volatile.Write(ref m_commandTimedOut, false);
 		this.ResetCommandTimeout();
@@ -332,15 +341,15 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	}
 
 	public new Task<SingleStoreDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default) =>
-		ExecuteReaderAsync(default, AsyncIOBehavior, cancellationToken);
+		ExecuteReaderAsync(default, AsyncIOBehavior, cancellationToken).AsTask();
 
 	public new Task<SingleStoreDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default) =>
-		ExecuteReaderAsync(behavior, AsyncIOBehavior, cancellationToken);
+		ExecuteReaderAsync(behavior, AsyncIOBehavior, cancellationToken).AsTask();
 
 	protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken) =>
 		await ExecuteReaderAsync(behavior, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 
-	internal async Task<SingleStoreDataReader> ExecuteReaderAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	internal async ValueTask<SingleStoreDataReader> ExecuteReaderAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		Volatile.Write(ref m_commandTimedOut, false);
 		this.ResetCommandTimeout();
@@ -348,15 +357,15 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 		return await ExecuteReaderNoResetTimeoutAsync(behavior, ioBehavior, cancellationToken).ConfigureAwait(false);
 	}
 
-	internal Task<SingleStoreDataReader> ExecuteReaderNoResetTimeoutAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	internal ValueTask<SingleStoreDataReader> ExecuteReaderNoResetTimeoutAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!IsValid(out var exception))
-			return Task.FromException<SingleStoreDataReader>(exception);
+			return ValueTaskExtensions.FromException<SingleStoreDataReader>(exception);
 
 		var activity = NoActivity ? null : Connection!.Session.StartActivity(ActivitySourceHelper.ExecuteActivityName,
 			ActivitySourceHelper.DatabaseStatementTagName, CommandText);
 		m_commandBehavior = behavior;
-		return CommandExecutor.ExecuteReaderAsync(new ISingleStoreCommand[] { this }, SingleCommandPayloadCreator.Instance, behavior, activity, ioBehavior, cancellationToken);
+		return CommandExecutor.ExecuteReaderAsync(new(this), SingleCommandPayloadCreator.Instance, behavior, activity, ioBehavior, cancellationToken);
 	}
 
 	public SingleStoreCommand Clone() => new(this);
@@ -437,7 +446,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 		else if (Connection is null)
 			exception = new InvalidOperationException("Connection property must be non-null.");
 		else if (Connection.State != ConnectionState.Open && Connection.State != ConnectionState.Connecting)
-			exception = new InvalidOperationException("Connection must be Open; current state is {0}".FormatInvariant(Connection.State));
+			exception = new InvalidOperationException($"Connection must be Open; current state is {Connection.State}");
 		else if (!Connection.IgnoreCommandTransaction && Transaction != Connection.CurrentTransaction)
 			exception = new InvalidOperationException("The transaction associated with this command is not the connection's active transaction; see https://fl.vu/mysql-trans");
 		else if (string.IsNullOrWhiteSpace(CommandText))
@@ -451,6 +460,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	CommandBehavior ISingleStoreCommand.CommandBehavior => m_commandBehavior;
 	SingleStoreParameterCollection? ISingleStoreCommand.OutParameters { get; set; }
 	SingleStoreParameter? ISingleStoreCommand.ReturnParameter { get; set; }
+	ILogger ISingleStoreCommand.Logger => Connection!.LoggingConfiguration.CommandLogger;
 
 	private readonly int m_commandId;
 	private bool m_isDisposed;

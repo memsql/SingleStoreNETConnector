@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using SingleStoreConnector.Protocol.Serialization;
-using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
@@ -135,8 +134,8 @@ public sealed class SingleStoreBulkLoader
 	{
 		Connection = connection;
 		Local = true;
-		Columns = new();
-		Expressions = new();
+		Columns = [];
+		Expressions = [];
 	}
 
 	/// <summary>
@@ -242,7 +241,8 @@ public sealed class SingleStoreBulkLoader
 		if (Local)
 			sb.Append("LOCAL ");
 
-		sb.AppendFormat(CultureInfo.InvariantCulture, "INFILE '{0}' ", SingleStoreHelper.EscapeString(FileName!));
+#pragma warning disable CA1305 // StringBuilder.Append is only being used with strings, which aren't locale-sensitive
+		sb.Append($"INFILE '{SingleStoreHelper.EscapeString(FileName!)}' ");
 
 		sb.Append(ConflictOption switch
 		{
@@ -251,36 +251,37 @@ public sealed class SingleStoreBulkLoader
 			_ => "",
 		});
 
-		sb.AppendFormat(CultureInfo.InvariantCulture, "INTO TABLE {0} ", TableName);
+		sb.Append($"INTO TABLE {TableName} ");
 
 		if (CharacterSet is not null)
-			sb.AppendFormat(CultureInfo.InvariantCulture, "CHARACTER SET {0} ", CharacterSet);
+			sb.Append($"CHARACTER SET {CharacterSet} ");
 
-		var fieldsTerminatedBy = FieldTerminator is null ? "" : "TERMINATED BY '{0}' ".FormatInvariant(SingleStoreHelper.EscapeString(FieldTerminator));
-		var fieldsEnclosedBy = FieldQuotationCharacter == default ? "" : "{0}ENCLOSED BY '{1}' ".FormatInvariant(FieldQuotationOptional ? "OPTIONALLY " : "", SingleStoreHelper.EscapeString(FieldQuotationCharacter.ToString()));
-		var fieldsEscapedBy = EscapeCharacter == default ? "" : "ESCAPED BY '{0}' ".FormatInvariant(SingleStoreHelper.EscapeString(EscapeCharacter.ToString()));
+		var fieldsTerminatedBy = FieldTerminator is null ? "" : $"TERMINATED BY '{SingleStoreHelper.EscapeString(FieldTerminator)}' ";
+		var fieldsEnclosedBy = FieldQuotationCharacter == default ? "" : $"{(FieldQuotationOptional ? "OPTIONALLY " : "")}ENCLOSED BY '{SingleStoreHelper.EscapeString(FieldQuotationCharacter.ToString())}' ";
+		var fieldsEscapedBy = EscapeCharacter == default ? "" : $"ESCAPED BY '{SingleStoreHelper.EscapeString(EscapeCharacter.ToString())}' ";
 		if (fieldsTerminatedBy.Length + fieldsEnclosedBy.Length + fieldsEscapedBy.Length > 0)
-			sb.AppendFormat(CultureInfo.InvariantCulture, "FIELDS {0}{1}{2}", fieldsTerminatedBy, fieldsEnclosedBy, fieldsEscapedBy);
+			sb.Append($"FIELDS {fieldsTerminatedBy}{fieldsEnclosedBy}{fieldsEscapedBy}");
 
-		var linesTerminatedBy = LineTerminator is null ? "" : "TERMINATED BY '{0}' ".FormatInvariant(SingleStoreHelper.EscapeString(LineTerminator));
-		var linesStartingBy = LinePrefix is null ? "" : "STARTING BY '{0}' ".FormatInvariant(SingleStoreHelper.EscapeString(LinePrefix));
+		var linesTerminatedBy = LineTerminator is null ? "" : $"TERMINATED BY '{SingleStoreHelper.EscapeString(LineTerminator)}' ";
+		var linesStartingBy = LinePrefix is null ? "" : $"STARTING BY '{SingleStoreHelper.EscapeString(LinePrefix)}' ";
 		if (linesTerminatedBy.Length + linesStartingBy.Length > 0)
-			sb.AppendFormat(CultureInfo.InvariantCulture, "LINES {0}{1}", linesTerminatedBy, linesStartingBy);
+			sb.Append($"LINES {linesTerminatedBy}{linesStartingBy}");
 
 		sb.AppendFormat(CultureInfo.InvariantCulture, "IGNORE {0} LINES ", NumberOfLinesToSkip);
 
 		if (Columns.Count > 0)
-			sb.AppendFormat(CultureInfo.InvariantCulture, "({0}) ", string.Join(",", Columns));
+			sb.Append($"({string.Join(",", Columns)}) ");
 
 		if (Expressions.Count > 0)
-			sb.AppendFormat(CultureInfo.InvariantCulture, "SET {0}", string.Join(",", Expressions));
+			sb.Append($"SET {string.Join(",", Expressions)}");
 
 		sb.Append(';');
+#pragma warning restore CA1305
 
 		return sb.ToString();
 	}
 
-	private static Stream CreateFileStream(string fileName)
+	private static FileStream CreateFileStream(string fileName)
 	{
 		try
 		{
@@ -319,5 +320,5 @@ public sealed class SingleStoreBulkLoader
 	private static string GenerateSourceFileName() => SourcePrefix + Guid.NewGuid().ToString("N");
 
 	private static readonly object s_lock = new();
-	private static readonly Dictionary<string, object> s_sources = new();
+	private static readonly Dictionary<string, object> s_sources = [];
 }

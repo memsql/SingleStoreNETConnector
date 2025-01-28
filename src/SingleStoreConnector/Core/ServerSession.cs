@@ -573,17 +573,17 @@ internal sealed partial class ServerSession
 		if (S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) < 0)
 			throw new InvalidOperationException("Resetting connection is not supported in SingleStore " + S2ServerVersion.OriginalString);
 
-		Log.Debug("Session{0} resetting connection", Id);
+		Log.ResettingConnection(m_logger, Id);
 		await SendAsync(ResetConnectionPayload.Instance, ioBehavior, cancellationToken).ConfigureAwait(false);
 		var payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-		OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+		OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
 
 		if (targetDatabase.Length > 0)
 		{
 			var useDb = "USE {0}".FormatInvariant(targetDatabase);
 			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, Encoding.ASCII.GetBytes(useDb)), ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+			OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
 		}
 	}
 
@@ -1738,13 +1738,21 @@ internal sealed partial class ServerSession
 			connection.SetState(ConnectionState.Closed);
 	}
 
-	private void VerifyState(params State[] expectedStates)
+	private void VerifyState(State state)
 	{
-		if (!expectedStates.Contains(m_state))
+		if (m_state != state)
 		{
-		    var expectedStatesString = string.Join(" or ", expectedStates.Select(s => s.ToString()));
-		    Log.Error("Session{0} should have SessionStateExpected {1} but was SessionState {2}", m_logArguments[0], expectedStatesString, m_state);
-		    throw new InvalidOperationException("Expected state to be ({0}) but was {1}.".FormatInvariant(expectedStatesString, m_state));
+			ExpectedSessionState1(m_logger, Id, state, m_state);
+			throw new InvalidOperationException($"Expected state to be {state} but was {m_state}.");
+		}
+	}
+
+	private void VerifyState(State state1, State state2, State state3, State state4, State state5, State state6)
+	{
+		if (m_state != state1 && m_state != state2 && m_state != state3 && m_state != state4 && m_state != state5 && m_state != state6)
+		{
+			ExpectedSessionState6(m_logger, Id, state1, state2, state3, state4, state5, state6, m_state);
+			throw new InvalidOperationException($"Expected state to be ({state1}|{state2}|{state3}|{state4}|{state5}|{state6}) but was {m_state}.");
 		}
 	}
 
@@ -1760,7 +1768,7 @@ internal sealed partial class ServerSession
 
 	private byte[] CreateConnectionAttributes(string programName, string connAttrsExtra)
 	{
-		Log.Trace("Session{0} creating connection attributes", m_logArguments);
+		Log.CreatingConnectionAttributes(m_logger, Id);
 		var attributesWriter = new ByteBufferWriter();
 		attributesWriter.WriteLengthEncodedString("_client_name");
 		attributesWriter.WriteLengthEncodedString("SingleStore .NET Connector");
@@ -1769,7 +1777,7 @@ internal sealed partial class ServerSession
 		var version = typeof(ServerSession).GetTypeInfo().Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
 		var plusIndex = version.IndexOf('+');
 		if (plusIndex != -1)
-			version = version.Substring(0, plusIndex);
+			version = version[..plusIndex];
 		attributesWriter.WriteLengthEncodedString(version);
 
 		try
@@ -1820,11 +1828,10 @@ internal sealed partial class ServerSession
 		return payload.Memory.ToArray();
 	}
 
-	private Exception CreateExceptionForErrorPayload(ReadOnlySpan<byte> span)
+	private SingleStoreException CreateExceptionForErrorPayload(ReadOnlySpan<byte> span)
 	{
 		var errorPayload = ErrorPayload.Create(span);
-		if (Log.IsDebugEnabled())
-			Log.Debug("Session{0} got error payload: Code={1}, State={2}, Message={3}", m_logArguments[0], errorPayload.ErrorCode, errorPayload.State, errorPayload.Message);
+		Log.ErrorPayload(m_logger, Id, errorPayload.ErrorCode, errorPayload.State, errorPayload.Message);
 		var exception = errorPayload.ToException();
 		if (exception.ErrorCode is SingleStoreErrorCode.ClientInteractionTimeout)
 			SetFailed(exception);
@@ -1850,13 +1857,12 @@ internal sealed partial class ServerSession
 		{
 			try
 			{
-				Log.Trace("Session{0} obtaining password via ProvidePasswordCallback", m_logArguments);
+				Log.ObtainingPasswordViaProvidePasswordCallback(m_logger, Id);
 				return passwordProvider(new(HostName, cs.Port, cs.UserID, cs.Database));
 			}
 			catch (Exception ex)
 			{
-				m_logArguments[1] = ex.Message;
-				Log.Error(ex, "Session{0} failed to obtain password via ProvidePasswordCallback: {1}", m_logArguments);
+				Log.FailedToObtainPassword(m_logger, ex, Id, ex.Message);
 				throw new SingleStoreException(SingleStoreErrorCode.ProvidePasswordCallbackFailed, "Failed to obtain password via ProvidePasswordCallback", ex);
 			}
 		}
@@ -1891,27 +1897,32 @@ internal sealed partial class ServerSession
 		Failed,
 	}
 
-	private sealed class DelimiterSqlParser : SqlParser
+	private sealed class DelimiterSqlParser(ISingleStoreCommand command)
+		: SqlParser(new StatementPreparer(command.CommandText!, null, command.CreateStatementPreparerOptions()))
 	{
-		public DelimiterSqlParser(ISingleStoreCommand command)
-			: base(new StatementPreparer(command.CommandText!, null, command.CreateStatementPreparerOptions()))
-		{
-			m_sql = command.CommandText!;
-		}
-
 		public bool HasDelimiter { get; private set; }
 
 		protected override void OnStatementBegin(int index)
 		{
-			if (index + 10 < m_sql.Length && m_sql.AsSpan(index, 10).Equals("delimiter ".AsSpan(), StringComparison.OrdinalIgnoreCase))
+			if (index + 10 < Sql.Length && Sql.AsSpan(index, 10).Equals("delimiter ".AsSpan(), StringComparison.OrdinalIgnoreCase))
 				HasDelimiter = true;
 		}
 
-		private readonly string m_sql;
+		private string Sql { get; } = command.CommandText!;
 	}
 
-	private static ReadOnlySpan<byte> BeginCertificateBytes => "-----BEGIN CERTIFICATE-----"u8;
-	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(ServerSession));
+	[LoggerMessage(EventIds.CannotExecuteNewCommandInState, LogLevel.Error, "Session {SessionId} can't execute new command when in state {SessionState}")]
+	private static partial void CannotExecuteNewCommandInState(ILogger logger, string sessionId, State sessionState);
+
+	[LoggerMessage(EventIds.EnteringFinishQuerying, LogLevel.Trace, "Session {SessionId} entering FinishQuerying; state is {SessionState}")]
+	private static partial void EnteringFinishQuerying(ILogger logger, string sessionId, State sessionState);
+
+	[LoggerMessage(EventIds.ExpectedSessionState1, LogLevel.Error, "Session {SessionId} should have state {ExpectedState1} but was {SessionState}")]
+	private static partial void ExpectedSessionState1(ILogger logger, string sessionId, State expectedState1, State sessionState);
+
+	[LoggerMessage(EventIds.ExpectedSessionState6, LogLevel.Error, "Session {SessionId} should have state {ExpectedState1} or {ExpectedState2} or {ExpectedState3} or {ExpectedState4} or {ExpectedState5} or {ExpectedState6} but was {SessionState}")]
+	private static partial void ExpectedSessionState6(ILogger logger, string sessionId, State expectedState1, State expectedState2, State expectedState3, State expectedState4, State expectedState5, State expectedState6, State sessionState);
+
 	private static readonly PayloadData s_setNamesUtf8NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8;"u8);
 	private static readonly PayloadData s_setNamesUtf8mb4NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8mb4;"u8);
 	private static readonly PayloadData s_setNamesUtf8WithAttributesPayload = QueryPayload.Create(true, "SET NAMES utf8;"u8);
@@ -1920,8 +1931,8 @@ internal sealed partial class ServerSession
 	private static readonly PayloadData s_selectConnectionIdVersionWithAttributesPayload = QueryPayload.Create(true, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version, @@aggregator_id;"u8);
 	private static int s_lastId;
 
+	private readonly ILogger m_logger;
 	private readonly object m_lock;
-	private readonly object?[] m_logArguments;
 	private readonly ArraySegmentHolder<byte> m_payloadCache;
 	private readonly ActivityTagsCollection m_activityTags;
 	private State m_state;
@@ -1933,7 +1944,6 @@ internal sealed partial class ServerSession
 	private IPayloadHandler? m_payloadHandler;
 	private bool m_useCompression;
 	private bool m_isSecureConnection;
-	private bool m_supportsComMulti;
 	private bool m_supportsConnectionAttributes;
 	private bool m_supportsDeprecateEof;
 	private bool m_supportsSessionTrack;

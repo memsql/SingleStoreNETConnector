@@ -202,7 +202,7 @@ public sealed class SingleStoreDataAdapter : DbDataAdapter
 		{
 			CommandText = command.CommandText!;
 			m_parameters = command.RawParameters;
-			ParameterIndexes = new();
+			ParameterIndexes = [];
 		}
 
 		public List<int> ParameterIndexes { get; }

@@ -9,7 +9,7 @@ public sealed class SingleStoreBatchCommandCollection
 	: IList<SingleStoreBatchCommand>, ICollection<SingleStoreBatchCommand>, IEnumerable<SingleStoreBatchCommand>, IEnumerable
 #endif
 {
-	internal SingleStoreBatchCommandCollection() => m_commands = new();
+	internal SingleStoreBatchCommandCollection() => m_commands = [];
 
 #if NET6_0_OR_GREATER
 	public new SingleStoreBatchCommand this[int index] { get => (SingleStoreBatchCommand) base[index]; set => base[index] = value; }

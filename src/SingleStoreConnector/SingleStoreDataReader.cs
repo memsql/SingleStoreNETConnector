@@ -11,7 +11,7 @@ namespace SingleStoreConnector;
 
 #pragma warning disable CA1010 // Generic interface should also be implemented
 
-#if NET461
+#if NET462
 public sealed class SingleStoreDataReader : DbDataReader
 #else
 public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerator
@@ -27,7 +27,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	{
 		VerifyNotDisposed();
 		Command!.CancellableCommand.ResetCommandTimeout();
-		return m_resultSet!.Read();
+		return m_resultSet.Read();
 	}
 
 	public override async Task<bool> ReadAsync(CancellationToken cancellationToken)
@@ -35,11 +35,11 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		VerifyNotDisposed();
 		Command!.CancellableCommand.ResetCommandTimeout();
 		using var registration = Command.CancellableCommand.RegisterCancel(cancellationToken);
-		return await m_resultSet!.ReadAsync(cancellationToken).ConfigureAwait(false);
+		return await m_resultSet.ReadAsync(cancellationToken).ConfigureAwait(false);
 	}
 
 	internal Task<bool> ReadAsync(IOBehavior ioBehavior, CancellationToken cancellationToken) =>
-		m_resultSet!.ReadAsync(ioBehavior, cancellationToken);
+		m_resultSet.ReadAsync(ioBehavior, cancellationToken);
 
 	public override async Task<bool> NextResultAsync(CancellationToken cancellationToken)
 	{
@@ -58,7 +58,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 			{
 				while (true)
 				{
-					await m_resultSet!.ReadEntireAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+					await m_resultSet.ReadEntireAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 					await ScanResultSetAsync(ioBehavior, m_resultSet, cancellationToken).ConfigureAwait(false);
 					if (m_hasMoreResults && m_resultSet.ContainsCommandParameters)
 						await ReadOutParametersAsync(Command!, m_resultSet, ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -68,13 +68,13 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 
 				if (!m_hasMoreResults)
 				{
-					if (m_commandListPosition.CommandIndex < m_commandListPosition.Commands.Count)
+					if (m_commandListPosition.CommandIndex < m_commandListPosition.CommandCount)
 					{
-						Command = m_commandListPosition.Commands[m_commandListPosition.CommandIndex];
+						Command = m_commandListPosition.CommandAt(m_commandListPosition.CommandIndex);
 						using (Command.CancellableCommand.RegisterCancel(cancellationToken))
 						{
 							var writer = new ByteBufferWriter();
-							if (!Command.Connection!.Session.IsCancelingQuery && m_payloadCreator.WriteQueryCommand(ref m_commandListPosition, m_cachedProcedures!, writer, false))
+							if (!Command.Connection!.Session.IsCancelingQuery && m_payloadCreator!.WriteQueryCommand(ref m_commandListPosition, m_cachedProcedures!, writer, false))
 							{
 								using var payload = writer.ToPayloadData();
 								await Command.Connection.Session.SendAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -99,7 +99,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		}
 		catch (SingleStoreException)
 		{
-			m_resultSet!.Reset();
+			m_resultSet.Reset();
 			m_hasMoreResults = false;
 			m_schemaTable = null;
 			throw;
@@ -108,7 +108,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 
 	private void ActivateResultSet(CancellationToken cancellationToken)
 	{
-		if (m_resultSet!.ReadResultSetHeaderException is not null)
+		if (m_resultSet.ReadResultSetHeaderException is not null)
 		{
 			var mySqlException = m_resultSet.ReadResultSetHeaderException.SourceException as SingleStoreException;
 
@@ -139,25 +139,20 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		m_hasWarnings = m_resultSet.WarningCount != 0;
 	}
 
-	private ValueTask ScanResultSetAsync(IOBehavior ioBehavior, ResultSet resultSet, CancellationToken cancellationToken)
+	private async ValueTask ScanResultSetAsync(IOBehavior ioBehavior, ResultSet resultSet, CancellationToken cancellationToken)
 	{
 		if (!m_hasMoreResults)
-			return default;
+			return;
 
 		if (resultSet.BufferState is ResultSetState.NoMoreData or ResultSetState.None)
 		{
 			m_hasMoreResults = false;
-			return default;
+			return;
 		}
 
 		if (resultSet.BufferState != ResultSetState.HasMoreData)
-			throw new InvalidOperationException("Invalid state: {0}".FormatInvariant(resultSet.BufferState));
+			throw new InvalidOperationException($"Invalid state: {resultSet.BufferState}");
 
-		return new ValueTask(ScanResultSetAsyncAwaited(ioBehavior, resultSet, cancellationToken));
-	}
-
-	private async Task ScanResultSetAsyncAwaited(IOBehavior ioBehavior, ResultSet resultSet, CancellationToken cancellationToken)
-	{
 		using (Command!.CancellableCommand.RegisterCancel(cancellationToken))
 		{
 			try
@@ -354,12 +349,16 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	/// <returns>A <see cref="System.Collections.ObjectModel.ReadOnlyCollection{DbColumn}"/> containing metadata about the result set.</returns>
 	public ReadOnlyCollection<DbColumn> GetColumnSchema()
 	{
-		var columnDefinitions = m_resultSet?.ColumnDefinitions;
-		var hasNoSchema = columnDefinitions is null || m_resultSet!.ContainsCommandParameters;
-		return hasNoSchema ? new List<DbColumn>().AsReadOnly() :
-			columnDefinitions!
-				.Select((c, n) => (DbColumn) new SingleStoreDbColumn(n, c, Connection!.AllowZeroDateTime, GetResultSet().ColumnTypes![n], Connection.Session.S2ServerVersion.Version))
-				.ToList().AsReadOnly();
+		var hasNoSchema = !m_resultSet.HasResultSet || m_resultSet.ContainsCommandParameters;
+		if (hasNoSchema)
+			return new ReadOnlyCollection<DbColumn>([]);
+
+		var columnDefinitions = m_resultSet.ColumnDefinitions;
+		var resultSet = GetResultSet();
+		var schema = new List<DbColumn>(columnDefinitions.Length);
+		for (var n = 0; n < columnDefinitions.Length; n++)
+			schema.Add(new SingleStoreDbColumn(n, columnDefinitions[n], Connection!.AllowZeroDateTime, resultSet.GetColumnType(n)));
+		return schema.AsReadOnly();
 	}
 
 	/// <summary>
@@ -457,30 +456,46 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	public Task DisposeAsync() => DisposeAsync(Connection?.AsyncIOBehavior ?? IOBehavior.Asynchronous, CancellationToken.None);
 #endif
 
-	internal Activity? Activity { get; }
+	internal Activity? Activity { get; private set; }
 	internal ISingleStoreCommand? Command { get; private set; }
 	internal SingleStoreConnection? Connection => Command?.Connection;
 	internal ulong? RealRecordsAffected { get; set; }
 	internal ServerSession? Session => Command?.Connection!.Session;
 
-	internal static async Task<SingleStoreDataReader> CreateAsync(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, ISingleStoreCommand command, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	internal async Task InitAsync(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, ISingleStoreCommand command, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		var dataReader = new SingleStoreDataReader(commandListPosition, payloadCreator, cachedProcedures, command, behavior, activity);
-		command.Connection!.SetActiveReader(dataReader);
+		// reset fields from last use of this SingleStoreDataReader
+		if (m_hasMoreResults)
+			throw new InvalidOperationException("Expected m_hasMoreResults to be false");
+		if (m_resultSet.BufferState != ResultSetState.None || m_resultSet.State != ResultSetState.None)
+			throw new InvalidOperationException("Expected BufferState and State to be ResultSetState.None.");
+		m_closed = false;
+		m_hasWarnings = false;
+		RealRecordsAffected = null;
+
+		// initialize for new command
+		m_commandListPosition = commandListPosition;
+		m_payloadCreator = payloadCreator;
+		m_cachedProcedures = cachedProcedures;
+		Command = command;
+		m_behavior = behavior;
+		Activity = activity;
+
+		command.Connection!.SetActiveReader(this);
 
 		try
 		{
-			await dataReader.m_resultSet!.ReadResultSetHeaderAsync(ioBehavior).ConfigureAwait(false);
-			dataReader.ActivateResultSet(cancellationToken);
-			dataReader.m_hasMoreResults = true;
+			await m_resultSet.ReadResultSetHeaderAsync(ioBehavior).ConfigureAwait(false);
+			ActivateResultSet(cancellationToken);
+			m_hasMoreResults = true;
 
-			if (dataReader.m_resultSet.ContainsCommandParameters)
-				await ReadOutParametersAsync(dataReader.Command!, dataReader.m_resultSet, ioBehavior, cancellationToken).ConfigureAwait(false);
+			if (m_resultSet.ContainsCommandParameters)
+				await ReadOutParametersAsync(command, m_resultSet, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// if the command list has multiple commands, keep reading until a result set is found
-			while (dataReader.m_resultSet.State == ResultSetState.NoMoreData && commandListPosition.CommandIndex < commandListPosition.Commands.Count)
+			while (m_resultSet.State == ResultSetState.NoMoreData && commandListPosition.CommandIndex < commandListPosition.CommandCount)
 			{
-				await dataReader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+				await NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		catch (Exception ex)
@@ -490,22 +505,18 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 				activity.SetException(ex);
 				activity.Stop();
 			}
-			dataReader.m_creationFailed = true;
-			dataReader.Dispose();
+			Dispose();
 			throw;
 		}
-
-		return dataReader;
 	}
 
 	internal DataTable? BuildSchemaTable()
 	{
-		var columnDefinitions = m_resultSet?.ColumnDefinitions;
-		if (columnDefinitions is null || m_resultSet!.ContainsCommandParameters)
+		if (!m_resultSet.HasResultSet || m_resultSet.ContainsCommandParameters)
 			return null;
 
 		var schemaTable = new DataTable("SchemaTable") { Locale = CultureInfo.InvariantCulture };
-		schemaTable.MinimumCapacity = columnDefinitions.Length;
+		schemaTable.MinimumCapacity = m_resultSet.ColumnDefinitions.Length;
 
 		var columnName = new DataColumn(SchemaTableColumn.ColumnName, typeof(string));
 		var ordinal = new DataColumn(SchemaTableColumn.ColumnOrdinal, typeof(int));
@@ -589,15 +600,9 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		return schemaTable;
 	}
 
-	private SingleStoreDataReader(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, ISingleStoreCommand command, CommandBehavior behavior, Activity? activity)
+	internal SingleStoreDataReader()
 	{
-		m_commandListPosition = commandListPosition;
-		m_payloadCreator = payloadCreator;
-		m_cachedProcedures = cachedProcedures;
-		Command = command;
-		m_behavior = behavior;
 		m_resultSet = new(this);
-		Activity = activity;
 	}
 
 #if NETCOREAPP3_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
@@ -623,9 +628,8 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 				{
 					// ignore "Query execution was interrupted" exceptions when closing a data reader; log other exceptions
 					if (ex.ErrorCode != SingleStoreErrorCode.QueryInterrupted)
-						Log.Warn("Session{0} ignoring exception in SingleStoreDataReader.DisposeAsync. Message: {1}. CommandText: {2}", Command.Connection.Session.Id, ex.Message, Command.CommandText);
+						Log.IgnoringExceptionInDisposeAsync(Command.Logger, ex, Command.Connection.Session.Id, ex.Message, Command.CommandText!);
 				}
-				m_resultSet = null;
 			}
 
 			m_hasMoreResults = false;
@@ -634,13 +638,17 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 			Command.CancellableCommand.SetTimeout(Constants.InfiniteTimeout);
 			connection.FinishQuerying(m_hasWarnings);
 
-			if (!m_creationFailed)
-				Activity?.SetSuccess();
 			Activity?.Stop();
+			Activity = null;
 
 			if ((m_behavior & CommandBehavior.CloseConnection) != 0)
 				await connection.CloseAsync(ioBehavior).ConfigureAwait(false);
+
+			// clear fields (so that MySqlConnection can be GCed if the user doesn't hold a reference to it)
 			Command = null;
+			m_commandListPosition = default;
+			m_payloadCreator = null;
+			m_cachedProcedures = null;
 		}
 	}
 
@@ -681,6 +689,8 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 			throw new InvalidOperationException("Can't call this method when SingleStoreDataReader is closed.");
 	}
 
+	internal PreparedStatement? LastUsedPreparedStatement => m_commandListPosition.LastUsedPreparedStatement;
+
 	private ResultSet GetResultSet()
 	{
 		VerifyNotDisposed();
@@ -689,16 +699,13 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		return m_resultSet;
 	}
 
-	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(SingleStoreDataReader));
-
-	private readonly CommandBehavior m_behavior;
-	private readonly ICommandPayloadCreator m_payloadCreator;
-	private readonly IDictionary<string, CachedProcedure?>? m_cachedProcedures;
+	private readonly ResultSet m_resultSet;
+	private CommandBehavior m_behavior;
+	private ICommandPayloadCreator? m_payloadCreator;
+	private IDictionary<string, CachedProcedure?>? m_cachedProcedures;
 	private CommandListPosition m_commandListPosition;
 	private bool m_closed;
 	private bool m_hasWarnings;
 	private bool m_hasMoreResults;
-	private bool m_creationFailed;
-	private ResultSet? m_resultSet;
 	private DataTable? m_schemaTable;
 }
