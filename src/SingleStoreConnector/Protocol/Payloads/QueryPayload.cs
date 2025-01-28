@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace SingleStoreConnector.Protocol.Payloads;
 
 internal static class QueryPayload

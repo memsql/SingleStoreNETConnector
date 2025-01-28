@@ -2,7 +2,7 @@ using SingleStoreConnector.Protocol.Serialization;
 
 namespace SingleStoreConnector.Protocol.Payloads;
 
-internal sealed class StatementPrepareResponsePayload
+internal readonly struct StatementPrepareResponsePayload
 {
 	public int StatementId { get; }
 	public int ColumnCount { get; }
