@@ -4,6 +4,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+#if NET8_0_OR_GREATER
+using System.Text.Unicode;
+#endif
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Protocol.Serialization;
 using SingleStoreConnector.Utilities;
@@ -88,7 +91,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			if (value != ParameterDirection.Input && value != ParameterDirection.Output &&
 				value != ParameterDirection.InputOutput && value != ParameterDirection.ReturnValue)
 			{
-				throw new ArgumentOutOfRangeException(nameof(value), "{0} is not a supported value for ParameterDirection".FormatInvariant(value));
+				throw new ArgumentOutOfRangeException(nameof(value), $"{value} is not a supported value for ParameterDirection");
 			}
 			m_direction = value;
 		}
@@ -176,7 +179,13 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 	private SingleStoreParameter(SingleStoreParameter other, string parameterName)
 		: this(other)
 	{
-		ParameterName = parameterName ?? throw new ArgumentNullException(nameof(parameterName));
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(parameterName);
+#else
+		if (parameterName is null)
+			throw new ArgumentNullException(nameof(parameterName));
+#endif
+		ParameterName = parameterName;
 	}
 
 	internal bool HasSetDirection => m_direction.HasValue;
@@ -200,47 +209,61 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 
 		if (Value is null || Value == DBNull.Value)
 		{
-			ReadOnlySpan<byte> nullBytes = "NULL"u8;
-			writer.Write(nullBytes);
+			writer.Write("NULL"u8);
 		}
 		else if (Value is string stringValue)
 		{
-			WriteString(writer, noBackslashEscapes, writeDelimiters: true, stringValue.AsSpan());
+			WriteString(writer, noBackslashEscapes, stringValue.AsSpan());
 		}
 		else if (Value is ReadOnlyMemory<char> readOnlyMemoryChar)
 		{
-			WriteString(writer, noBackslashEscapes, writeDelimiters: true, readOnlyMemoryChar.Span);
+			WriteString(writer, noBackslashEscapes, readOnlyMemoryChar.Span);
 		}
 		else if (Value is Memory<char> memoryChar)
 		{
-			WriteString(writer, noBackslashEscapes, writeDelimiters: true, memoryChar.Span);
+			WriteString(writer, noBackslashEscapes, memoryChar.Span);
 		}
 		else if (Value is char charValue)
 		{
 			writer.Write((byte) '\'');
 			switch (charValue)
 			{
-			case '\'':
-				writer.Write((byte) '\'');
-				writer.Write((byte) charValue);
-				break;
+				case '\'':
+					writer.Write((byte) '\'');
+					writer.Write((byte) charValue);
+					break;
 
-			case '\\':
-				if (!noBackslashEscapes)
-					writer.Write((byte) '\\');
+				case '\\':
+					if (!noBackslashEscapes)
+						writer.Write((byte) '\\');
 
-				writer.Write((byte) charValue);
-				break;
+					writer.Write((byte) charValue);
+					break;
 
-			default:
-				writer.Write(charValue.ToString());
-				break;
+				default:
+					writer.Write(charValue.ToString());
+					break;
 			}
 			writer.Write((byte) '\'');
 		}
-		else if (Value is byte or sbyte or decimal)
+		else if (Value is byte byteValue)
 		{
-			writer.Write("{0}".FormatInvariant(Value));
+			Utf8Formatter.TryFormat(byteValue, writer.GetSpan(3), out var bytesWritten);
+			writer.Advance(bytesWritten);
+		}
+		else if (Value is sbyte sbyteValue)
+		{
+			Utf8Formatter.TryFormat(sbyteValue, writer.GetSpan(4), out var bytesWritten);
+			writer.Advance(bytesWritten);
+		}
+		else if (Value is decimal decimalValue)
+		{
+#if NET8_0_OR_GREATER
+			decimalValue.TryFormat(writer.GetSpan(31), out var bytesWritten, default, CultureInfo.InvariantCulture);
+			writer.Advance(bytesWritten);
+#else
+			writer.WriteAscii(decimalValue.ToString(CultureInfo.InvariantCulture));
+#endif
 		}
 		else if (Value is short shortValue)
 		{
@@ -319,54 +342,110 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else if (Value is bool boolValue)
 		{
-			ReadOnlySpan<byte> trueBytes = "true"u8;
-			ReadOnlySpan<byte> falseBytes = "false"u8;
-			writer.Write(boolValue ? trueBytes : falseBytes);
+			writer.Write(boolValue ? "true"u8 : "false"u8);
 		}
-		else if (Value is float or double)
+		else if (Value is float floatValue)
 		{
+#if NET8_0_OR_GREATER
+			floatValue.TryFormat(writer.GetSpan(14), out var bytesWritten, "R", CultureInfo.InvariantCulture);
+			writer.Advance(bytesWritten);
+#else
 			// NOTE: Utf8Formatter doesn't support "R"
-			writer.Write("{0:R}".FormatInvariant(Value));
+			writer.WriteAscii(floatValue.ToString("R", CultureInfo.InvariantCulture));
+#endif
+		}
+		else if (Value is double doubleValue)
+		{
+#if NET8_0_OR_GREATER
+			doubleValue.TryFormat(writer.GetSpan(24), out var bytesWritten, "R", CultureInfo.InvariantCulture);
+			writer.Advance(bytesWritten);
+#else
+			// NOTE: Utf8Formatter doesn't support "R"
+			writer.WriteAscii(doubleValue.ToString("R", CultureInfo.InvariantCulture));
+#endif
 		}
 		else if (Value is BigInteger bigInteger)
 		{
-			writer.Write(bigInteger.ToString(CultureInfo.InvariantCulture));
+			writer.WriteAscii(bigInteger.ToString(CultureInfo.InvariantCulture));
 		}
 		else if (Value is SingleStoreDecimal mySqlDecimal)
 		{
-			writer.Write(mySqlDecimal.ToString());
+			writer.WriteAscii(mySqlDecimal.ToString());
 		}
 		else if (Value is SingleStoreDateTime mySqlDateTimeValue)
 		{
 			if (mySqlDateTimeValue.IsValidDateTime)
-				writer.Write("timestamp('{0:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')".FormatInvariant(mySqlDateTimeValue.GetDateTime()));
+			{
+#if NET8_0_OR_GREATER
+				Utf8.TryWrite(writer.GetSpan(39), CultureInfo.InvariantCulture, $"timestamp('{mySqlDateTimeValue.GetDateTime():yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')", out var bytesWritten);
+				writer.Advance(bytesWritten);
+#else
+#if NET6_0_OR_GREATER
+				var str = string.Create(CultureInfo.InvariantCulture, stackalloc char[39], $"timestamp('{mySqlDateTimeValue.GetDateTime():yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')");
+#else
+				var str = FormattableString.Invariant($"timestamp('{mySqlDateTimeValue.GetDateTime():yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')");
+#endif
+				writer.WriteAscii(str);
+#endif
+			}
 			else
+			{
 				writer.Write("timestamp('0000-00-00')"u8);
+			}
 		}
 #if NET6_0_OR_GREATER
 		else if (Value is DateOnly dateOnlyValue)
 		{
-			writer.Write("timestamp('{0:yyyy'-'MM'-'dd}')".FormatInvariant(dateOnlyValue));
+#if NET8_0_OR_GREATER
+			Utf8.TryWrite(writer.GetSpan(23), CultureInfo.InvariantCulture, $"timestamp('{dateOnlyValue:yyyy'-'MM'-'dd}')", out var bytesWritten);
+			writer.Advance(bytesWritten);
+#else
+			writer.WriteAscii(string.Create(CultureInfo.InvariantCulture, stackalloc char[23], $"timestamp('{dateOnlyValue:yyyy'-'MM'-'dd}')"));
+#endif
 		}
 #endif
 		else if (Value is DateTime dateTimeValue)
 		{
 			if ((options & StatementPreparerOptions.DateTimeUtc) != 0 && dateTimeValue.Kind == DateTimeKind.Local)
-				throw new SingleStoreException("DateTime.Kind must not be Local when DateTimeKind setting is Utc (parameter name: {0})".FormatInvariant(ParameterName));
+				throw new SingleStoreException($"DateTime.Kind must not be Local when DateTimeKind setting is Utc (parameter name: {ParameterName})");
 			else if ((options & StatementPreparerOptions.DateTimeLocal) != 0 && dateTimeValue.Kind == DateTimeKind.Utc)
-				throw new SingleStoreException("DateTime.Kind must not be Utc when DateTimeKind setting is Local (parameter name: {0})".FormatInvariant(ParameterName));
-
-			writer.Write("timestamp('{0:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')".FormatInvariant(dateTimeValue));
+				throw new SingleStoreException($"DateTime.Kind must not be Utc when DateTimeKind setting is Local (parameter name: {ParameterName})");
+#if NET8_0_OR_GREATER
+			Utf8.TryWrite(writer.GetSpan(39), CultureInfo.InvariantCulture, $"timestamp('{dateTimeValue:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')", out var bytesWritten);
+			writer.Advance(bytesWritten);
+#else
+#if NET6_0_OR_GREATER
+			var str = string.Create(CultureInfo.InvariantCulture, stackalloc char[39], $"timestamp('{dateTimeValue:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')");
+#else
+			var str = FormattableString.Invariant($"timestamp('{dateTimeValue:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')");
+#endif
+			writer.WriteAscii(str);
+#endif
 		}
 		else if (Value is DateTimeOffset dateTimeOffsetValue)
 		{
 			// store as UTC as it will be read as such when deserialized from a timespan column
-			writer.Write("timestamp('{0:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')".FormatInvariant(dateTimeOffsetValue.UtcDateTime));
+#if NET8_0_OR_GREATER
+			Utf8.TryWrite(writer.GetSpan(39), CultureInfo.InvariantCulture, $"timestamp('{dateTimeOffsetValue.UtcDateTime:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')", out var bytesWritten);
+			writer.Advance(bytesWritten);
+#else
+#if NET6_0_OR_GREATER
+			var str = string.Create(CultureInfo.InvariantCulture, stackalloc char[39], $"timestamp('{dateTimeOffsetValue.UtcDateTime:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')");
+#else
+			var str = FormattableString.Invariant($"timestamp('{dateTimeOffsetValue.UtcDateTime:yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'ffffff}')");
+#endif
+			writer.WriteAscii(str);
+#endif
 		}
 #if NET6_0_OR_GREATER
 		else if (Value is TimeOnly timeOnlyValue)
 		{
-			writer.Write("'{0:HH':'mm':'ss'.'ffffff}'".FormatInvariant(timeOnlyValue));
+#if NET8_0_OR_GREATER
+			Utf8.TryWrite(writer.GetSpan(22), CultureInfo.InvariantCulture, $"'{timeOnlyValue:HH':'mm':'ss'.'ffffff}'", out var bytesWritten);
+			writer.Advance(bytesWritten);
+#else
+			writer.WriteAscii(string.Create(CultureInfo.InvariantCulture, stackalloc char[22], $"'{timeOnlyValue:HH':'mm':'ss'.'ffffff}'"));
+#endif
 		}
 #endif
 		else if (Value is TimeSpan ts)
@@ -377,20 +456,41 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 				writer.Write((byte) '-');
 				ts = TimeSpan.FromTicks(-ts.Ticks);
 			}
-			writer.Write("{0}:{1:mm':'ss'.'ffffff}'".FormatInvariant(ts.Days * 24 + ts.Hours, ts));
+#if NET8_0_OR_GREATER
+			Utf8.TryWrite(writer.GetSpan(17), CultureInfo.InvariantCulture, $"{ts.Days * 24 + ts.Hours}:{ts:mm':'ss'.'ffffff}'", out var bytesWritten);
+			writer.Advance(bytesWritten);
+#else
+#if NET6_0_OR_GREATER
+			var str = string.Create(CultureInfo.InvariantCulture, stackalloc char[17], $"{ts.Days * 24 + ts.Hours}:{ts:mm':'ss'.'ffffff}'");
+#else
+			var str = FormattableString.Invariant($"{ts.Days * 24 + ts.Hours}:{ts:mm':'ss'.'ffffff}'");
+#endif
+			writer.WriteAscii(str);
+#endif
 		}
 		else if (Value is Guid guidValue)
 		{
 			StatementPreparerOptions guidOptions = options & StatementPreparerOptions.GuidFormatMask;
 			if (guidOptions is StatementPreparerOptions.GuidFormatBinary16 or StatementPreparerOptions.GuidFormatTimeSwapBinary16 or StatementPreparerOptions.GuidFormatLittleEndianBinary16)
 			{
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_1_OR_GREATER
+				Span<byte> bytes = stackalloc byte[16];
+#if NET8_0_OR_GREATER
+				guidValue.TryWriteBytes(bytes, bigEndian: guidOptions != StatementPreparerOptions.GuidFormatLittleEndianBinary16, out _);
+#else
+				guidValue.TryWriteBytes(bytes);
+#endif
+#else
 				var bytes = guidValue.ToByteArray();
+#endif
 				if (guidOptions != StatementPreparerOptions.GuidFormatLittleEndianBinary16)
 				{
+#if !NET8_0_OR_GREATER
 					Utility.SwapBytes(bytes, 0, 3);
 					Utility.SwapBytes(bytes, 1, 2);
 					Utility.SwapBytes(bytes, 4, 5);
 					Utility.SwapBytes(bytes, 6, 7);
+#endif
 
 					if (guidOptions == StatementPreparerOptions.GuidFormatTimeSwapBinary16)
 					{
@@ -432,16 +532,26 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else if (Value is StringBuilder stringBuilder)
 		{
-#if NETCOREAPP3_1 || NET5_0_OR_GREATER
+#if NETCOREAPP3_1_OR_GREATER
 			writer.Write((byte) '\'');
 			foreach (var chunk in stringBuilder.GetChunks())
-				WriteString(writer, noBackslashEscapes, writeDelimiters: false, chunk.Span);
+				WriteStringChunk(writer, noBackslashEscapes, chunk.Span);
 			if (stringBuilder.Length != 0)
 				writer.Write("".AsSpan(), flush: true);
 			writer.Write((byte) '\'');
 #else
-			WriteString(writer, noBackslashEscapes, writeDelimiters: true, stringBuilder.ToString().AsSpan());
+			WriteString(writer, noBackslashEscapes, stringBuilder.ToString().AsSpan());
 #endif
+		}
+		else if ((SingleStoreDbType is SingleStoreDbType.String or SingleStoreDbType.VarChar) && HasSetDbType && Value is Enum stringEnumValue)
+		{
+			writer.Write((byte) '\'');
+			writer.Write(stringEnumValue.ToString("G"));
+			writer.Write((byte) '\'');
+		}
+		else if (Value is Enum enumValue)
+		{
+			writer.Write(enumValue.ToString("d"));
 		}
 		else if (SingleStoreDbType == SingleStoreDbType.Int16)
 		{
@@ -467,23 +577,14 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			writer.WriteString((ulong) Value);
 		}
-		else if ((SingleStoreDbType is SingleStoreDbType.String or SingleStoreDbType.VarChar) && HasSetDbType && Value is Enum)
-		{
-			writer.Write("'{0:G}'".FormatInvariant(Value));
-		}
-		else if (Value is Enum)
-		{
-			writer.Write("{0:d}".FormatInvariant(Value));
-		}
 		else
 		{
-			throw new NotSupportedException("Parameter type {0} is not supported; see https://fl.vu/mysql-param-type. Value: {1}".FormatInvariant(Value.GetType().Name, Value));
+			throw new NotSupportedException($"Parameter type {Value.GetType().Name} is not supported; see https://fl.vu/mysql-param-type. Value: {Value}");
 		}
 
-		static void WriteString(ByteBufferWriter writer, bool noBackslashEscapes, bool writeDelimiters, ReadOnlySpan<char> value)
+		static void WriteString(ByteBufferWriter writer, bool noBackslashEscapes, ReadOnlySpan<char> value)
 		{
-			if (writeDelimiters)
-				writer.Write((byte) '\'');
+			writer.Write((byte) '\'');
 
 			var charsWritten = 0;
 			while (charsWritten < value.Length)
@@ -493,13 +594,13 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 				if (nextDelimiterIndex == -1)
 				{
 					// write the rest of the string
-					writer.Write(remainingValue, flush: writeDelimiters);
+					writer.Write(remainingValue);
 					charsWritten += remainingValue.Length;
 				}
 				else
 				{
 					// write up to (and including) the delimiter, then double it
-					writer.Write(remainingValue[..(nextDelimiterIndex + 1)], flush: true);
+					writer.Write(remainingValue[..(nextDelimiterIndex + 1)]);
 					if (remainingValue[nextDelimiterIndex] == '\\' && !noBackslashEscapes)
 						writer.Write((byte) '\\');
 					else if (remainingValue[nextDelimiterIndex] == '\'')
@@ -508,9 +609,43 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 				}
 			}
 
-			if (writeDelimiters)
-				writer.Write((byte) '\'');
+			writer.Write((byte) '\'');
 		}
+
+#if NETCOREAPP3_1_OR_GREATER
+		// Writes a partial chunk of a string (that may end with half of a surrogate pair), escaping any delimiter characters.
+		static void WriteStringChunk(ByteBufferWriter writer, bool noBackslashEscapes, ReadOnlySpan<char> value)
+		{
+			var charsWritten = 0;
+			while (charsWritten < value.Length)
+			{
+				var remainingValue = value[charsWritten..];
+				var nextDelimiterIndex = remainingValue.IndexOfAny('\0', '\'', '\\');
+				if (nextDelimiterIndex == -1)
+				{
+					// write the rest of the string
+					writer.Write(remainingValue, flush: false);
+					charsWritten += remainingValue.Length;
+				}
+				else
+				{
+					// write up to (and including) the delimiter, then double it
+					writer.Write(remainingValue[..nextDelimiterIndex], flush: true);
+					if (remainingValue[nextDelimiterIndex] == '\\' && !noBackslashEscapes)
+						writer.Write((ushort) 0x5C5C); // \\
+					else if (remainingValue[nextDelimiterIndex] == '\\' && noBackslashEscapes)
+						writer.Write((byte) 0x5C); // \
+					else if (remainingValue[nextDelimiterIndex] == '\'')
+						writer.Write((ushort) 0x2727); // ''
+					else if (remainingValue[nextDelimiterIndex] == '\0' && !noBackslashEscapes)
+						writer.Write((ushort) 0x305C); // \0
+					else if (remainingValue[nextDelimiterIndex] == '\0' && noBackslashEscapes)
+						writer.Write((byte) 0x00); // (nul)
+					charsWritten += nextDelimiterIndex + 1;
+				}
+			}
+		}
+#endif
 	}
 
 	internal void AppendBinary(ByteBufferWriter writer, StatementPreparerOptions options)
@@ -608,13 +743,13 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			writer.Write(unchecked((ulong) BitConverter.DoubleToInt64Bits(doubleValue)));
 		}
-		else if (Value is decimal)
+		else if (Value is decimal decimalValue)
 		{
-			writer.WriteLengthEncodedString("{0}".FormatInvariant(Value));
+			writer.WriteLengthEncodedAsciiString(decimalValue.ToString(CultureInfo.InvariantCulture));
 		}
 		else if (Value is BigInteger bigInteger)
 		{
-			writer.WriteLengthEncodedString(bigInteger.ToString(CultureInfo.InvariantCulture));
+			writer.WriteLengthEncodedAsciiString(bigInteger.ToString(CultureInfo.InvariantCulture));
 		}
 		else if (Value is SingleStoreDateTime mySqlDateTimeValue)
 		{
@@ -625,7 +760,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else if (Value is SingleStoreDecimal mySqlDecimal)
 		{
-			writer.WriteLengthEncodedString(mySqlDecimal.ToString());
+			writer.WriteLengthEncodedAsciiString(mySqlDecimal.ToString());
 		}
 #if NET6_0_OR_GREATER
 		else if (Value is DateOnly dateOnlyValue)
@@ -636,9 +771,9 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		else if (Value is DateTime dateTimeValue)
 		{
 			if ((options & StatementPreparerOptions.DateTimeUtc) != 0 && dateTimeValue.Kind == DateTimeKind.Local)
-				throw new SingleStoreException("DateTime.Kind must not be Local when DateTimeKind setting is Utc (parameter name: {0})".FormatInvariant(ParameterName));
+				throw new SingleStoreException($"DateTime.Kind must not be Local when DateTimeKind setting is Utc (parameter name: {ParameterName})");
 			else if ((options & StatementPreparerOptions.DateTimeLocal) != 0 && dateTimeValue.Kind == DateTimeKind.Utc)
-				throw new SingleStoreException("DateTime.Kind must not be Utc when DateTimeKind setting is Local (parameter name: {0})".FormatInvariant(ParameterName));
+				throw new SingleStoreException($"DateTime.Kind must not be Utc when DateTimeKind setting is Local (parameter name: {ParameterName})");
 
 			WriteDateTime(writer, dateTimeValue);
 		}
@@ -662,13 +797,24 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			StatementPreparerOptions guidOptions = options & StatementPreparerOptions.GuidFormatMask;
 			if (guidOptions is StatementPreparerOptions.GuidFormatBinary16 or StatementPreparerOptions.GuidFormatTimeSwapBinary16 or StatementPreparerOptions.GuidFormatLittleEndianBinary16)
 			{
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_1_OR_GREATER
+				Span<byte> bytes = stackalloc byte[16];
+#if NET8_0_OR_GREATER
+				guidValue.TryWriteBytes(bytes, bigEndian: guidOptions != StatementPreparerOptions.GuidFormatLittleEndianBinary16, out _);
+#else
+				guidValue.TryWriteBytes(bytes);
+#endif
+#else
 				var bytes = guidValue.ToByteArray();
+#endif
 				if (guidOptions != StatementPreparerOptions.GuidFormatLittleEndianBinary16)
 				{
+#if !NET8_0_OR_GREATER
 					Utility.SwapBytes(bytes, 0, 3);
 					Utility.SwapBytes(bytes, 1, 2);
 					Utility.SwapBytes(bytes, 4, 5);
 					Utility.SwapBytes(bytes, 6, 7);
+#endif
 
 					if (guidOptions == StatementPreparerOptions.GuidFormatTimeSwapBinary16)
 					{
@@ -705,6 +851,14 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			writer.WriteLengthEncodedString(stringBuilder);
 		}
+		else if ((SingleStoreDbType is SingleStoreDbType.String or SingleStoreDbType.VarChar) && HasSetDbType && Value is Enum stringEnumValue)
+		{
+			writer.WriteLengthEncodedString(stringEnumValue.ToString("G"));
+		}
+		else if (Value is Enum)
+		{
+			writer.Write(Convert.ToInt32(Value, CultureInfo.InvariantCulture));
+		}
 		else if (SingleStoreDbType == SingleStoreDbType.Int16)
 		{
 			writer.Write((ushort) (short) Value);
@@ -729,17 +883,9 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			writer.Write((ulong) Value);
 		}
-		else if ((SingleStoreDbType is SingleStoreDbType.String or SingleStoreDbType.VarChar) && HasSetDbType && Value is Enum)
-		{
-			writer.WriteLengthEncodedString("{0:G}".FormatInvariant(Value));
-		}
-		else if (Value is Enum)
-		{
-			writer.Write(Convert.ToInt32(Value, CultureInfo.InvariantCulture));
-		}
 		else
 		{
-			throw new NotSupportedException("Parameter type {0} is not supported; see https://fl.vu/mysql-param-type. Value: {1}".FormatInvariant(Value.GetType().Name, Value));
+			throw new NotSupportedException($"Parameter type {Value.GetType().Name} is not supported; see https://fl.vu/mysql-param-type. Value: {Value}");
 		}
 	}
 
