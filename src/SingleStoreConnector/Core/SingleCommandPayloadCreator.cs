@@ -248,26 +248,21 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 	{
 		var isSchemaOnly = (command.CommandBehavior & CommandBehavior.SchemaOnly) != 0;
 		var isSingleRow = (command.CommandBehavior & CommandBehavior.SingleRow) != 0;
-		if ((isSchemaOnly || isSingleRow) && isFirstCommand)
+		if (isSchemaOnly)
 		{
-			writer.Write((command.Connection!.SupportsPerQueryVariables, isSingleRow) switch
-			{
-				// server doesn't support per-query variables; use multi-statements
-				(false, false) => "SET sql_select_limit=0;\n"u8,
-				(false, true) => "SET sql_select_limit=1;\n"u8,
-
-				// server supports per-query variables; use SET STATEMENT
-				(true, false) => "SET STATEMENT sql_select_limit=0 FOR "u8,
-				(true, true) => "SET STATEMENT sql_select_limit=1 FOR "u8,
-			});
+			writer.Write("SET sql_select_limit=0;\n"u8);
+		}
+		else if (isSingleRow)
+		{
+			writer.Write("SET sql_select_limit=1;\n"u8);
 		}
 
 		var preparer = new StatementPreparer(command.CommandText!, command.RawParameters, command.CreateStatementPreparerOptions() | ((appendSemicolon || isSchemaOnly || isSingleRow) ? StatementPreparerOptions.AppendSemicolon : StatementPreparerOptions.None));
 		var isComplete = preparer.ParseAndBindParameters(writer);
-
-		if ((isSchemaOnly || isSingleRow) && isLastCommand && isComplete && !command.Connection!.SupportsPerQueryVariables)
+		if (isComplete && (isSchemaOnly || isSingleRow))
+		{
 			writer.Write("\nSET sql_select_limit=default;"u8);
-
+		}
 		return isComplete;
 	}
 }

@@ -1108,6 +1108,7 @@ internal abstract partial class SingleStoreConnectionStringOption
 				}
 
 				var coercedValue = "";
+				Span<char> temp = stackalloc char[7];
 				for (var i = 0; i < versions.Length; i++)
 				{
 					if (versions[i])

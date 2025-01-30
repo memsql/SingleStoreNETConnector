@@ -192,6 +192,18 @@ internal static partial class Log
 	[LoggerMessage(EventIds.ChangingConnectionId, LogLevel.Debug, "Session {SessionId} changing connection id from {OldConnectionId} to {ConnectionId} and server version from {OldServerVersion} to {ServerVersion}")]
 	public static partial void ChangingConnectionId(ILogger logger, string sessionId, int oldConnectionId, int connectionId, string oldServerVersion, string serverVersion);
 
+	[LoggerMessage(EventIds.ChangingOnlyConnectionId, LogLevel.Debug, "Session {SessionId} changing connection id from {OldConnectionId} to {ConnectionId}")]
+	public static partial void ChangingOnlyConnectionId(ILogger logger, string sessionId, int oldConnectionId, int connectionId);
+
+	[LoggerMessage(EventIds.ChangingServerVersion, LogLevel.Debug, "Session {SessionId} changing ServerVersion from {OldServerVersion} to {ServerVersion}")]
+	public static partial void ChangingServerVersion(ILogger logger, string sessionId, string oldServerVersion, string serverVersion);
+
+	[LoggerMessage(EventIds.SettingS2ServerVersion, LogLevel.Debug, "Session {SessionId} setting S2ServerVersion to {S2ServerVersion}")]
+	public static partial void SettingS2ServerVersion(ILogger logger, string sessionId, string s2ServerVersion);
+
+	[LoggerMessage(EventIds.SettingAggregatorId, LogLevel.Debug, "Session {SessionId} setting Aggregator ID to {AggregatorId}")]
+	public static partial void SettingAggregatorId(ILogger logger, string sessionId, int aggregatorId);
+
 	[LoggerMessage(EventIds.FailedToGetConnectionId, LogLevel.Information, "Session {SessionId} failed to get CONNECTION_ID(), VERSION()")]
 	public static partial void FailedToGetConnectionId(ILogger logger, Exception exception, string sessionId);
 
@@ -293,6 +305,12 @@ internal static partial class Log
 
 	[LoggerMessage(EventIds.QueryWasInterrupted, LogLevel.Information, "Session {SessionId} query was interrupted")]
 	public static partial void QueryWasInterrupted(ILogger logger, string sessionId);
+
+	[LoggerMessage(EventIds.QueryWasInterruptedForUnknownReasonInCommandExecutor, LogLevel.Information, "Session {SessionId} got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (CommandExecutor.cs)")]
+	public static partial void QueryWasInterruptedForUnknownReasonInCommandExecutor(ILogger logger, string sessionId);
+
+	[LoggerMessage(EventIds.QueryWasInterruptedForUnknownReasonInDataReader, LogLevel.Information, "Session {SessionId} got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (SingleStoreDataReader.cs)")]
+	public static partial void QueryWasInterruptedForUnknownReasonInDataReader(ILogger logger, string sessionId);
 
 	[LoggerMessage(EventIds.PreparingCommandPayload, LogLevel.Trace, "Session {SessionId} preparing command payload for: {CommandText}")]
 	public static partial void PreparingCommandPayload(ILogger logger, string sessionId, string commandText);

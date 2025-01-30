@@ -592,7 +592,7 @@ public class SingleStoreConnectionStringBuilderTests
 		};
 		Assert.Equal("Password=\"foo;=bar,baz\"", builder.ConnectionString, StringComparer.OrdinalIgnoreCase);
 #if !BASELINE // https://bugs.mysql.com/bug.php?id=111797
-		using var connection = new MySqlConnection(builder.ConnectionString);
+		using var connection = new SingleStoreConnection(builder.ConnectionString);
 #endif
 	}
 }

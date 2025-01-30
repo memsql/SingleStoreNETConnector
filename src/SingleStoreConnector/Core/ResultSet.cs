@@ -251,8 +251,6 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 				throw new OperationCanceledException(ex.Message, ex, cancellationToken);
 			if (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted && Command.CancellableCommand.IsTimedOut)
 				throw SingleStoreException.CreateForTimeout(ex);
-			if (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
-				Log.Trace("Got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (ResultSet.cs)");
 			throw;
 		}
 
@@ -361,8 +359,6 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 			throw new InvalidOperationException("Read must be called first.");
 		return m_row ?? throw new InvalidOperationException("There is no current row.");
 	}
-
-	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(ResultSet));
 
 	public SingleStoreDataReader DataReader { get; } = dataReader;
 	public ExceptionDispatchInfo? ReadResultSetHeaderException { get; private set; }

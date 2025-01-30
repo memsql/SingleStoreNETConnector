@@ -70,7 +70,7 @@ internal static class CommandExecutor
 			}
 			catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.QueryInterrupted)
 			{
-				Log.Trace("Session{0} got QueryInterrupted exception, but not because of the CommandTimeout or CancellationToken (CommandExecutor.cs)", connection.Session.Id);
+				Log.QueryWasInterruptedForUnknownReasonInCommandExecutor(command.Logger, session.Id);
 				throw;
 			}
 		}

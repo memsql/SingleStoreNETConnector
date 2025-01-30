@@ -8,7 +8,7 @@ internal sealed class ColumnTypeMetadata(string dataTypeName, DbTypeMapping dbTy
 	public string SimpleDataTypeName { get; } = simpleDataTypeName ?? dataTypeName;
 	public string CreateFormat { get; } = createFormat ?? (dataTypeName + (isUnsigned ? " UNSIGNED" : ""));
 	public DbTypeMapping DbTypeMapping { get; } = dbTypeMapping;
-	public SingleStoreDbType MySqlDbType { get; } = mySqlDbType;
+	public SingleStoreDbType SingleStoreDbType { get; } = mySqlDbType;
 	public bool Binary { get; } = binary;
 	public long ColumnSize { get; } = columnSize;
 	public bool IsUnsigned { get; } = isUnsigned;

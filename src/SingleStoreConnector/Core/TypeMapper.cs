@@ -156,7 +156,7 @@ internal sealed class TypeMapper
 			m_mySqlDbTypeToColumnTypeMetadata.Add(columnTypeMetadata.SingleStoreDbType, columnTypeMetadata);
 #else
 		m_columnTypeMetadataLookup.TryAdd(lookupKey, columnTypeMetadata);
-		m_mySqlDbTypeToColumnTypeMetadata.TryAdd(columnTypeMetadata.MySqlDbType, columnTypeMetadata);
+		m_mySqlDbTypeToColumnTypeMetadata.TryAdd(columnTypeMetadata.SingleStoreDbType, columnTypeMetadata);
 #endif
 	}
 

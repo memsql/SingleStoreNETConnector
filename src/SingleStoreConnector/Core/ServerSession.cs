@@ -1657,23 +1657,22 @@ internal sealed partial class ServerSession
 
 			if (connectionId.HasValue && ConnectionId != connectionId.Value)
 			{
-				Log.Debug("Session{0} changing from {1} to {2}",
-					m_logArguments[0], ConnectionId, connectionId.Value);
+				Log.ChangingOnlyConnectionId(m_logger, Id, ConnectionId, connectionId.Value);
 				ConnectionId = connectionId.Value;
 			}
 			if (serverVersion is not null && MySqlCompatVersion.OriginalString != serverVersion.OriginalString)
 			{
-				Log.Debug("Session{0} changing ServerVersion from {1} to {2}", m_logArguments[0], MySqlCompatVersion.OriginalString, serverVersion.OriginalString);
+				Log.ChangingServerVersion(m_logger, Id, MySqlCompatVersion.OriginalString, serverVersion.OriginalString);
 				MySqlCompatVersion = serverVersion;
 			}
 			if (s2Version is not null)
 			{
-				Log.Debug("Session{0} setting S2ServerVersion to {2}", m_logArguments[0], S2ServerVersion.OriginalString, s2Version.OriginalString);
+				Log.SettingS2ServerVersion(m_logger, Id, s2Version.OriginalString);
 				S2ServerVersion = s2Version;
 			}
 			if (aggregator_id.HasValue)
 			{
-				Log.Debug("Session{0} setting AggregatorId to {2}", m_logArguments[0], aggregator_id.Value);
+				Log.SettingAggregatorId(m_logger, Id, aggregator_id.Value);
 				AggregatorId = aggregator_id.Value;
 			}
 			else

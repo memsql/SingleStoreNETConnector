@@ -856,7 +856,6 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 
 	internal int? ActiveCommandId => m_session?.ActiveCommandId;
 
-	internal bool SupportsPerQueryVariables => m_session?.SupportsPerQueryVariables ?? false;
 	internal bool HasActiveReader => m_activeReader is not null;
 
 	internal void SetActiveReader(SingleStoreDataReader dataReader)

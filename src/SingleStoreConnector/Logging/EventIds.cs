@@ -83,6 +83,10 @@ internal static class EventIds
 	public const int CreatingConnectionAttributes = 2153;
 	public const int ObtainingPasswordViaProvidePasswordCallback = 2154;
 	public const int FailedToObtainPassword = 2155;
+	public const int ChangingOnlyConnectionId = 2156;
+	public const int ChangingServerVersion = 2157;
+	public const int SettingS2ServerVersion = 2158;
+	public const int SettingAggregatorId = 2159;
 
 	// Command execution events, 2200-2299
 	public const int CannotExecuteNewCommandInState = 2200;
@@ -94,6 +98,8 @@ internal static class EventIds
 	public const int QueryAttributesNotSupported = 2206;
 	public const int QueryAttributesNotSupportedWithId = 2207;
 	public const int IgnoringExceptionInDisposeAsync = 2208;
+	public const int QueryWasInterruptedForUnknownReasonInCommandExecutor = 2209;
+	public const int QueryWasInterruptedForUnknownReasonInDataReader = 2210;
 
 	// Command cancellation events, 2300-2399
 	public const int IgnoringCancellationForCommand = 2300;
