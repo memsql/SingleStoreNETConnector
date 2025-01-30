@@ -417,7 +417,7 @@ internal sealed class ConnectionPool : IDisposable
 		}
 	}
 
-	private async ValueTask<ServerSession> ConnectSessionAsync(SingleStoreConnection connection, Action<ILogger, int, string, Exception?>, int startTickCount, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async ValueTask<ServerSession> ConnectSessionAsync(SingleStoreConnection connection, Action<ILogger, int, string, Exception?> logMessage, int startTickCount, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var session = new ServerSession(m_connectionLogger, this, m_generation, Interlocked.Increment(ref m_lastSessionId));
 		if (m_logger.IsEnabled(LogLevel.Debug))

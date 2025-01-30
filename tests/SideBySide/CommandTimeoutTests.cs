@@ -46,7 +46,7 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 		Assert.Equal(2_147_483, command.CommandTimeout);
 	}
 
-	[SkippableFact(ServerFeatures.Timeout)]
+	[Fact]
 	public void CommandTimeoutWithSleepSync()
 	{
 		var connectionState = m_connection.State;
@@ -59,11 +59,7 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 			Assert.Contains("fatal error", ex.Message, StringComparison.OrdinalIgnoreCase);
 			connectionState = ConnectionState.Closed;
 #else
-			using (var reader = cmd.ExecuteReader())
-			{
-				var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
-				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
-			}
+			TestUtilities.AssertExecuteScalarReturnsOneOrTimesOut(cmd);
 #endif
 			sw.Stop();
 			TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500);
@@ -85,11 +81,7 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 			Assert.Contains("fatal error", exception.Message, StringComparison.OrdinalIgnoreCase);
 			connectionState = ConnectionState.Closed;
 #else
-			using (var reader = await cmd.ExecuteReaderAsync())
-			{
-				var ex = await Assert.ThrowsAsync<SingleStoreException>(() => reader.ReadAsync());
-				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
-			}
+			await TestUtilities.AssertExecuteScalarReturnsOneOrTimesOutAsync(cmd);
 #endif
 			sw.Stop();
 			TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 700);
@@ -98,7 +90,7 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 		Assert.Equal(connectionState, m_connection.State);
 	}
 
-	[SkippableTheory(ServerFeatures.Timeout)]
+	[Theory]
 	[InlineData(true)]
 	[InlineData(false)]
 	public void CommandTimeoutWithStoredProcedureSleepSync(bool pooling)
@@ -126,11 +118,7 @@ end;", m_connection))
 		var ex = Assert.Throws<SingleStoreException>(cmd.ExecuteReader);
 		Assert.Contains("fatal error", ex.Message, StringComparison.OrdinalIgnoreCase);
 #else
-		using (var reader = cmd.ExecuteReader())
-		{
-			var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
-			Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
-		}
+		TestUtilities.AssertExecuteScalarReturnsOneOrTimesOut(cmd);
 #endif
 		sw.Stop();
 		TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500);
@@ -240,7 +228,7 @@ end;", m_connection))
 	}
 
 
-	[SkippableFact(ServerFeatures.Timeout)]
+	[Fact]
 	public void TransactionCommandTimeoutWithSleepSync()
 	{
 		var connectionState = m_connection.State;
@@ -254,11 +242,7 @@ end;", m_connection))
 			Assert.Contains("fatal error", ex.Message, StringComparison.OrdinalIgnoreCase);
 			connectionState = ConnectionState.Closed;
 #else
-			using (var reader = cmd.ExecuteReader())
-			{
-				var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
-				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
-			}
+			TestUtilities.AssertExecuteScalarReturnsOneOrTimesOut(cmd);
 #endif
 			sw.Stop();
 			TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500);
@@ -281,11 +265,7 @@ end;", m_connection))
 			Assert.Contains("fatal error", ex.Message, StringComparison.OrdinalIgnoreCase);
 			connectionState = ConnectionState.Closed;
 #else
-			using (var reader = await cmd.ExecuteReaderAsync())
-			{
-				var ex = await Assert.ThrowsAsync<SingleStoreException>(() => reader.ReadAsync());
-				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
-			}
+			await TestUtilities.AssertExecuteScalarReturnsOneOrTimesOutAsync(cmd);
 #endif
 			sw.Stop();
 		}

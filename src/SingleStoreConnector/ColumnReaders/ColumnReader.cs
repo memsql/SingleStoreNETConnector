@@ -107,7 +107,10 @@ internal abstract class ColumnReader
 			case ColumnType.NewDecimal:
 				return DecimalColumnReader.Instance;
 
-			case ColumnType.Geometry:
+			case ColumnType.Geography:
+				return BytesColumnReader.Instance;
+
+			case ColumnType.GeographyPoint:
 				return BytesColumnReader.Instance;
 
 			case ColumnType.Null:

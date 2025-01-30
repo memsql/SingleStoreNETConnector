@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using SingleStoreConnector.Core;
-using Xunit;
-
 namespace SingleStoreConnector.Tests;
 
 public class CachedProcedureTests

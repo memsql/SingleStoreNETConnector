@@ -1,9 +1,9 @@
 using System.Buffers;
 using System.Buffers.Text;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Net;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Authentication;
 using System.Security.Cryptography;
@@ -22,9 +22,6 @@ internal static class Utility
 			disposable = null;
 		}
 	}
-
-	public static string FormatInvariant(this string format, params object?[] args) =>
-		string.Format(CultureInfo.InvariantCulture, format, args);
 
 #if !NETCOREAPP2_1_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
 	public static string GetString(this Encoding encoding, ReadOnlySpan<byte> span)
@@ -173,7 +170,7 @@ internal static class Utility
 	{
 		// read header (30 81 xx, or 30 82 xx xx)
 		if (data[0] != 0x30)
-			throw new FormatException("Expected 0x30 but read {0:X2}".FormatInvariant(data[0]));
+			throw new FormatException($"Expected 0x30 but read 0x{data[0]:X2}");
 		data = data.Slice(1);
 
 		if (!TryReadAsnLength(data, out var length, out var bytesConsumed))
@@ -183,14 +180,14 @@ internal static class Utility
 		if (!isPrivate)
 		{
 			// encoded OID sequence for  PKCS #1 rsaEncryption szOID_RSA_RSA = "1.2.840.113549.1.1.1"
-			ReadOnlySpan<byte> rsaOid = new byte[] { 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00 };
+			ReadOnlySpan<byte> rsaOid = [ 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01, 0x05, 0x00 ];
 			if (!data.Slice(0, rsaOid.Length).SequenceEqual(rsaOid))
-				throw new FormatException("Expected RSA OID but read {0}".FormatInvariant(BitConverter.ToString(data.Slice(0, 15).ToArray())));
+				throw new FormatException($"Expected RSA OID but read {BitConverter.ToString(data.Slice(0, 15).ToArray())}");
 			data = data.Slice(rsaOid.Length);
 
 			// BIT STRING (0x03) followed by length
 			if (data[0] != 0x03)
-				throw new FormatException("Expected 0x03 but read {0:X2}".FormatInvariant(data[0]));
+				throw new FormatException($"Expected 0x03 but read 0x{data[0]:X2}");
 			data = data.Slice(1);
 
 			if (!TryReadAsnLength(data, out length, out bytesConsumed))
@@ -199,12 +196,12 @@ internal static class Utility
 
 			// skip NULL byte
 			if (data[0] != 0x00)
-				throw new FormatException("Expected 0x00 but read {0:X2}".FormatInvariant(data[0]));
+				throw new FormatException($"Expected 0x00 but read 0x{data[0]:X2}");
 			data = data.Slice(1);
 
 			// skip next header (30 81 xx, or 30 82 xx xx)
 			if (data[0] != 0x30)
-				throw new FormatException("Expected 0x30 but read {0:X2}".FormatInvariant(data[0]));
+				throw new FormatException($"Expected 0x30 but read 0x{data[0]:X2}");
 			data = data.Slice(1);
 
 			if (!TryReadAsnLength(data, out length, out bytesConsumed))
@@ -459,7 +456,7 @@ internal static class Utility
 #endif
 
 		InvalidTimeSpan:
-		throw new FormatException("Couldn't interpret '{0}' as a valid TimeSpan".FormatInvariant(Encoding.UTF8.GetString(originalValue)));
+		throw new FormatException($"Couldn't interpret value as a valid TimeSpan: {Encoding.UTF8.GetString(originalValue)}");
 	}
 
 #if !NETCOREAPP2_1_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
@@ -513,14 +510,21 @@ internal static class Utility
 	public static void Write(this Stream stream, ReadOnlyMemory<byte> data) => stream.Write(data.Span);
 #endif
 
-	public static void SwapBytes(byte[] bytes, int offset1, int offset2)
+#if !NETCOREAPP2_0_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
+	public static bool StartsWith(this string str, char value) => !string.IsNullOrEmpty(str) && str[0] == value;
+#endif
+
+	public static void SwapBytes(Span<byte> bytes, int offset1, int offset2)
 	{
-		byte swap = bytes[offset1];
-		bytes[offset1] = bytes[offset2];
-		bytes[offset2] = swap;
+#if NET8_0_OR_GREATER
+		ref var first = ref Unsafe.AsRef(ref bytes[0]);
+#else
+		ref var first = ref Unsafe.AsRef(bytes[0]);
+#endif
+		(Unsafe.Add(ref first, offset2), Unsafe.Add(ref first, offset1)) = (Unsafe.Add(ref first, offset1), Unsafe.Add(ref first, offset2));
 	}
 
-#if NET461
+#if NET462
 	public static bool IsWindows() => Environment.OSVersion.Platform == PlatformID.Win32NT;
 
 	public static void GetOSDetails(out string? os, out string osDescription, out string architecture)
@@ -559,13 +563,13 @@ internal static class Utility
 	}
 #endif
 
-#if NET461
+#if NET462
 	public static SslProtocols GetDefaultSslProtocols()
 	{
 		if (!s_defaultSslProtocols.HasValue)
 		{
 			// Prior to .NET Framework 4.7, SslProtocols.None is not a valid argument to SslStream.AuthenticateAsClientAsync.
-			// If the NET461 build is loaded by an application that targets .NET 4.7 (or later), or if app.config has set
+			// If the NET462 build is loaded by an application that targets .NET 4.7 (or later), or if app.config has set
 			// Switch.System.Net.DontEnableSystemDefaultTlsVersions to false, then SslProtocols.None will work; otherwise,
 			// if the application targets .NET 4.6.2 or earlier and hasn't changed the AppContext switch, then it will
 			// fail at runtime. We attempt to determine if it will fail by accessing the internal static

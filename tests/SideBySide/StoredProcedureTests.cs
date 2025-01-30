@@ -534,15 +534,17 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	}
 
 	[Theory]
-	[InlineData("bit(1)", 1)]
-	[InlineData("bit(10)", 10)]
 #if !BASELINE
 	[InlineData("bool", 1)]
 	[InlineData("tinyint(1)", 1)]
 	[InlineData("decimal(10)", 10)]
+
+	// https://bugs.mysql.com/bug.php?id=112088
+	[InlineData("bit(1)", 1)]
+	[InlineData("bit(10)", 10)]
+	[InlineData("mediumtext", 0)]
 #endif
 	[InlineData("char(30)", 30)]
-	[InlineData("mediumtext", 0)]
 	[InlineData("varchar(50)", 50)]
 	// These return nonzero sizes for some versions of MySQL Server 8.0
 	// [InlineData("bit", 0)]

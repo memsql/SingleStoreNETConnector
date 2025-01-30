@@ -14,7 +14,7 @@ internal sealed class CachedProcedure
 	{
 		if (connection.Session.MySqlCompatVersion.Version < ServerVersions.SupportsProcedureCache)
 		{
-			Log.ServerDoesNotSupportCachedProcedures(logger, connection.Session.Id, connection.Session.ServerVersion.OriginalString);
+			Log.ServerDoesNotSupportCachedProcedures(logger, connection.Session.Id, connection.Session.MySqlCompatVersion.OriginalString);
 			return null;
 		}
 

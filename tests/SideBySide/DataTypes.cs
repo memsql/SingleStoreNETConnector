@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Reflection;
 using SingleStoreConnector.Core;
 #if BASELINE
 using MySql.Data.Types;

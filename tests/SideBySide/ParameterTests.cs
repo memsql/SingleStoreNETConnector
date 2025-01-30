@@ -240,7 +240,7 @@ public class ParameterTests
 		Assert.Equal(parameter.Direction, clone.Direction);
 	}
 
-	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=92734")]
+	[Fact]
 	public void CloneIsNullable()
 	{
 		var parameter = new SingleStoreParameter { IsNullable = true };
@@ -248,7 +248,7 @@ public class ParameterTests
 		Assert.Equal(parameter.IsNullable, clone.IsNullable);
 	}
 
-	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=92734")]
+	[Fact]
 	public void ClonePrecision()
 	{
 		var parameter = new SingleStoreParameter { Precision = 10 };
@@ -256,7 +256,7 @@ public class ParameterTests
 		Assert.Equal(parameter.Precision, clone.Precision);
 	}
 
-	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=92734")]
+	[Fact]
 	public void CloneScale()
 	{
 		var parameter = new SingleStoreParameter { Scale = 12 };
@@ -264,7 +264,7 @@ public class ParameterTests
 		Assert.Equal(parameter.Scale, clone.Scale);
 	}
 
-	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=92734")]
+	[Fact]
 	public void CloneSize()
 	{
 		var parameter = new SingleStoreParameter { Size = 8 };

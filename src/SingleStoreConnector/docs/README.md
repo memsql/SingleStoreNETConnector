@@ -1,6 +1,6 @@
 ## About
 
-SingleStoreConnector is an [ADO.NET](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/) data provider for [SingleStore](https://www.singlestore.com/).
+SingleStoreConnector is a C# [ADO.NET](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/) driver for [SingleStore](https://www.singlestore.com/).
 
 ## How to Use
 
@@ -31,6 +31,31 @@ while (reader.Read())
 	var date = reader.GetDateTime("order_date");
 	// ...
 }
+```
+
+### ASP.NET
+
+For ASP.NET, use the SingleStoreConnector.DependencyInjection package to integrate with dependency injection and logging.
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// use AddSingleStoreDataSource to configure SingleStoreConnector
+builder.Services.AddSingleStoreDataSource(builder.Configuration.GetConnectionString("Default"));
+
+var app = builder.Build();
+
+// use dependency injection to get a SingleStoreConnection in minimal APIs or in controllers
+app.MapGet("/", async (SingleStoreConnection connection) =>
+{
+    // open and use the connection here
+    await connection.OpenAsync();
+    await using var command = connection.CreateCommand();
+    command.CommandText = "SELECT name FROM users LIMIT 1";
+    return "Hello World: " + await command.ExecuteScalarAsync();
+});
+
+app.Run();
 ```
 
 ## Key Features

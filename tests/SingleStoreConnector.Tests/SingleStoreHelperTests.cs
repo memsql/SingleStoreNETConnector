@@ -1,8 +1,3 @@
-#if BASELINE
-using MySql.Data.MySqlClient;
-#endif
-using Xunit;
-
 namespace SingleStoreConnector.Tests;
 
 public class SingleStoreHelperTests

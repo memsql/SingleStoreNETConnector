@@ -1,5 +1,4 @@
-using System;
-using Xunit;
+using System.Globalization;
 
 namespace SingleStoreConnector.Tests;
 
@@ -29,20 +28,6 @@ public class SingleStoreDecimalTests
 		string stringVal = "1.2";
 		SingleStoreDecimal mySqlDecimal = new SingleStoreDecimal(stringVal);
 		Assert.Equal(doubleVal, mySqlDecimal.Value);
-	}
-
-	[Fact]
-	public void TestInvalidFormatWithDecimalPostive()
-	{
-		var invalidValue = "0323.323";
-		Assert.Throws<FormatException>(() => new SingleStoreDecimal(invalidValue));
-	}
-
-	[Fact]
-	public void TestInvalidFormatWithDecimalNegative()
-	{
-		var invalidValue = "-0323.323";
-		Assert.Throws<FormatException>(() => new SingleStoreDecimal(invalidValue));
 	}
 
 	[Fact]
@@ -90,7 +75,7 @@ public class SingleStoreDecimalTests
 		var value = "-0.2342323";
 		var decimalVal = new SingleStoreDecimal(value);
 		Assert.Equal(value, decimalVal.ToString());
-		Assert.Equal(decimal.Parse(value), decimalVal.Value);
+		Assert.Equal(decimal.Parse(value, CultureInfo.InvariantCulture), decimalVal.Value);
 	}
 
 	[Fact]
@@ -110,6 +95,10 @@ public class SingleStoreDecimalTests
 	[InlineData("-0.1")]
 	[InlineData("1.0")]
 	[InlineData("1.23")]
+	[InlineData("00")]
+	[InlineData("01")]
+	[InlineData("0323.323")]
+	[InlineData("-0323.323")]
 	[InlineData("12345678901234567890123456789012345678901234567890123456789012345")]
 	[InlineData("-12345678901234567890123456789012345678901234567890123456789012345")]
 	[InlineData("12345678901234567890123456789012345.012345678901234567890123456789")]
@@ -121,8 +110,6 @@ public class SingleStoreDecimalTests
 	[InlineData("")]
 	[InlineData("-0")]
 	[InlineData("-0.0")]
-	[InlineData("00")]
-	[InlineData("01")]
 	[InlineData("123456789012345678901234567890123456789012345678901234567890123456")]
 	[InlineData("-123456789012345678901234567890123456789012345678901234567890123456")]
 	[InlineData("123456789012345678901234567890123456.012345678901234567890123456789")]

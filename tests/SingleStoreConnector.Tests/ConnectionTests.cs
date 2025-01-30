@@ -1,10 +1,3 @@
-using System;
-using System.Data;
-using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
-
 namespace SingleStoreConnector.Tests;
 
 public class ConnectionTests : IDisposable
@@ -186,7 +179,7 @@ public class ConnectionTests : IDisposable
 	[Fact]
 	public void ConnectionTimeout()
 	{
-		m_server.BlockOnConnect = true;
+		m_server.ConnectDelay = TimeSpan.FromSeconds(10);
 		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString);
 		csb.ConnectionTimeout = 4;
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
@@ -203,7 +196,7 @@ public class ConnectionTests : IDisposable
 		}
 	}
 
-	/*[Fact]
+	[Fact]
 	public void ResetConnectionTimeout()
 	{
 		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString);
@@ -216,7 +209,7 @@ public class ConnectionTests : IDisposable
 		var ex = Assert.Throws<SingleStoreException>(() => connection.Open());
 		Assert.InRange(stopwatch.ElapsedMilliseconds, 3900, 4100);
 		Assert.Equal(SingleStoreErrorCode.UnableToConnectToHost, (SingleStoreErrorCode) ex.Number);
-	}*/
+	}
 
 	[Fact]
 	public void ReadInfinity()

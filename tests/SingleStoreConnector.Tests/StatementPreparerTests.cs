@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
-using SingleStoreConnector.Core;
 using SingleStoreConnector.Protocol.Serialization;
 using SingleStoreConnector.Utilities;
-using Xunit;
 
 namespace SingleStoreConnector.Tests;
 

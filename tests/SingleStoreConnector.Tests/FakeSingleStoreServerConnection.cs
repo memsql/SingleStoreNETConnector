@@ -1,11 +1,7 @@
-using System;
 using System.IO;
-using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using SingleStoreConnector.Protocol;
 
 namespace SingleStoreConnector.Tests;
@@ -29,8 +25,8 @@ internal sealed class FakeSingleStoreServerConnection
 			using (client)
 			using (var stream = client.GetStream())
 			{
-				if (m_server.BlockOnConnect)
-					Thread.Sleep(TimeSpan.FromSeconds(10));
+				if (m_server.ConnectDelay is { } connectDelay)
+					await Task.Delay(connectDelay);
 
 				await SendAsync(stream, 0, WriteInitialHandshake);
 				await ReadPayloadAsync(stream, token); // handshake response

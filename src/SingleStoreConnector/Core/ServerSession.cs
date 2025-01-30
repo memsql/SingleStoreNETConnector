@@ -105,7 +105,7 @@ internal sealed partial class ServerSession
 		{
 			if (ActiveCommandId != command.CommandId)
 				return false;
-			VerifyState(State.Querying, State.CancelingQuery, State.Closing, State.Closed, State.Failed);
+			VerifyState(State.Querying, State.CancelingQuery, State.ClearingPendingCancellation, State.Closing, State.Closed, State.Failed);
 			if (m_state != State.Querying)
 				return false;
 			if (command.CancelAttemptCount++ >= 10)
@@ -306,8 +306,7 @@ internal sealed partial class ServerSession
 
 	public void FinishQuerying()
 	{
-		m_logArguments[1] = m_state;
-		Log.Trace("Session{0} entering FinishQuerying; SessionState={1}", m_logArguments);
+		EnteringFinishQuerying(m_logger, Id, m_state);
 
 		lock (m_lock)
 		{
@@ -489,7 +488,7 @@ internal sealed partial class ServerSession
 				// disable pipelining for SingleStore
 				m_supportsPipelining = false;
 
-				Log.SessionMadeConnection(m_logger, Id, ServerVersion.OriginalString, ConnectionId, m_useCompression, m_supportsConnectionAttributes, m_supportsDeprecateEof, SupportsCachedPreparedMetadata, serverSupportsSsl, m_supportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
+				Log.SessionMadeConnection(m_logger, Id, MySqlCompatVersion.OriginalString, ConnectionId, m_useCompression, m_supportsConnectionAttributes, m_supportsDeprecateEof, SupportsCachedPreparedMetadata, serverSupportsSsl, m_supportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
 
 				if (cs.SslMode != SingleStoreSslMode.None && (cs.SslMode != SingleStoreSslMode.Preferred || serverSupportsSsl))
 				{
@@ -580,7 +579,7 @@ internal sealed partial class ServerSession
 
 		if (targetDatabase.Length > 0)
 		{
-			var useDb = "USE {0}".FormatInvariant(targetDatabase);
+			var useDb = $"USE {targetDatabase}";
 			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, Encoding.ASCII.GetBytes(useDb)), ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
@@ -600,9 +599,7 @@ internal sealed partial class ServerSession
 
 			if (DatabaseOverride is null && S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) >= 0)
 			{
-				m_logArguments[1] = S2ServerVersion.OriginalString;
-
-				Log.SendingResetConnectionRequest(m_logger, Id, ServerVersion.OriginalString);
+				Log.SendingResetConnectionRequest(m_logger, Id, S2ServerVersion.OriginalString);
 				await ResetConnectionAsync(ioBehavior, connection.Database, cancellationToken).ConfigureAwait(false);
 			}
 			else
@@ -1165,8 +1162,7 @@ internal sealed partial class ServerSession
 
 	private async Task<bool> OpenNamedPipeAsync(ConnectionSettings cs, int startTickCount, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		if (Log.IsTraceEnabled())
-			Log.ConnectingToNamedPipe(m_logger, Id, cs.PipeName, cs.HostNames![0]);
+		Log.ConnectingToNamedPipe(m_logger, Id, cs.PipeName, cs.HostNames![0]);
 
 		// set activity tags
 		{
@@ -1350,7 +1346,6 @@ internal sealed partial class ServerSession
 					}
 					catch (CryptographicException ex)
 					{
-						m_logArguments[1] = cs.CACertificateFile;
 						Log.CouldNotLoadCaCertificateFromFile(m_logger, ex, LogLevel.Warning, Id, cs.CACertificateFile);
 					}
 					index = nextIndex;
@@ -1524,7 +1519,7 @@ internal sealed partial class ServerSession
 			}
 			catch (FormatException ex)
 			{
-				Log.Error(ex, "Session{0} couldn't load client key from KeyFile '{1}'", m_logArguments);
+				Log.CouldNotLoadClientKeyFromKeyFile(m_logger, ex, Id, sslKeyFile);
 				throw new SingleStoreException("Could not load the client key from " + sslKeyFile, ex);
 			}
 
@@ -1886,6 +1881,9 @@ internal sealed partial class ServerSession
 
 		// The session is connected to a server and the active query is being cancelled.
 		CancelingQuery,
+
+		// A cancellation is pending on the server and needs to be cleared.
+		ClearingPendingCancellation,
 
 		// The session is closing.
 		Closing,

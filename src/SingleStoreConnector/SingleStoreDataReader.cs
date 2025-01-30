@@ -357,7 +357,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		var resultSet = GetResultSet();
 		var schema = new List<DbColumn>(columnDefinitions.Length);
 		for (var n = 0; n < columnDefinitions.Length; n++)
-			schema.Add(new SingleStoreDbColumn(n, columnDefinitions[n], Connection!.AllowZeroDateTime, resultSet.GetColumnType(n)));
+			schema.Add(new SingleStoreDbColumn(n, columnDefinitions[n], Connection!.AllowZeroDateTime, resultSet.GetColumnType(n), Connection.Session.S2ServerVersion.Version));
 		return schema.AsReadOnly();
 	}
 

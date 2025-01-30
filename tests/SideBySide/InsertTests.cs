@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 #if BASELINE
 using MySql.Data.Types;
@@ -238,12 +239,7 @@ create table insert_string_builder(rowid integer not null primary key auto_incre
 
 		var value = new StringBuilder("\aAB\\12'ab\\'\\'");
 		for (var i = 0; i < 100; i++)
-#if !NETCOREAPP3_1
 			value.Append("\U0001F600\uD800\'\U0001F601\uD800");
-#else
-			// the netcoreapp3.1 implementation is broken when handling an unpaired surrogate; probably https://github.com/dotnet/runtime/issues/33817
-			value.Append("\U0001F600\U0001F601");
-#endif
 
 		using var cmd = connection.CreateCommand();
 		cmd.CommandText = @"insert into insert_string_builder(str) values(@str);";
@@ -327,7 +323,7 @@ create table insert_big_integer(rowid integer not null primary key auto_incremen
 
 		using var reader = connection.ExecuteReader(@"select value from insert_mysql_decimal order by rowid;");
 		Assert.True(reader.Read());
-		var val = reader.GetValue(0).ToString();
+		var val = ((decimal) reader.GetValue(0)).ToString(CultureInfo.InvariantCulture);
 		Assert.Equal(value, val);
 	}
 #endif
@@ -367,6 +363,40 @@ create table insert_big_integer(rowid integer not null primary key auto_incremen
 #else
 		Assert.Throws<FormatException>(() => reader.GetValue(0));
 #endif
+	}
+
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void ReadMySqlDecimalZeroFill(bool prepare)
+	{
+		using SingleStoreConnection connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+		connection.Execute("""
+		                   drop table if exists mysql_decimal_zerofill;
+		                   create table mysql_decimal_zerofill(rowid integer not null primary key auto_increment, value decimal(20, 10) zerofill);
+		                   insert into mysql_decimal_zerofill(value) values(0),(1),(0.1);
+		                   """);
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = @"select value from mysql_decimal_zerofill order by rowid;";
+		if (prepare)
+			cmd.Prepare();
+		using var reader = cmd.ExecuteReader();
+
+		Assert.True(reader.Read());
+		Assert.Equal("0000000000.0000000000", reader.GetSingleStoreDecimal("value").ToString());
+		Assert.Equal(0m, reader.GetDecimal(0));
+
+		Assert.True(reader.Read());
+		Assert.Equal("0000000001.0000000000", reader.GetSingleStoreDecimal("value").ToString());
+		Assert.Equal(1m, reader.GetDecimal(0));
+
+		Assert.True(reader.Read());
+		Assert.Equal("0000000000.1000000000", reader.GetSingleStoreDecimal("value").ToString());
+		Assert.Equal(0.1m, reader.GetDecimal(0));
+
+		Assert.False(reader.Read());
 	}
 
 	[Theory]

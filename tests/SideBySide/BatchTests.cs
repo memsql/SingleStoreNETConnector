@@ -9,6 +9,18 @@ public class BatchTests : IClassFixture<DatabaseFixture>
 	}
 
 	[Fact]
+	public void CanCreateParameter()
+	{
+		Assert.True(new SingleStoreBatchCommand().CanCreateParameter);
+	}
+
+	[Fact]
+	public void CreateParameter()
+	{
+		Assert.IsType<SingleStoreParameter>(new SingleStoreBatchCommand().CreateParameter());
+	}
+
+	[Fact]
 	public void NeedsConnection()
 	{
 		using var batch = new SingleStoreBatch
@@ -180,7 +192,7 @@ public class BatchTests : IClassFixture<DatabaseFixture>
 		{
 			BatchCommands =
 			{
-				new SingleStoreBatchCommand("SELECT 1" + suffix),
+				new SingleStoreBatchCommand("SELECT 10; SELECT 1" + suffix),
 				new SingleStoreBatchCommand("SELECT 2" + suffix),
 				new SingleStoreBatchCommand("SELECT 3" + suffix),
 			},
@@ -201,32 +213,14 @@ public class BatchTests : IClassFixture<DatabaseFixture>
 		Assert.True(reader.Read());
 		total += reader.GetInt32(0);
 		Assert.False(reader.Read());
+		Assert.True(reader.NextResult());
+
+		Assert.True(reader.Read());
+		total += reader.GetInt32(0);
+		Assert.False(reader.Read());
 		Assert.False(reader.NextResult());
 
-		Assert.Equal(6, total);
-	}
-
-	[Fact(Skip = "COM_MULTI")]
-	public void ExecuteInvalidSqlBatch()
-	{
-		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
-		connection.Open();
-		using var batch = new SingleStoreBatch(connection)
-		{
-			BatchCommands =
-			{
-				new SingleStoreBatchCommand("SELECT 1;"),
-				new SingleStoreBatchCommand("SELECT 2 /* incomplete"),
-				new SingleStoreBatchCommand("SELECT 3;"),
-			},
-		};
-		using var reader = batch.ExecuteReader();
-		Assert.True(reader.Read());
-		Assert.Equal(1, reader.GetInt32(0));
-		Assert.False(reader.Read());
-
-		var ex = Assert.Throws<SingleStoreException>(() => reader.NextResult());
-		Assert.Equal(SingleStoreErrorCode.ParseError, ex.ErrorCode);
+		Assert.Equal(16, total);
 	}
 
 	[Theory]
@@ -247,7 +241,7 @@ insert into batch_single_row(id) values(1),(2),(3);", connection))
 		{
 			BatchCommands =
 			{
-				new SingleStoreBatchCommand("SELECT id FROM batch_single_row ORDER BY id"),
+				new SingleStoreBatchCommand("SELECT id FROM batch_single_row ORDER BY id; SELECT 10"),
 				new SingleStoreBatchCommand("SELECT id FROM batch_single_row ORDER BY id"),
 			},
 		};
@@ -255,12 +249,35 @@ insert into batch_single_row(id) values(1),(2),(3);", connection))
 		if (prepare)
 			batch.Prepare();
 
-		using var reader = batch.ExecuteReader(CommandBehavior.SingleRow);
-		Assert.True(reader.Read());
-		Assert.Equal(1, reader.GetInt32(0));
-		Assert.False(reader.Read());
+		using (var reader = batch.ExecuteReader(CommandBehavior.SingleRow))
+		{
+			Assert.True(reader.Read());
+			Assert.Equal(1, reader.GetInt32(0));
+			Assert.False(reader.Read());
+			Assert.False(reader.NextResult());
+		}
 
-		Assert.False(reader.NextResult());
+		using (var reader = batch.ExecuteReader())
+		{
+			Assert.True(reader.Read());
+			Assert.Equal(1, reader.GetInt32(0));
+			Assert.True(reader.Read());
+			Assert.Equal(2, reader.GetInt32(0));
+			Assert.True(reader.Read());
+			Assert.Equal(3, reader.GetInt32(0));
+			Assert.False(reader.Read());
+			Assert.True(reader.NextResult());
+			Assert.True(reader.Read());
+			Assert.Equal(10, reader.GetInt32(0));
+			Assert.True(reader.NextResult());
+			Assert.True(reader.Read());
+			Assert.Equal(1, reader.GetInt32(0));
+			Assert.True(reader.Read());
+			Assert.Equal(2, reader.GetInt32(0));
+			Assert.True(reader.Read());
+			Assert.Equal(3, reader.GetInt32(0));
+			Assert.False(reader.Read());
+		}
 	}
 
 	[Fact]

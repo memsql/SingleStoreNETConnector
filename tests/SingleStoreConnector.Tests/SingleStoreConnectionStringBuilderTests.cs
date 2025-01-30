@@ -1,11 +1,5 @@
-using System;
 using System.ComponentModel;
 using System.Globalization;
-using System.Linq;
-#if BASELINE
-using MySql.Data.MySqlClient;
-#endif
-using Xunit;
 
 namespace SingleStoreConnector.Tests;
 
@@ -587,5 +581,18 @@ public class SingleStoreConnectionStringBuilderTests
 #endif
 			Assert.Equal(value, csb[propertyName]);
 		}
+	}
+
+	[Fact]
+	public void SpecialCharactersInPassword()
+	{
+		var builder = new SingleStoreConnectionStringBuilder
+		{
+			Password = "foo;=bar,baz",
+		};
+		Assert.Equal("Password=\"foo;=bar,baz\"", builder.ConnectionString, StringComparer.OrdinalIgnoreCase);
+#if !BASELINE // https://bugs.mysql.com/bug.php?id=111797
+		using var connection = new MySqlConnection(builder.ConnectionString);
+#endif
 	}
 }

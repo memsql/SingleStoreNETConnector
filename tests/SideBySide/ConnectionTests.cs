@@ -200,7 +200,7 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 		Assert.Equal(ConnectionState.Closed, connection2.State);
 	}
 
-	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=97473")]
+	[Fact]
 	public void CloneDoesNotDisclosePassword()
 	{
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);

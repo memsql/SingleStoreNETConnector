@@ -85,8 +85,8 @@ public class ParameterCollection : IDisposable
 	[Theory]
 	[InlineData("@test")]
 	[InlineData("@TEST")]
-#if !BASELINE
-	[InlineData("test")] // https://bugs.mysql.com/bug.php?id=93370
+	[InlineData("test")]
+#if !BASELINE // doesn't support quoted parameter names
 	[InlineData("@'test'")]
 	[InlineData("@`TEST`")]
 #endif

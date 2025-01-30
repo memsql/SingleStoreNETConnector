@@ -1,9 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SingleStoreConnector.Tests;
 
@@ -40,6 +36,9 @@ public sealed class FakeSingleStoreServer
 			}
 			m_connections.Clear();
 			m_tasks.Clear();
+#if NET8_0_OR_GREATER
+			m_tcpListener.Dispose();
+#endif
 			m_cts.Dispose();
 			m_cts = null;
 		}
@@ -53,7 +52,7 @@ public sealed class FakeSingleStoreServer
 
 	public bool SuppressAuthPluginNameTerminatingNull { get; set; }
 	public bool SendIncompletePostHandshakeResponse { get; set; }
-	public bool BlockOnConnect { get; set; }
+	public TimeSpan? ConnectDelay { get; set; }
 	public TimeSpan? ResetDelay { get; set; }
 
 	internal void CancelQuery(int connectionId)

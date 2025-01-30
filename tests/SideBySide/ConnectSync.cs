@@ -60,10 +60,8 @@ public class ConnectSync : IClassFixture<DatabaseFixture>
 		csb.Database = "wrong_database";
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		var ex = Assert.Throws<SingleStoreException>(connection.Open);
-#if !BASELINE // https://bugs.mysql.com/bug.php?id=78426
-		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.ErrorCodes) || ex.ErrorCode != default)
-			Assert.Equal(SingleStoreErrorCode.UnknownDatabase, ex.ErrorCode);
-#endif
+		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.ErrorCodes) || ex.Number != 0)
+			Assert.Equal((int) SingleStoreErrorCode.UnknownDatabase, ex.Number);
 		Assert.Equal(ConnectionState.Closed, connection.State);
 	}
 
@@ -74,7 +72,7 @@ public class ConnectSync : IClassFixture<DatabaseFixture>
 		csb.Password = "wrong";
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		var ex = Assert.Throws<SingleStoreException>(connection.Open);
-#if !BASELINE // https://bugs.mysql.com/bug.php?id=78426
+#if !BASELINE
 		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.ErrorCodes) || ex.ErrorCode != default)
 			Assert.Equal(SingleStoreErrorCode.AccessDenied, ex.ErrorCode);
 #endif
@@ -257,7 +255,7 @@ public class ConnectSync : IClassFixture<DatabaseFixture>
 		Assert.True(wasCalled);
 	}
 
-	[Fact]
+	[SkippableFact(ConfigSettings.UserHasPassword)]
 	public void UsePasswordProviderPasswordTakesPrecedence()
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();

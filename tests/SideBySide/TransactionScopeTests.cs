@@ -699,6 +699,25 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		Assert.Equal(new[] { 3, 4 }, values2);
 	}
 
+	[SkippableTheory(Baseline = "https://bugs.mysql.com/bug.php?id=109476")]
+	[MemberData(nameof(ConnectionStrings))]
+	public void TransactionScopeNullReference(string connectionString)
+	{
+		// see https://bugs.mysql.com/bug.php?id=107110
+		using var scope = new TransactionScope();
+		using var connection = new SingleStoreConnection($"{AppConfig.ConnectionString};{connectionString}");
+		connection.Open();
+
+		using var command = connection.CreateCommand();
+		command.CommandText = "SELECT * from INFORMATION_SCHEMA.TABLES LIMIT 1; SELECT SLEEP(5);";
+		command.CommandTimeout = 1;
+		if (connection.ServerVersion.IndexOf("MariaDB") == -1)
+			command.ExecuteNonQuery();
+		else
+			Assert.Throws<SingleStoreException>(() => command.ExecuteNonQuery());
+	}
+
+
 	[SkippableFact(Skip = "need XA transactions which are not supported in SingleStore", Baseline = "Multiple simultaneous connections or connections with different connection strings inside the same transaction are not currently supported.")]
 	public void RollBackTwoTransactions()
 	{
@@ -771,7 +790,9 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 
 		var task = Task.Run(() => UseTransaction());
 		UseTransaction();
+#pragma warning disable xUnit1031 // Do not use blocking task operations in test method
 		task.Wait();
+#pragma warning restore xUnit1031 // Do not use blocking task operations in test method
 
 		void UseTransaction()
 		{
@@ -844,6 +865,51 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 			using var conn2 = new SingleStoreConnection(AppConfig.ConnectionString);
 			Assert.Throws<NotSupportedException>(() => conn2.Open());
 		}
+	}
+
+
+	[Fact]
+	public void Bug1348()
+	{
+		var xid = string.Empty;
+		// TransactionAbortedException、MySqlException
+		Assert.ThrowsAny<Exception>(() =>
+		{
+			using (TransactionScope scope = new())
+			{
+				xid = System.Transactions.Transaction.Current.TransactionInformation.LocalIdentifier;
+				using var conn1 = new SingleStoreConnection(AppConfig.ConnectionString);
+				conn1.Open();
+
+				using var conn2 = new SingleStoreConnection(AppConfig.ConnectionString);
+				conn2.Open();
+				// Rolling back the second branch transaction early so that it has an exception in the preparation phase
+				var command2 = conn2.CreateCommand();
+				command2.CommandText = $"XA END '{xid}','2';XA ROLLBACK '{xid}','2'";
+				command2.ExecuteNonQuery();
+
+				scope.Complete();
+			}
+		});
+
+		// Asserts whether the first branch transaction is rolled back
+		using var conn = new SingleStoreConnection(AppConfig.ConnectionString);
+		conn.Open();
+		var command = conn.CreateCommand();
+		command.CommandText = $"XA RECOVER;";
+		using var reader = command.ExecuteReader();
+		var rollbacked = true;
+		while (reader.Read())
+		{
+			var branchID = reader.GetString(3);
+			if (branchID == $"{xid}1")
+			{
+				rollbacked = false;
+				break;
+			}
+		}
+
+		Assert.True(rollbacked, $"First branch transaction '{xid}1' not rolled back");
 	}
 #endif
 

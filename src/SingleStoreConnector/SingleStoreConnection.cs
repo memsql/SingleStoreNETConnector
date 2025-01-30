@@ -33,8 +33,8 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 	{
 	}
 
-	internal SingleStoreConnection(SingleStoreDataSource dataSource, dataSource.LoggingConfiguration)
-		: this(dataSource.ConnectionString)
+	internal SingleStoreConnection(SingleStoreDataSource dataSource)
+		: this(dataSource.ConnectionString, dataSource.LoggingConfiguration)
 	{
 		m_dataSource = dataSource;
 	}
