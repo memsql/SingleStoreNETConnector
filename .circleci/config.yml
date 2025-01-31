@@ -99,7 +99,6 @@ jobs:
             sed -i "s|SINGLESTORE_HOST|127.0.0.1|g" tests/SideBySide/config.json
             sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
             sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
-            cp tests/SideBySide/config.json tests/SideBySide/bin/Release/net8.0/config.json
       - run:
           name: Unit tests
           command: |
