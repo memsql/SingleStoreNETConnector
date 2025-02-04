@@ -22,5 +22,9 @@ if __name__ == "__main__":
     config_content = config_content.replace("SQL_USER_PASSWORD", password, 1)
     config_content = config_content.replace("SQL_USER_NAME", "admin", 1)
 
+    for target_framework in NET_FRAMEWORKS:
+        with open(rf"C:\Users\circleci\project\artifacts\bin\SideBySide\release_{target_framework}\config.json", "w") as f_out:
+            f_out.write(config_content)
+
     with open(os.path.join(home_dir, "CONNECTION_STRING"), "w") as f_conn:
         f_conn.write(json.loads(config_content)["Data"]["ConnectionString"])
