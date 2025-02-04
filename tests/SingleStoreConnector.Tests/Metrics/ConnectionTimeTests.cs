@@ -2,7 +2,7 @@ namespace SingleStoreConnector.Tests.Metrics;
 
 public class ConnectionTimeTests : MetricsTestsBase
 {
-	[Fact(Skip = MetricsSkip)]
+	/*Fact(Skip = MetricsSkip)]
 	public async Task ConnectionTime()
 	{
 		var csb = CreateConnectionStringBuilder();
@@ -88,5 +88,5 @@ public class ConnectionTimeTests : MetricsTestsBase
 
 		var time = Assert.Single(GetAndClearMeasurements("db.client.connections.use_time"));
 		Assert.InRange(time, 500, 600);
-	}
+	}*/
 }

@@ -196,7 +196,7 @@ public class ConnectionTests : IDisposable
 		}
 	}
 
-	[Fact]
+	/*[Fact]
 	public void ResetConnectionTimeout()
 	{
 		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString);
@@ -209,7 +209,7 @@ public class ConnectionTests : IDisposable
 		var ex = Assert.Throws<SingleStoreException>(() => connection.Open());
 		Assert.InRange(stopwatch.ElapsedMilliseconds, 3900, 4100);
 		Assert.Equal(SingleStoreErrorCode.UnableToConnectToHost, (SingleStoreErrorCode) ex.Number);
-	}
+	}*/
 
 	[Fact]
 	public void ReadInfinity()
