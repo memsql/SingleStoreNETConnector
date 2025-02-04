@@ -661,10 +661,10 @@ create table bulk_load_data_table(a int, time1 time, time2 time(6));", connectio
 	public static IEnumerable<object[]> GetBulkCopyData() =>
 		new object[][]
 		{
-			new object[] { "datetime(3)", new object[] { new DateTime(2021, 3, 4, 5, 6, 7, 890), new DateTime(2020, 1, 2, 3, 4, 5, 678) } },
+			new object[] { "datetime(6)", new object[] { new DateTime(2021, 3, 4, 5, 6, 7, 890), new DateTime(2020, 1, 2, 3, 4, 5, 678) } },
 			new object[] { "float", new object[] { 1.0f, 0.1f, 0.000001f } },
 			new object[] { "double", new object[] { 1.0, 0.1, 0.000001 } },
-			new object[] { "time(3)", new object[] { TimeSpan.Zero, new TimeSpan(1, 2, 3, 4, 5), new TimeSpan(-1, -3, -5, -7, -9) } },
+			new object[] { "time(6)", new object[] { TimeSpan.Zero, new TimeSpan(1, 2, 3, 4, 5), new TimeSpan(-1, -3, -5, -7, -9) } },
 		};
 
 	[Theory]
