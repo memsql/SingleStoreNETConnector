@@ -79,10 +79,10 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("LONGBLOB", typeBinary, SingleStoreDbType.LongBlob, binary: true, columnSize: uint.MaxValue, simpleDataTypeName: "BLOB"));
 
 		// spatial
-		AddColumnTypeMetadata(new("GEOGRAPHY", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
+		AddColumnTypeMetadata(new("GEOGRAPHY", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
 		AddColumnTypeMetadata(new("POINT", typeString, SingleStoreDbType.GeographyPoint, columnSize: 48));
-		AddColumnTypeMetadata(new("LINESTRING", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
-		AddColumnTypeMetadata(new("POLYGON", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
+		AddColumnTypeMetadata(new("LINESTRING", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
+		AddColumnTypeMetadata(new("POLYGON", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
 
 		// date/time
 #if NET6_0_OR_GREATER
@@ -223,7 +223,7 @@ internal sealed class TypeMapper
 					return SingleStoreDbType.Guid;
 				if (treatChar48AsGeographyPoint && columnLen == 48)
 					return SingleStoreDbType.GeographyPoint;
-				if (columnLen == 1431655765)
+				if (columnLen == 1073741823)
 					return SingleStoreDbType.Geography;
 				goto case ColumnType.VarString;
 

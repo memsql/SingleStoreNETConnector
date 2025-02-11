@@ -32,7 +32,11 @@ public class CancelTests : IClassFixture<CancelFixture>, IDisposable
 		});
 
 		var stopwatch = Stopwatch.StartNew();
-		TestUtilities.AssertExecuteScalarReturnsOneOrIsCanceled(cmd);
+		using (var reader = cmd.ExecuteReader())
+		{
+			var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
+			Assert.Equal("Query execution was interrupted", ex.Message);
+		}
 		Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500);
 
 #pragma warning disable xUnit1031 // Do not use blocking task operations in test method

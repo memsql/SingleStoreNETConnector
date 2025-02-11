@@ -164,8 +164,13 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 		These variables exist for backwards compatibility with MySQL and are non-operational in SingleStore DB.
 		https://docs.singlestore.com/db/v7.6/en/reference/configuration-reference/engine-variables/list-of-engine-variables.html#character_set_client
 		*/
-		Assert.Equal("utf8", reader.GetString(0));
-		Assert.Equal("utf8", reader.GetString(1));
+		var expected = connection.S2ServerVersion.Split('.') is var parts && parts.Length >= 2
+		                                                                  && int.TryParse(parts[0], out var major)
+		                                                                  && int.TryParse(parts[1], out var minor)
+		                                                                  && (major > 8 || (major == 8 && minor >= 7)) ?
+			"utf8mb4" : "utf8";
+		Assert.Equal(expected, reader.GetString(0));
+		Assert.Equal(expected, reader.GetString(1));
 		Assert.False(await reader.ReadAsync().ConfigureAwait(false));
 	}
 

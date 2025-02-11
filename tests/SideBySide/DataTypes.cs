@@ -1153,10 +1153,10 @@ ORDER BY t.`Key`", Connection);
 #else
 	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, 4, typeof(int), "N", 0, 0)]
 #endif
-	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
+	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, 1073741823, typeof(string), "N", 0, 0)]
 	[InlineData("Point", "datatypes_geography", SingleStoreDbType.GeographyPoint, 48, typeof(string), "N", 0, 0)]
-	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
-	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
+	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, 1073741823, typeof(string), "N", 0, 0)]
+	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, 1073741823, typeof(string), "N", 0, 0)]
 	public void GetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
 		SingleStoreConnection connectionWithParam = null;
@@ -1344,10 +1344,10 @@ create table schema_table({createColumn});");
 	[InlineData("Timestamp", "datatypes_times", SingleStoreDbType.Timestamp, "TIMESTAMP", 26, typeof(DateTime), "N", -1, 6)]
 	[InlineData("Time", "datatypes_times", SingleStoreDbType.Time, "TIME", 18, typeof(TimeSpan), "N", -1, 6)]
 	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, "YEAR", 4, typeof(int), "N", -1, 0)]
-	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
+	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1073741823, typeof(string), "N", -1, 0)]
 	[InlineData("Point", "datatypes_geography", SingleStoreDbType.GeographyPoint, "POINT", 48, typeof(string), "N", -1, 0)]
-	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
-	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
+	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1073741823, typeof(string), "N", -1, 0)]
+	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1073741823, typeof(string), "N", -1, 0)]
 	public void GetColumnSchema(string column, string table, SingleStoreDbType mySqlDbType, string dataTypeName, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
 		SingleStoreConnection connectionWithParam = null;
