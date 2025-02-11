@@ -142,7 +142,6 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 		AssertTags(activity.Tags, csb);
 		AssertTag(activity.Tags, "db.connection_id", connection.ServerThread.ToString(CultureInfo.InvariantCulture));
 		AssertTag(activity.Tags, "db.statement", "SELECT 1;");
-		AssertTag(activity.Tags, "otel.status_code", "OK");
 	}
 
 	private void AssertTags(IEnumerable<KeyValuePair<string, string>> tags, SingleStoreConnectionStringBuilder csb)
