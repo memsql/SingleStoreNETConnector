@@ -1165,11 +1165,10 @@ ORDER BY t.`Key`", Connection);
 	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, 1073741823, typeof(string), "N", 0, 0)]
 	public void GetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
-		// Test mock: Geography types are properly supported in SingleStoreConnector 1.2.0+ only with SingleStore 8.7 or later
-		// If using SingleStoreConnector <1.2.0, stick to SingleStore 8.5 or earlier
+		// Disable the test for SingleStore versions earlier than 8.7 due to difference in metadata values for geography types
 		if (mySqlDbType == SingleStoreDbType.Geography && Connection.Session.S2ServerVersion.Version < new Version(8, 7, 0))
 		{
-			columnSize = 1431655765;
+			return;
 		}
 
 		SingleStoreConnection connectionWithParam = null;

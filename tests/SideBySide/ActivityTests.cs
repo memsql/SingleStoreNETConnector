@@ -130,10 +130,6 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 			command.ExecuteScalar();
 		}
 
-		foreach (var tag in activity.Tags)
-		{
-			Console.WriteLine($"{tag.Key}: {tag.Value}");
-		}
 		Assert.NotNull(activity);
 		Assert.Equal(ActivityKind.Client, activity.Kind);
 		Assert.Equal("Execute", activity.OperationName);
