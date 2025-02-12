@@ -85,9 +85,9 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 			Assert.Contains("fatal error", exception.Message, StringComparison.OrdinalIgnoreCase);
 			connectionState = ConnectionState.Closed;
 #else
-			using (var reader = cmd.ExecuteReader())
+			using (var reader = await cmd.ExecuteReaderAsync())
 			{
-				var ex = Assert.Throws<SingleStoreException>(() => reader.Read());
+				var ex = await Assert.ThrowsAsync<SingleStoreException>(() => reader.ReadAsync());
 				Assert.Equal("The Command Timeout expired before the operation completed.", ex.Message);
 			}
 #endif
