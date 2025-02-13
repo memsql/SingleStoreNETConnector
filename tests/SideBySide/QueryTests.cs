@@ -1085,7 +1085,7 @@ insert into long_enum_test (id, value) VALUES (0x7FFFFFFFFFFFFFFF, 1);
 	[Theory]
 	[InlineData(false)]
 	[InlineData(true)]
-	public void QueryEnumWithMySqlDbTypeInt16(bool prepare)
+	public void QueryEnumWithSingleStoreDbTypeInt16(bool prepare)
 	{
 		m_database.Connection.Execute(@"drop table if exists bug_1384;
 create table bug_1384(name text not null, enum1 smallint not null, enum2 smallint not null);

@@ -186,7 +186,7 @@ internal static partial class Log
 	[LoggerMessage(EventIds.CouldNotLoadClientKeyFromKeyFile, LogLevel.Error, "Session {SessionId} couldn't load client key from '{ClientKeyFilePath}'")]
 	public static partial void CouldNotLoadClientKeyFromKeyFile(ILogger logger, Exception exception, string sessionId, string clientKeyFilePath);
 
-	[LoggerMessage(EventIds.DetectedProxy, LogLevel.Debug, "Session {SessionId} detected proxy; getting CONNECTION_ID(), VERSION() from server")]
+	[LoggerMessage(EventIds.DetectedProxy, LogLevel.Debug, "Session {SessionId} detected proxy; getting CONNECTION_ID(), VERSION(), S2Version, aggregator_id from server")]
 	public static partial void DetectedProxy(ILogger logger, string sessionId);
 
 	[LoggerMessage(EventIds.ChangingConnectionId, LogLevel.Debug, "Session {SessionId} changing connection id from {OldConnectionId} to {ConnectionId} and server version from {OldServerVersion} to {ServerVersion}")]

@@ -49,6 +49,10 @@ internal abstract class ColumnReader
 					return GuidChar36ColumnReader.Instance;
 				if (connection.GuidFormat == SingleStoreGuidFormat.Char32 && columnDefinition.ColumnLength / ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet) == 32)
 					return GuidChar32ColumnReader.Instance;
+				if (connection.TreatChar48AsGeographyPoint && columnDefinition.ColumnLength == 48)
+					return StringColumnReader.Instance;
+				if (columnDefinition.ColumnLength == 1073741823)
+					return StringColumnReader.Instance;
 				goto case ColumnType.VarString;
 
 			case ColumnType.VarString:
@@ -108,10 +112,10 @@ internal abstract class ColumnReader
 				return DecimalColumnReader.Instance;
 
 			case ColumnType.Geography:
-				return BytesColumnReader.Instance;
+				return StringColumnReader.Instance;
 
 			case ColumnType.GeographyPoint:
-				return BytesColumnReader.Instance;
+				return StringColumnReader.Instance;
 
 			case ColumnType.Null:
 				return NullColumnReader.Instance;

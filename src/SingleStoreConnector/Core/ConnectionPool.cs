@@ -183,7 +183,7 @@ internal sealed class ConnectionPool : IDisposable
 			{
 				lock (m_sessions)
 					m_sessions.AddFirst(session);
-				MetricsReporter.RemoveUsed(this);
+				MetricsReporter.AddIdle(this);
 			}
 			else
 			{
