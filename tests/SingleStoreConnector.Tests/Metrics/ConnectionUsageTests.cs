@@ -4,7 +4,7 @@ namespace SingleStoreConnector.Tests.Metrics;
 
 public class ConnectionsUsageTests : MetricsTestsBase
 {
-    /*[Fact(Skip = MetricsSkip)]
+    [Fact(Skip = MetricsSkip)]
 	public void NamedDataSource()
     {
 		PoolName = "metrics-test";
@@ -241,5 +241,5 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		await openTask;
 
 		AssertMeasurement("db.client.connections.pending_requests", 0);
-	}*/
+	}
 }

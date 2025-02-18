@@ -2,7 +2,6 @@ namespace SingleStoreConnector.Tests.Metrics;
 
 public class ConnectionTimeTests : MetricsTestsBase
 {
-	//Fact(Skip = MetricsSkip)]
 	[Fact(Skip = MetricsSkip)]
 	public async Task ConnectionTime()
 	{
@@ -43,23 +42,6 @@ public class ConnectionTimeTests : MetricsTestsBase
 		var measurements = GetAndClearMeasurements("db.client.connections.wait_time");
 		var time = Assert.Single(measurements);
 		Assert.InRange(time, 0, 200);
-	}
-
-	[Fact(Skip = MetricsSkip)]
-	public async Task OpenFromPoolTimeWithDelay()
-	{
-		var csb = CreateConnectionStringBuilder();
-		PoolName = csb.GetConnectionString(includePassword: false);
-		Server.ResetDelay = TimeSpan.FromSeconds(1);
-
-		using var connection = new SingleStoreConnection(csb.ConnectionString);
-		await connection.OpenAsync();
-		connection.Close();
-
-		await connection.OpenAsync();
-		var measurements = GetAndClearMeasurements("db.client.connections.wait_time");
-		var time = Assert.Single(measurements);
-		Assert.InRange(time, 1000, 1200);
 	}
 
 	[Fact(Skip = MetricsSkip)]

@@ -77,7 +77,7 @@ internal sealed partial class ServerSession
 	public bool SupportsSessionTrack => m_supportsSessionTrack;
 	public bool ProcAccessDenied { get; set; }
 	public ICollection<KeyValuePair<string, object?>> ActivityTags => m_activityTags;
-	public SingleStoreDataReader DataReader { get; }
+	public SingleStoreDataReader DataReader { get; set; }
 
 	public ValueTask ReturnToPoolAsync(IOBehavior ioBehavior, SingleStoreConnection? owningConnection)
 	{
@@ -1010,7 +1010,7 @@ internal sealed partial class ServerSession
 				{
 					tcpClient = new(ipAddress.AddressFamily);
 
-					using (cancellationToken.Register(() => tcpClient.Client?.Dispose()))
+					using (cancellationToken.Register(() => tcpClient?.Client?.Dispose()))
 					{
 						try
 						{

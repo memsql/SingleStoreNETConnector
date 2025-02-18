@@ -178,6 +178,7 @@ internal sealed class ConnectionPool : IDisposable
 				m_leasedSessions.Remove(session.Id);
 			MetricsReporter.RemoveUsed(this);
 			session.OwningConnection = null;
+			session.DataReader = new();
 			var sessionHealth = GetSessionHealth(session);
 			if (sessionHealth == 0)
 			{
