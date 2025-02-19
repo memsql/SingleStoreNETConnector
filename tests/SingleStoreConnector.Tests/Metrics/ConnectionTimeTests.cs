@@ -11,7 +11,8 @@ public class ConnectionTimeTests : MetricsTestsBase
 		await connection.OpenAsync();
 		var measurements = GetAndClearMeasurements("db.client.connections.create_time");
 		var time = Assert.Single(measurements);
-		Assert.InRange(time, 0, 300);
+		// adjusted the highest value for S2MS
+		Assert.InRange(time, 0, 1100);
 	}
 
 	[Fact(Skip = MetricsSkip)]
@@ -25,7 +26,8 @@ public class ConnectionTimeTests : MetricsTestsBase
 		await connection.OpenAsync();
 		var measurements = GetAndClearMeasurements("db.client.connections.create_time");
 		var time = Assert.Single(measurements);
-		Assert.InRange(time, 1000, 1300);
+		// adjusted the highest value for S2MS
+		Assert.InRange(time, 1000, 2100);
 	}
 
 	[Fact(Skip = MetricsSkip)]
