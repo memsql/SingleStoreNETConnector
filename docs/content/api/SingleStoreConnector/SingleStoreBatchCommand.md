@@ -10,10 +10,12 @@ public sealed class SingleStoreBatchCommand : DbBatchCommand
 | --- | --- |
 | [SingleStoreBatchCommand](SingleStoreBatchCommand/SingleStoreBatchCommand.md)() | The default constructor. |
 | [SingleStoreBatchCommand](SingleStoreBatchCommand/SingleStoreBatchCommand.md)(…) |  |
+| override [CanCreateParameter](SingleStoreBatchCommand/CanCreateParameter.md) { get; } |  |
 | override [CommandText](SingleStoreBatchCommand/CommandText.md) { get; set; } |  |
 | override [CommandType](SingleStoreBatchCommand/CommandType.md) { get; set; } |  |
 | [Parameters](SingleStoreBatchCommand/Parameters.md) { get; } |  |
 | override [RecordsAffected](SingleStoreBatchCommand/RecordsAffected.md) { get; } |  |
+| override [CreateParameter](SingleStoreBatchCommand/CreateParameter.md)() |  |
 
 ## Protected Members
 

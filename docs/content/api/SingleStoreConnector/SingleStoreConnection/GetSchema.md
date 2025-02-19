@@ -27,7 +27,7 @@ public override DataTable GetSchema(string collectionName)
 
 | parameter | description |
 | --- | --- |
-| collectionName | The name of the schema to return. |
+| collectionName | The name of the schema to return. See [Supported Schema Collections](https://mysqlconnector.net/overview/schema-collections/) for the list of supported schema names. |
 
 ## Return Value
 
@@ -50,7 +50,7 @@ public override DataTable GetSchema(string collectionName, string?[] restriction
 
 | parameter | description |
 | --- | --- |
-| collectionName | The name of the schema to return. |
+| collectionName | The name of the schema to return. See [Supported Schema Collections](https://mysqlconnector.net/overview/schema-collections/) for the list of supported schema names. |
 | restrictionValues | The restrictions to apply to the schema. |
 
 ## Return Value

@@ -22,6 +22,7 @@ public sealed class SingleStoreConnectorFactory : DbProviderFactory
 | override [CreateConnection](SingleStoreConnectorFactory/CreateConnection.md)() | Creates a new [`SingleStoreConnection`](./SingleStoreConnection.md) object. |
 | override [CreateConnectionStringBuilder](SingleStoreConnectorFactory/CreateConnectionStringBuilder.md)() | Creates a new [`SingleStoreConnectionStringBuilder`](./SingleStoreConnectionStringBuilder.md) object. |
 | override [CreateDataAdapter](SingleStoreConnectorFactory/CreateDataAdapter.md)() | Creates a new [`SingleStoreDataAdapter`](./SingleStoreDataAdapter.md) object. |
+| override [CreateDataSource](SingleStoreConnectorFactory/CreateDataSource.md)(…) | Creates a new [`SingleStoreDataSource`](./SingleStoreDataSource.md) object. |
 | override [CreateParameter](SingleStoreConnectorFactory/CreateParameter.md)() | Creates a new [`SingleStoreParameter`](./SingleStoreParameter.md) object. |
 
 ## See Also
