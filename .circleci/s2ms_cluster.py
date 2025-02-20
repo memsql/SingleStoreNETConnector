@@ -48,7 +48,7 @@ def create_workspace(workspace_manager):
         f.write(workspace_group.id)
     print("Created workspace group {}".format(w_group_name))
 
-    workspace = workspace_group.create_workspace(name=WORKSPACE_NAME, size="S-00", wait_on_active=True, wait_timeout=600)
+    workspace = workspace_group.create_workspace(name=WORKSPACE_NAME, size="S-00", wait_on_active=True, wait_timeout=1200)
 
     with open(WORKSPACE_ENDPOINT_FILE, "w") as f:
         f.write(workspace.endpoint)
