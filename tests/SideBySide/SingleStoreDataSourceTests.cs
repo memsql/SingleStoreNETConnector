@@ -92,15 +92,16 @@ public class SingleStoreDataSourceTests : IClassFixture<DatabaseFixture>
 		csb.Pooling = false;
 		using var dbSource = new SingleStoreDataSource(csb.ConnectionString);
 
-		int serverThread;
+		int serverThread, aggregatorId;
 		using (var connection = dbSource.OpenConnection())
 		{
 			serverThread = connection.ServerThread;
+			aggregatorId = connection.Session.AggregatorId;
 		}
 
 		using (var connection = dbSource.OpenConnection())
 		{
-			Assert.NotEqual(serverThread, connection.ServerThread);
+			Assert.True(serverThread != connection.ServerThread || aggregatorId != connection.Session.AggregatorId);
 		}
 	}
 
