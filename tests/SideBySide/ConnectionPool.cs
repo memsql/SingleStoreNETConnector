@@ -253,10 +253,10 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 		csb.MinimumPoolSize = minPoolSize;
 		csb.MaximumPoolSize = maxPoolSize;
 		csb.ConnectionIdleTimeout = idleTimeout;
-		HashSet<int> serverThreadIdsBegin = new HashSet<int>();
-		HashSet<int> serverThreadIdsEnd = new HashSet<int>();
+		HashSet<ConnectionInfo> serverThreadIdsBegin = new HashSet<ConnectionInfo>();
+		HashSet<ConnectionInfo> serverThreadIdsEnd = new HashSet<ConnectionInfo>();
 
-		async Task OpenConnections(uint numConnections, HashSet<int> serverIdSet)
+		async Task OpenConnections(uint numConnections, HashSet<ConnectionInfo> serverIdSet)
 		{
 			using var connection = new SingleStoreConnection(csb.ConnectionString);
 			await connection.OpenAsync();
@@ -285,5 +285,5 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 	}
 
 	private static HashSet<long> GetConnectionIds(IEnumerable<SingleStoreConnection> connections)
-		=> new HashSet<long>(connections.Select(x => (long) x.ServerThread));
+		=> new HashSet<long>(connections.Select(x => (long) x.ServerThread.ConnectionId));
 }

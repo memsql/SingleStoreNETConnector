@@ -136,7 +136,7 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 		Assert.Equal(ActivityStatusCode.Unset, activity.Status);
 
 		AssertTags(activity.Tags, csb);
-		AssertTag(activity.Tags, "db.connection_id", connection.ServerThread.ToString(CultureInfo.InvariantCulture));
+		AssertTag(activity.Tags, "db.connection_id", connection.ServerThread.ConnectionId.ToString(CultureInfo.InvariantCulture));
 		AssertTag(activity.Tags, "db.statement", "SELECT 1;");
 	}
 

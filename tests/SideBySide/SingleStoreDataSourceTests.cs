@@ -39,7 +39,7 @@ public class SingleStoreDataSourceTests : IClassFixture<DatabaseFixture>
 	{
 		using var dbSource = new SingleStoreDataSource(AppConfig.ConnectionString);
 
-		int serverThread;
+		ConnectionInfo serverThread;
 		using (var connection = dbSource.OpenConnection())
 		{
 			serverThread = connection.ServerThread;
@@ -73,7 +73,7 @@ public class SingleStoreDataSourceTests : IClassFixture<DatabaseFixture>
 		using var dbSource1 = new SingleStoreDataSource(AppConfig.ConnectionString);
 		using var dbSource2 = new SingleStoreDataSource(AppConfig.ConnectionString);
 
-		int serverThread;
+		ConnectionInfo serverThread;
 		using (var connection = dbSource1.OpenConnection())
 		{
 			serverThread = connection.ServerThread;
@@ -92,16 +92,15 @@ public class SingleStoreDataSourceTests : IClassFixture<DatabaseFixture>
 		csb.Pooling = false;
 		using var dbSource = new SingleStoreDataSource(csb.ConnectionString);
 
-		int serverThread, aggregatorId;
+		ConnectionInfo serverThread;
 		using (var connection = dbSource.OpenConnection())
 		{
 			serverThread = connection.ServerThread;
-			aggregatorId = connection.Session.AggregatorId;
 		}
 
 		using (var connection = dbSource.OpenConnection())
 		{
-			Assert.True(serverThread != connection.ServerThread || aggregatorId != connection.Session.AggregatorId);
+			Assert.NotEqual(serverThread, connection.ServerThread);
 		}
 	}
 

@@ -82,7 +82,7 @@ public class ConnectionTests : IDisposable
 		m_csb.MinimumPoolSize = 0;
 		m_csb.MaximumPoolSize = 1;
 		m_csb.ConnectionLifeTime = lifeTime;
-		int serverThread;
+		ConnectionInfo serverThread;
 
 		using (var connection = new SingleStoreConnection(m_csb.ConnectionString))
 		{
