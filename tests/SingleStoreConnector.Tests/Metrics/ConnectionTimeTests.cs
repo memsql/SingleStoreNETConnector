@@ -12,7 +12,7 @@ public class ConnectionTimeTests : MetricsTestsBase
 		var measurements = GetAndClearMeasurements("db.client.connections.create_time");
 		var time = Assert.Single(measurements);
 		// adjusted the highest value for S2MS
-		Assert.InRange(time, 0, 1100);
+		Assert.InRange(time, 0, 1300);
 	}
 
 	[Fact(Skip = MetricsSkip)]
@@ -27,7 +27,7 @@ public class ConnectionTimeTests : MetricsTestsBase
 		var measurements = GetAndClearMeasurements("db.client.connections.create_time");
 		var time = Assert.Single(measurements);
 		// adjusted the highest value for S2MS
-		Assert.InRange(time, 1000, 2100);
+		Assert.InRange(time, 1000, 2300);
 	}
 
 	[Fact(Skip = MetricsSkip)]
