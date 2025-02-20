@@ -190,7 +190,7 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 			connections.Add(connection);
 		}
 
-		Func<HashSet<long>> getConnectionIds = () =>
+		Func<HashSet<ConnectionInfo>> getConnectionIds = () =>
 		{
 			var cids = GetConnectionIds(connections);
 			Assert.Equal(connections.Count, cids.Count);
@@ -284,6 +284,6 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 #endif
 	}
 
-	private static HashSet<long> GetConnectionIds(IEnumerable<SingleStoreConnection> connections)
-		=> new HashSet<long>(connections.Select(x => (long) x.ServerThread.ConnectionId));
+	private static HashSet<ConnectionInfo> GetConnectionIds(IEnumerable<SingleStoreConnection> connections)
+		=> new HashSet<ConnectionInfo>(connections.Select(x => x.ServerThread));
 }
