@@ -79,6 +79,8 @@ internal sealed partial class ServerSession
 	public ICollection<KeyValuePair<string, object?>> ActivityTags => m_activityTags;
 	public SingleStoreDataReader DataReader { get; set; }
 
+	public ProtocolCapabilities ServerCapabilities { get; private set; }
+
 	public ValueTask ReturnToPoolAsync(IOBehavior ioBehavior, SingleStoreConnection? owningConnection)
 	{
 		Log.ReturningToPool(m_logger, Id, Pool?.Id ?? 0);
@@ -447,12 +449,15 @@ internal sealed partial class ServerSession
 				payload = await ReceiveAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 				initialHandshake = InitialHandshakePayload.Create(payload.Span);
 
+				// Explicitly disabling these capabilities to prevent inconsistencies, as SingleStore may use these flags for different purposes.
+				ServerCapabilities = initialHandshake.ProtocolCapabilities & ~(ProtocolCapabilities.MariaDbCacheMetadata | ProtocolCapabilities.QueryAttributes);
+
 				// if PluginAuth is supported, then use the specified auth plugin; else, fall back to protocol capabilities to determine the auth type to use
 				string authPluginName;
-				if ((initialHandshake.ProtocolCapabilities & ProtocolCapabilities.PluginAuth) != 0)
+				if ((ServerCapabilities & ProtocolCapabilities.PluginAuth) != 0)
 					authPluginName = initialHandshake.AuthPluginName!;
 				else
-					authPluginName = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.SecureConnection) == 0 ? "mysql_old_password" : "mysql_native_password";
+					authPluginName = (ServerCapabilities & ProtocolCapabilities.SecureConnection) == 0 ? "mysql_old_password" : "mysql_native_password";
 				Log.ServerSentAuthPluginName(m_logger, Id, authPluginName);
 				if (authPluginName != "mysql_native_password" && authPluginName != "sha256_password" && authPluginName != "caching_sha2_password")
 				{
@@ -463,7 +468,7 @@ internal sealed partial class ServerSession
 				MySqlCompatVersion = new(initialHandshake.ServerVersion);
 				ConnectionId = initialHandshake.ConnectionId;
 				AuthPluginData = initialHandshake.AuthPluginData;
-				m_useCompression = cs.UseCompression && (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.Compress) != 0;
+				m_useCompression = cs.UseCompression && (ServerCapabilities & ProtocolCapabilities.Compress) != 0;
 				CancellationTimeout = cs.CancellationTimeout;
 				UserID = cs.UserID;
 
@@ -475,11 +480,11 @@ internal sealed partial class ServerSession
 						activity.SetTag(ActivitySourceHelper.DatabaseConnectionIdTagName, connectionId);
 				}
 
-				m_supportsConnectionAttributes = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.ConnectionAttributes) != 0;
-				m_supportsDeprecateEof = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.DeprecateEof) != 0;
-				SupportsQueryAttributes = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.QueryAttributes) != 0;
-				m_supportsSessionTrack = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.SessionTrack) != 0;
-				var serverSupportsSsl = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.Ssl) != 0;
+				m_supportsConnectionAttributes = (ServerCapabilities & ProtocolCapabilities.ConnectionAttributes) != 0;
+				m_supportsDeprecateEof = (ServerCapabilities & ProtocolCapabilities.DeprecateEof) != 0;
+				SupportsQueryAttributes = (ServerCapabilities & ProtocolCapabilities.QueryAttributes) != 0;
+				m_supportsSessionTrack = (ServerCapabilities & ProtocolCapabilities.SessionTrack) != 0;
+				var serverSupportsSsl = (ServerCapabilities & ProtocolCapabilities.Ssl) != 0;
 				m_characterSet = S2ServerVersion.Version >= S2Versions.SupportsUtf8Mb4 ? CharacterSet.Utf8Mb4GeneralCaseInsensitive : CharacterSet.Utf8GeneralCaseInsensitive;
 				m_setNamesPayload = S2ServerVersion.Version >= S2Versions.SupportsUtf8Mb4 ?
 					(SupportsQueryAttributes ? s_setNamesUtf8mb4WithAttributesPayload : s_setNamesUtf8mb4NoAttributesPayload) :
@@ -500,7 +505,7 @@ internal sealed partial class ServerSession
 
 					try
 					{
-						await InitSslAsync(initialHandshake.ProtocolCapabilities, cs, connection, sslProtocols, ioBehavior, cancellationToken).ConfigureAwait(false);
+						await InitSslAsync(ServerCapabilities, cs, connection, sslProtocols, ioBehavior, cancellationToken).ConfigureAwait(false);
 						shouldRetrySsl = false;
 						if (shouldUpdatePoolSslProtocols && Pool is not null)
 							Pool.SslProtocols = sslProtocols;

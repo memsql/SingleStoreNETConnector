@@ -1,3 +1,5 @@
+using SingleStoreConnector.Protocol;
+
 namespace SideBySide;
 
 public class QueryTests : IClassFixture<DatabaseFixture>, IDisposable
@@ -1614,6 +1616,22 @@ select mysql_query_attribute_string('attr2') as attribute, @param2 as parameter;
 		Assert.Equal(new byte[] { 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89 }, buffer);
 	}
 #endif
+
+	[Fact]
+	public void ServerDoesNotSendMariaDbCacheMetadataOrQueryAttributes()
+	{
+		using var connection =  new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+
+		var serverCapabilities = connection.Session.ServerCapabilities;
+
+		// Ensure these capabilities are not set
+		Assert.False(serverCapabilities.HasFlag(ProtocolCapabilities.MariaDbCacheMetadata),
+			"Server should not send MariaDbCacheMetadata capability flag.");
+
+		Assert.False(serverCapabilities.HasFlag(ProtocolCapabilities.QueryAttributes),
+			"Server should not send QueryAttributes capability flag.");
+	}
 
 	class BoolTest
 	{
