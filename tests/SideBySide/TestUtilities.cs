@@ -79,11 +79,18 @@ public static class TestUtilities
 		}
 		else
 		{
-			var ex = await Assert.ThrowsAsync<SingleStoreException>(async () => await command.ExecuteScalarAsync(token));
+			var ex = await Assert.ThrowsAnyAsync<Exception>(async () => await command.ExecuteScalarAsync(token));
+			var exception = ex as SingleStoreException;
+			while (exception is null && ex is not null)
+			{
+				ex = ex.InnerException;
+				exception = ex as SingleStoreException;
+			}
+			Assert.NotNull(exception);
 #if BASELINE
-			Assert.Equal((int) expectedCode, ex.Number);
+			Assert.Equal((int) expectedCode, exception.Number);
 #else
-			Assert.Equal(expectedCode, ex.ErrorCode);
+			Assert.Equal(expectedCode, exception.ErrorCode);
 #endif
 		}
 	}
