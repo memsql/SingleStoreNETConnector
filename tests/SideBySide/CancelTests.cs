@@ -354,7 +354,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 		// the call to ExecuteReader should block until the token is cancelled
 		var stopwatch = Stopwatch.StartNew();
 		using var reader = await cmd.ExecuteReaderAsync(cts.Token);
-		// TestUtilities.AssertDuration(stopwatch, 450, 3000);
+		// TestUtilities.AssertDuration(stopwatch, 450, 3000); commented out due to flakiness — execution can complete too quickly depending on system/load.
 
 		var rows = 0;
 		try
@@ -367,7 +367,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 		catch (OperationCanceledException ex)
 		{
 			Assert.Equal(cts.Token, ex.CancellationToken);
-			// Assert.InRange(rows, 0, 100);
+			// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
 		}
 	}
 
@@ -387,7 +387,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 			// the call to NextResult should block until the token is cancelled
 			var stopwatch = Stopwatch.StartNew();
 			Assert.True(await reader.NextResultAsync(cts.Token));
-			// TestUtilities.AssertDuration(stopwatch, 450, 1500);
+			// TestUtilities.AssertDuration(stopwatch, 450, 1500); commented out due to flakiness — execution can complete too quickly depending on system/load.
 
 			int rows = 0;
 			try
@@ -399,7 +399,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 			catch (OperationCanceledException ex)
 			{
 				Assert.Equal(cts.Token, ex.CancellationToken);
-				// Assert.InRange(rows, 0, 100);
+				// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
 			}
 		}
 
@@ -666,7 +666,7 @@ create table cancel_completed_command (
 		// the call to ExecuteReader should block until the token is cancelled
 		var stopwatch = Stopwatch.StartNew();
 		using var reader = await batch.ExecuteReaderAsync(cts.Token);
-		// TestUtilities.AssertDuration(stopwatch, 450, 3000);
+		// TestUtilities.AssertDuration(stopwatch, 450, 3000); commented out due to flakiness — execution can complete too quickly depending on system/load.
 
 		var rows = 0;
 		try
@@ -679,7 +679,7 @@ create table cancel_completed_command (
 		catch (OperationCanceledException ex)
 		{
 			Assert.Equal(cts.Token, ex.CancellationToken);
-			// Assert.InRange(rows, 0, 100); we can't guarantee that it won't read more rows
+			// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
 		}
 	}
 
@@ -706,7 +706,7 @@ create table cancel_completed_command (
 			// the call to NextResult should block until the token is cancelled
 			var stopwatch = Stopwatch.StartNew();
 			Assert.True(await reader.NextResultAsync(cts.Token));
-			// TestUtilities.AssertDuration(stopwatch, 450, 1500);
+			// TestUtilities.AssertDuration(stopwatch, 450, 1500); commented out due to flakiness — execution can complete too quickly depending on system/load.
 
 			int rows = 0;
 			try
@@ -718,7 +718,7 @@ create table cancel_completed_command (
 			catch (OperationCanceledException ex)
 			{
 				Assert.Equal(cts.Token, ex.CancellationToken);
-				// Assert.InRange(rows, 0, 100);
+				// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
 			}
 		}
 
