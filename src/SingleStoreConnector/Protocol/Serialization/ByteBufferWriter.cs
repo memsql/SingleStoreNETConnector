@@ -99,8 +99,22 @@ internal sealed class ByteBufferWriter : IBufferWriter<byte>
 		m_output = m_output[span.Length..];
 	}
 
-	public void Write(string value) => Write(value.AsSpan(), flush: true);
-	public void Write(string value, int offset, int length) => Write(value.AsSpan(offset, length), flush: true);
+	public void Write(string value) => Write(value.AsSpan());
+
+	public void WriteAscii(string value) => WriteAscii(value.AsSpan());
+
+	public void Write(string value, int offset, int length) => Write(value.AsSpan(offset, length));
+
+	public void Write(ReadOnlySpan<char> chars)
+	{
+		if (m_output.Length < chars.Length * 3)
+		{
+			var neededBytes = Encoding.UTF8.GetByteCount(chars);
+			if (m_output.Length < neededBytes)
+				Reallocate(neededBytes);
+		}
+		m_output = m_output[Encoding.UTF8.GetBytes(chars, m_output.Span)..];
+	}
 
 	public void Write(ReadOnlySpan<char> chars, bool flush)
 	{
@@ -124,6 +138,18 @@ internal sealed class ByteBufferWriter : IBufferWriter<byte>
 			m_encoder.Convert("".AsSpan(), m_output.Span, flush: true, out _, out var bytesUsed, out _);
 			m_output = m_output[bytesUsed..];
 		}
+	}
+
+	public void WriteAscii(ReadOnlySpan<char> chars)
+	{
+		if (m_output.Length < chars.Length)
+			Reallocate(chars.Length);
+#if NET8_0_OR_GREATER
+		Ascii.FromUtf16(chars, m_output.Span, out var bytesWritten);
+		m_output = m_output[bytesWritten..];
+#else
+		m_output = m_output[Encoding.ASCII.GetBytes(chars, m_output.Span)..];
+#endif
 	}
 
 	public void WriteLengthEncodedString(StringBuilder stringBuilder)
@@ -170,49 +196,37 @@ internal sealed class ByteBufferWriter : IBufferWriter<byte>
 
 	public void WriteString(short value)
 	{
-		int bytesWritten;
-		while (!Utf8Formatter.TryFormat(value, m_output.Span, out bytesWritten))
-			Reallocate();
+		Utf8Formatter.TryFormat(value, GetSpan(6), out var bytesWritten);
 		m_output = m_output[bytesWritten..];
 	}
 
 	public void WriteString(ushort value)
 	{
-		int bytesWritten;
-		while (!Utf8Formatter.TryFormat(value, m_output.Span, out bytesWritten))
-			Reallocate();
+		Utf8Formatter.TryFormat(value, GetSpan(5), out var bytesWritten);
 		m_output = m_output[bytesWritten..];
 	}
 
 	public void WriteString(int value)
 	{
-		int bytesWritten;
-		while (!Utf8Formatter.TryFormat(value, m_output.Span, out bytesWritten))
-			Reallocate();
+		Utf8Formatter.TryFormat(value, GetSpan(11), out var bytesWritten);
 		m_output = m_output[bytesWritten..];
 	}
 
 	public void WriteString(uint value)
 	{
-		int bytesWritten;
-		while (!Utf8Formatter.TryFormat(value, m_output.Span, out bytesWritten))
-			Reallocate();
+		Utf8Formatter.TryFormat(value, GetSpan(10), out var bytesWritten);
 		m_output = m_output[bytesWritten..];
 	}
 
 	public void WriteString(long value)
 	{
-		int bytesWritten;
-		while (!Utf8Formatter.TryFormat(value, m_output.Span, out bytesWritten))
-			Reallocate();
+		Utf8Formatter.TryFormat(value, GetSpan(20), out var bytesWritten);
 		m_output = m_output[bytesWritten..];
 	}
 
 	public void WriteString(ulong value)
 	{
-		int bytesWritten;
-		while (!Utf8Formatter.TryFormat(value, m_output.Span, out bytesWritten))
-			Reallocate();
+		Utf8Formatter.TryFormat(value, GetSpan(20), out var bytesWritten);
 		m_output = m_output[bytesWritten..];
 	}
 
@@ -220,7 +234,7 @@ internal sealed class ByteBufferWriter : IBufferWriter<byte>
 	{
 		var usedLength = Position;
 		var newBuffer = ArrayPool<byte>.Shared.Rent(Math.Max(usedLength + additional, m_buffer.Length * 2));
-		Buffer.BlockCopy(m_buffer, 0, newBuffer, 0, usedLength);
+		m_buffer.AsSpan(0, usedLength).CopyTo(newBuffer);
 		ArrayPool<byte>.Shared.Return(m_buffer);
 		m_buffer = newBuffer;
 		m_output = new(m_buffer, usedLength, m_buffer.Length - usedLength);
@@ -237,23 +251,23 @@ internal static class ByteBufferWriterExtensions
 	{
 		switch (value)
 		{
-		case < 251:
-			writer.Write((byte) value);
-			break;
+			case < 251:
+				writer.Write((byte) value);
+				break;
 
-		case < 65536:
-			writer.Write((byte) 0xfc);
-			writer.Write((ushort) value);
-			break;
+			case < 65536:
+				writer.Write((byte) 0xfc);
+				writer.Write((ushort) value);
+				break;
 
-		case < 16777216:
-			writer.Write((uint) ((value << 8) | 0xfd));
-			break;
+			case < 16777216:
+				writer.Write((uint) ((value << 8) | 0xfd));
+				break;
 
-		default:
-			writer.Write((byte) 0xfe);
-			writer.Write(value);
-			break;
+			default:
+				writer.Write((byte) 0xfe);
+				writer.Write(value);
+				break;
 		}
 	}
 
@@ -263,7 +277,13 @@ internal static class ByteBufferWriterExtensions
 	{
 		var byteCount = Encoding.UTF8.GetByteCount(value);
 		writer.WriteLengthEncodedInteger((ulong) byteCount);
-		writer.Write(value, flush: true);
+		writer.Write(value);
+	}
+
+	public static void WriteLengthEncodedAsciiString(this ByteBufferWriter writer, string value)
+	{
+		writer.WriteLengthEncodedInteger((ulong) value.Length);
+		writer.WriteAscii(value.AsSpan());
 	}
 
 	public static void WriteNullTerminatedString(this ByteBufferWriter writer, string value)

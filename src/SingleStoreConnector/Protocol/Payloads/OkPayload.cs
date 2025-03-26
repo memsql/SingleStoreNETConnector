@@ -25,12 +25,35 @@ internal sealed class OkPayload
 			(span.Length > 6 && span[0] == Signature ||
 			 deprecateEof && span.Length < 0xFF_FFFF && span[0] == EofPayload.Signature);
 
-	public static OkPayload Create(ReadOnlySpan<byte> span, bool deprecateEof, bool clientSessionTrack)
+	/// <summary>
+	/// Creates an <see cref="OkPayload"/> from the given <paramref name="span"/>, or throws <see cref="FormatException"/>
+	/// if the bytes do not represent a valid <see cref="OkPayload"/>.
+	/// </summary>
+	/// <param name="span">The bytes from which to read an OK packet.</param>
+	/// <param name="deprecateEof">Whether the <see cref="ProtocolCapabilities.DeprecateEof"/> flag was set on the connection.</param>
+	/// <param name="clientSessionTrack">Whether <see cref="ProtocolCapabilities.SessionTrack"/> flag was set on the connection.</param>
+	/// <returns>A <see cref="OkPayload"/> with the contents of the OK packet.</returns>
+	/// <exception cref="FormatException">Thrown when the bytes are not a valid OK packet.</exception>
+	public static OkPayload Create(ReadOnlySpan<byte> span, bool deprecateEof, bool clientSessionTrack) =>
+		Read(span, deprecateEof, clientSessionTrack, true)!;
+
+	/// <summary>
+	/// Verifies that the bytes in the given <paramref name="span"/> form a valid <see cref="OkPayload"/>, or throws
+	/// <see cref="FormatException"/> if they do not.
+	/// </summary>
+	/// <param name="span">The bytes from which to read an OK packet.</param>
+	/// <param name="deprecateEof">Whether the <see cref="ProtocolCapabilities.DeprecateEof"/> flag was set on the connection.</param>
+	/// <param name="clientSessionTrack">Whether <see cref="ProtocolCapabilities.SessionTrack"/> flag was set on the connection.</param>
+	/// <exception cref="FormatException">Thrown when the bytes are not a valid OK packet.</exception>
+	public static void Verify(ReadOnlySpan<byte> span, bool deprecateEof, bool clientSessionTrack) =>
+		Read(span, deprecateEof, clientSessionTrack, createPayload: false);
+
+	private static OkPayload? Read(ReadOnlySpan<byte> span, bool deprecateEof, bool clientSessionTrack, bool createPayload)
 	{
 		var reader = new ByteArrayReader(span);
 		var signature = reader.ReadByte();
 		if (signature != Signature && (!deprecateEof || signature != EofPayload.Signature))
-			throw new FormatException("Expected to read 0x00 or 0xFE but got 0x{0:X2}".FormatInvariant(signature));
+			throw new FormatException($"Expected to read 0x00 or 0xFE but got 0x{signature:X2}");
 		var affectedRowCount = reader.ReadLengthEncodedInteger();
 		var lastInsertId = reader.ReadLengthEncodedInteger();
 		var serverStatus = (ServerStatus) reader.ReadUInt16();
@@ -55,13 +78,13 @@ internal sealed class OkPayload
 						var dataLength = (int) reader.ReadLengthEncodedInteger();
 						switch (kind)
 						{
-						case SessionTrackKind.Schema:
-							newSchema = Encoding.UTF8.GetString(reader.ReadLengthEncodedByteString());
-							break;
+							case SessionTrackKind.Schema:
+								newSchema = Encoding.UTF8.GetString(reader.ReadLengthEncodedByteString());
+								break;
 
-						default:
-							reader.Offset += dataLength;
-							break;
+							default:
+								reader.Offset += dataLength;
+								break;
 						}
 					}
 				}
@@ -82,17 +105,24 @@ internal sealed class OkPayload
 				statusBytes = statusBytes[1..];
 		}
 
-		var statusInfo = statusBytes.Length == 0 ? null : Encoding.UTF8.GetString(statusBytes);
-
-		if (affectedRowCount == 0 && lastInsertId == 0 && warningCount == 0 && statusInfo is null && newSchema is null)
+		if (createPayload)
 		{
-			if (serverStatus == ServerStatus.AutoCommit)
-				return s_autoCommitOk;
-			if (serverStatus == (ServerStatus.AutoCommit | ServerStatus.SessionStateChanged))
-				return s_autoCommitSessionStateChangedOk;
-		}
+			var statusInfo = statusBytes.Length == 0 ? null : Encoding.UTF8.GetString(statusBytes);
 
-		return new OkPayload(affectedRowCount, lastInsertId, serverStatus, warningCount, statusInfo, newSchema);
+			if (affectedRowCount == 0 && lastInsertId == 0 && warningCount == 0 && statusInfo is null && newSchema is null)
+			{
+				if (serverStatus == ServerStatus.AutoCommit)
+					return s_autoCommitOk;
+				if (serverStatus == (ServerStatus.AutoCommit | ServerStatus.SessionStateChanged))
+					return s_autoCommitSessionStateChangedOk;
+			}
+
+			return new OkPayload(affectedRowCount, lastInsertId, serverStatus, warningCount, statusInfo, newSchema);
+		}
+		else
+		{
+			return null;
+		}
 	}
 
 	private OkPayload(ulong affectedRowCount, ulong lastInsertId, ServerStatus serverStatus, int warningCount, string? statusInfo, string? newSchema)

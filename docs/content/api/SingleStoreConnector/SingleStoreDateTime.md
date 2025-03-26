@@ -7,11 +7,21 @@ public struct SingleStoreDateTime : IComparable, IComparable<SingleStoreDateTime
     IEquatable<SingleStoreDateTime>
 ```
 
+| parameter | description |
+| --- | --- |
+| year | The year. |
+| month | The (one-based) month. |
+| day | The (one-based) day of the month. |
+| hour | The hour. |
+| minute | The minute. |
+| second | The second. |
+| microsecond | The microsecond. |
+
 ## Public Members
 
 | name | description |
 | --- | --- |
-| [SingleStoreDateTime](SingleStoreDateTime/SingleStoreDateTime.md)(…) | Initializes a new instance of [`SingleStoreDateTime`](./SingleStoreDateTime.md). (3 constructors) |
+| [SingleStoreDateTime](SingleStoreDateTime/SingleStoreDateTime.md)(…) | Represents a SingleStore date/time value. This type can be used to store `DATETIME` values such as `0000-00-00` that can be stored in SingleStore (when [`AllowZeroDateTime`](./SingleStoreConnectionStringBuilder/AllowZeroDateTime.md) is true) but can't be stored in a DateTime value. (3 constructors) |
 | [Day](SingleStoreDateTime/Day.md) { get; set; } | Gets or sets the day of the month. |
 | [Hour](SingleStoreDateTime/Hour.md) { get; set; } | Gets or sets the hour. |
 | [IsValidDateTime](SingleStoreDateTime/IsValidDateTime.md) { get; } | Returns `true` if this value is a valid DateTime. |

@@ -1,8 +1,6 @@
 #if BASELINE
-using MySql.Data.MySqlClient;
 using SingleStoreConnectorFactory = MySql.Data.MySqlClient.MySqlClientFactory;
 #endif
-using Xunit;
 
 namespace SingleStoreConnector.Tests;
 

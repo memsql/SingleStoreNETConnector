@@ -2,6 +2,59 @@
 
 ## Release Notes
 
+### 1.2.0
+
+Basically all the changes introduced with MySqlConnector 2.3.0:
+
+* Support .NET 8
+  - Implement `DbBatchCommand.CreateParameter`
+
+* Drop support for .NET 4.6.1 and .NET Core 3.1
+
+* Prevent connection pool falling back to an unsupported TLS version
+
+* `SingleStoreDataSource` is now available for all TFMs, not just .NET 7.0.
+  - This provides a single place to configure a SingleStore connection and makes it easier to register `SingleStoreConnection` with dependency injection.
+  - Add `SingleStoreDataSourceBuilder` class to configure `SingleStoreDataSource` instances.
+  - Add `SingleStoreDataSource.Name` and `SingleStoreDataSourceBuilder.UseName`
+
+* Microsoft.Extensions.Logging is now used as the core logging abstraction
+
+* Expose connection pool metrics
+
+* Support higher-precision `DateTime` values
+
+* Remove `COM_MULTI` protocol support
+
+* Use `ValueTask` in `SingleStoreBulkCopy` API for all TFMs
+  - **Breaking** This changes the return type of WriteToServerAsync from Task<SingleStoreBulkCopyResult> to ValueTask<SingleStoreBulkCopyResult> on .NET Framework
+
+* Recycle `SingleStoreDataReader` objects
+
+* Implement faster parsing for result sets with multiple rows
+
+* Optimize parameter encoding for ASCII strings
+
+* Use `TcpClient.ConnectAsync` overload with `CancellationToken` on .NET 5.0 and later
+
+* Fix cancellation when using a redirected connection
+
+* Fix `SingleStoreConnection.CloneWith` for connections created from a `SingleStoreDataSource`
+
+* Reduce allocations on common code paths.
+
+* Fix bug when column name begins with `@` in `SingleStoreBulkCopy`
+
+* Ignore `SingleStoreDbType` when serializing enum values
+
+* Fix potential error in reallocating an internal buffer when writing ASCII text.
+
+* Update handling of `ActivityStatus` to latest conventions
+
+* Reduce overhead of `CommandTimeout`
+
+* Reword end-of-stream message to be more generic
+
 ### 1.1.6
 
 * Resolved an issue where a package was being packed in the Debug configuration instead of Release.

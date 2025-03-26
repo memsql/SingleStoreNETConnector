@@ -15,7 +15,29 @@ public SingleStoreBulkCopyColumnMapping()
 
 # SingleStoreBulkCopyColumnMapping constructor (2 of 2)
 
-Initializes [`SingleStoreBulkCopyColumnMapping`](../SingleStoreBulkCopyColumnMapping.md) to the specified values.
+Use [`SingleStoreBulkCopyColumnMapping`](../SingleStoreBulkCopyColumnMapping.md) to specify how to map columns in the source data to columns in the destination table when using [`SingleStoreBulkCopy`](../SingleStoreBulkCopy.md).
+
+Set [`SourceOrdinal`](./SourceOrdinal.md) to the zero-based index of the source column to map. Set [`DestinationColumn`](./DestinationColumn.md) to either the name of a column in the destination table, or the name of a user-defined variable. If a user-defined variable, you can use [`Expression`](./Expression.md) to specify a SingleStore expression that assigns its value to destination column.
+
+Source columns that don't have an entry in [`ColumnMappings`](../SingleStoreBulkCopy/ColumnMappings.md) will be ignored (unless the [`ColumnMappings`](../SingleStoreBulkCopy/ColumnMappings.md) collection is empty, in which case all columns will be mapped one-to-one).
+
+SingleStoreConnector will transmit all binary data as hex, so any expression that operates on it must decode it with the `UNHEX` function first. (This will be performed automatically if no [`Expression`](./Expression.md) is specified, but will be necessary to specify manually for more complex expressions.)
+
+Example code:
+
+```csharp
+new SingleStoreBulkCopyColumnMapping
+{
+    SourceOrdinal = 2,
+    DestinationColumn = "user_name",
+},
+new SingleStoreBulkCopyColumnMapping
+{
+    SourceOrdinal = 0,
+    DestinationColumn = "@tmp",
+    Expression = "column_value = @tmp * 2",
+},
+```
 
 ```csharp
 public SingleStoreBulkCopyColumnMapping(int sourceOrdinal, string destinationColumn, 

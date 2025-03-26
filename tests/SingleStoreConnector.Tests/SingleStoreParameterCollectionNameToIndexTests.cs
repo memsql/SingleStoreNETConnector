@@ -1,5 +1,3 @@
-using Xunit;
-
 namespace SingleStoreConnector.Tests;
 
 public class SingleStoreParameterCollectionNameToIndexTests

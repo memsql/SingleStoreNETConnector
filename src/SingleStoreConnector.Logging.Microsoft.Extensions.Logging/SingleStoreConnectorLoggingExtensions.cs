@@ -1,8 +1,7 @@
 using System;
 using Microsoft.Extensions.Logging;
-using SingleStoreConnector.Logging;
 
-namespace Microsoft.Extensions.DependencyInjection;
+namespace SingleStoreConnector.Logging;
 
 public static class SingleStoreConnectorLoggingExtensions
 {

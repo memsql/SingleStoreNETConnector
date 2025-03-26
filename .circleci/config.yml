@@ -2,10 +2,10 @@ version: 2.1
 parameters:
   connector-version:
     type: string
-    default: "1.1.6"
+    default: "1.2.0"
   dotnet-version:
     type: string
-    default: "7.0.404"
+    default: "8.0.405"
 
 orbs:
   win: circleci/windows@2.4.0
@@ -15,7 +15,7 @@ commands:
     description: Setup Linux environment
     steps:
       - run:
-          name: Install .NET Core 7.0
+          name: Install .NET Core 8.0
           command: |
             wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
             sudo dpkg -i packages-microsoft-prod.deb
@@ -26,7 +26,7 @@ commands:
             sudo apt-get install -y mariadb-client-core-10.6
             sudo apt-get install -y mariadb-client-10.6
             sudo apt remove 'dotnet*' && sudo apt remove 'aspnetcore*' && sudo rm /etc/apt/sources.list.d/microsoft-prod.list && sudo apt update
-            sudo apt-get install -y dotnet-sdk-7.0
+            sudo apt-get install -y dotnet-sdk-8.0
             dotnet --info
   run-tests-win:
     description: Run tests on Windows
@@ -66,7 +66,7 @@ jobs:
           name: Fill test config
           command: python.exe .circleci\fill_test_config.py
       - run-tests-win:
-          target_framework: net7.0
+          target_framework: net8.0
       - run:
           name: Terminate test cluster
           when: always
@@ -99,24 +99,24 @@ jobs:
             sed -i "s|SINGLESTORE_HOST|127.0.0.1|g" tests/SideBySide/config.json
             sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
             sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
-            cp tests/SideBySide/config.json tests/SideBySide/bin/Release/net7.0/config.json
+            cp tests/SideBySide/config.json /home/circleci/project/artifacts/bin/SideBySide/release_net8.0/config.json
       - run:
           name: Unit tests
           command: |
             cd tests/SingleStoreConnector.Tests
-            dotnet test -f net7.0 -c Release --no-build
+            dotnet test -f net8.0 -c Release --no-build
             cd ../../
       - run:
           name: Conformance tests
           command: |
             cd tests/Conformance.Tests/
-            dotnet test -f net7.0 -c Release --no-build
+            dotnet test -f net8.0 -c Release --no-build
             cd ../../
       - run:
           name: SideBySide tests
           command: |
             cd tests/SideBySide
-            dotnet test -f net7.0 -c Release --no-build
+            dotnet test -f net8.0 -c Release --no-build
             cd ../../
 
   publish-windows:
@@ -143,6 +143,12 @@ workflows:
   version: 2
   build_and_test:
     jobs:
+      - test-ubuntu:
+          name: Test 8.7 cluster-in-a-box
+          matrix:
+            parameters:
+              singlestore_image:
+                - singlestore/cluster-in-a-box:alma-8.7.12-483e5f8acb-4.1.0-1.17.15
       - test-ubuntu:
           name: Test 8.5 cluster-in-a-box
           matrix:

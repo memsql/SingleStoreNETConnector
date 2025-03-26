@@ -13,25 +13,25 @@ internal sealed class TypeMapper
 
 	private TypeMapper()
 	{
-		m_columnTypeMetadata = new();
-		m_dbTypeMappingsByClrType = new();
-		m_dbTypeMappingsByDbType = new();
+		m_columnTypeMetadata = [];
+		m_dbTypeMappingsByClrType = [];
+		m_dbTypeMappingsByDbType = [];
 		m_columnTypeMetadataLookup = new(StringComparer.OrdinalIgnoreCase);
-		m_mySqlDbTypeToColumnTypeMetadata = new();
+		m_mySqlDbTypeToColumnTypeMetadata = [];
 
 		// boolean
-		var typeBoolean = AddDbTypeMapping(new(typeof(bool), new[] { DbType.Boolean }, convert: static o => Convert.ToBoolean(o, CultureInfo.InvariantCulture)));
+		var typeBoolean = AddDbTypeMapping(new(typeof(bool), [DbType.Boolean], convert: static o => Convert.ToBoolean(o, CultureInfo.InvariantCulture)));
 		AddColumnTypeMetadata(new("TINYINT", typeBoolean, SingleStoreDbType.Bool, isUnsigned: false, length: 1, columnSize: 1, simpleDataTypeName: "BOOL", createFormat: "BOOL"));
 
 		// integers
-		var typeSbyte = AddDbTypeMapping(new(typeof(sbyte), new[] { DbType.SByte }, convert: static o => Convert.ToSByte(o, CultureInfo.InvariantCulture)));
-		var typeByte = AddDbTypeMapping(new(typeof(byte), new[] { DbType.Byte }, convert: static o => Convert.ToByte(o, CultureInfo.InvariantCulture)));
-		var typeShort = AddDbTypeMapping(new(typeof(short), new[] { DbType.Int16 }, convert: static o => Convert.ToInt16(o, CultureInfo.InvariantCulture)));
-		var typeUshort = AddDbTypeMapping(new(typeof(ushort), new[] { DbType.UInt16 }, convert: static o => Convert.ToUInt16(o, CultureInfo.InvariantCulture)));
-		var typeInt = AddDbTypeMapping(new(typeof(int), new[] { DbType.Int32 }, convert: static o => Convert.ToInt32(o, CultureInfo.InvariantCulture)));
-		var typeUint = AddDbTypeMapping(new(typeof(uint), new[] { DbType.UInt32 }, convert: static o => Convert.ToUInt32(o, CultureInfo.InvariantCulture)));
-		var typeLong = AddDbTypeMapping(new(typeof(long), new[] { DbType.Int64 }, convert: static o => Convert.ToInt64(o, CultureInfo.InvariantCulture)));
-		var typeUlong = AddDbTypeMapping(new(typeof(ulong), new[] { DbType.UInt64 }, convert: static o => Convert.ToUInt64(o, CultureInfo.InvariantCulture)));
+		var typeSbyte = AddDbTypeMapping(new(typeof(sbyte), [DbType.SByte], convert: static o => Convert.ToSByte(o, CultureInfo.InvariantCulture)));
+		var typeByte = AddDbTypeMapping(new(typeof(byte), [DbType.Byte], convert: static o => Convert.ToByte(o, CultureInfo.InvariantCulture)));
+		var typeShort = AddDbTypeMapping(new(typeof(short), [DbType.Int16], convert: static o => Convert.ToInt16(o, CultureInfo.InvariantCulture)));
+		var typeUshort = AddDbTypeMapping(new(typeof(ushort), [DbType.UInt16], convert: static o => Convert.ToUInt16(o, CultureInfo.InvariantCulture)));
+		var typeInt = AddDbTypeMapping(new(typeof(int), [DbType.Int32], convert: static o => Convert.ToInt32(o, CultureInfo.InvariantCulture)));
+		var typeUint = AddDbTypeMapping(new(typeof(uint), [DbType.UInt32], convert: static o => Convert.ToUInt32(o, CultureInfo.InvariantCulture)));
+		var typeLong = AddDbTypeMapping(new(typeof(long), [DbType.Int64], convert: static o => Convert.ToInt64(o, CultureInfo.InvariantCulture)));
+		var typeUlong = AddDbTypeMapping(new(typeof(ulong), [DbType.UInt64], convert: static o => Convert.ToUInt64(o, CultureInfo.InvariantCulture)));
 		AddColumnTypeMetadata(new("TINYINT", typeSbyte, SingleStoreDbType.Byte, isUnsigned: false));
 		AddColumnTypeMetadata(new("TINYINT", typeByte, SingleStoreDbType.UByte, isUnsigned: true, length: 1));
 		AddColumnTypeMetadata(new("TINYINT", typeByte, SingleStoreDbType.UByte, isUnsigned: true));
@@ -46,9 +46,9 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("BIT", typeUlong, SingleStoreDbType.Bit));
 
 		// decimals
-		var typeDecimal = AddDbTypeMapping(new(typeof(decimal), new[] { DbType.Decimal, DbType.Currency, DbType.VarNumeric }, convert: static o => Convert.ToDecimal(o, CultureInfo.InvariantCulture)));
-		var typeDouble = AddDbTypeMapping(new(typeof(double), new[] { DbType.Double }, convert: static o => Convert.ToDouble(o, CultureInfo.InvariantCulture)));
-		var typeFloat = AddDbTypeMapping(new(typeof(float), new[] { DbType.Single }, convert: static o => Convert.ToSingle(o, CultureInfo.InvariantCulture)));
+		var typeDecimal = AddDbTypeMapping(new(typeof(decimal), [DbType.Decimal, DbType.Currency, DbType.VarNumeric], convert: static o => Convert.ToDecimal(o, CultureInfo.InvariantCulture)));
+		var typeDouble = AddDbTypeMapping(new(typeof(double), [DbType.Double], convert: static o => Convert.ToDouble(o, CultureInfo.InvariantCulture)));
+		var typeFloat = AddDbTypeMapping(new(typeof(float), [DbType.Single], convert: static o => Convert.ToSingle(o, CultureInfo.InvariantCulture)));
 		AddColumnTypeMetadata(new("DECIMAL", typeDecimal, SingleStoreDbType.NewDecimal, createFormat: "DECIMAL({0},{1});precision,scale"));
 		AddColumnTypeMetadata(new("DECIMAL", typeDecimal, SingleStoreDbType.NewDecimal, isUnsigned: true, createFormat: "DECIMAL({0},{1}) UNSIGNED;precision,scale"));
 		AddColumnTypeMetadata(new("DECIMAL", typeDecimal, SingleStoreDbType.Decimal));
@@ -56,8 +56,8 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("FLOAT", typeFloat, SingleStoreDbType.Float));
 
 		// string
-		var typeFixedString = AddDbTypeMapping(new(typeof(string), new[] { DbType.StringFixedLength, DbType.AnsiStringFixedLength }, convert: Convert.ToString!));
-		var typeString = AddDbTypeMapping(new(typeof(string), new[] { DbType.String, DbType.AnsiString, DbType.Xml }, convert: Convert.ToString!));
+		var typeFixedString = AddDbTypeMapping(new(typeof(string), [DbType.StringFixedLength, DbType.AnsiStringFixedLength], convert: Convert.ToString!));
+		var typeString = AddDbTypeMapping(new(typeof(string), [DbType.String, DbType.AnsiString, DbType.Xml], convert: Convert.ToString!));
 		AddColumnTypeMetadata(new("VARCHAR", typeString, SingleStoreDbType.VarChar, createFormat: "VARCHAR({0});size"));
 		AddColumnTypeMetadata(new("VARCHAR", typeString, SingleStoreDbType.VarString));
 		AddColumnTypeMetadata(new("CHAR", typeFixedString, SingleStoreDbType.String, createFormat: "CHAR({0});size"));
@@ -70,7 +70,7 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("JSON", typeString, SingleStoreDbType.JSON));
 
 		// binary
-		var typeBinary = AddDbTypeMapping(new(typeof(byte[]), new[] { DbType.Binary }));
+		var typeBinary = AddDbTypeMapping(new(typeof(byte[]), [DbType.Binary]));
 		AddColumnTypeMetadata(new("BLOB", typeBinary, SingleStoreDbType.Blob, binary: true, columnSize: ushort.MaxValue, simpleDataTypeName: "BLOB"));
 		AddColumnTypeMetadata(new("BINARY", typeBinary, SingleStoreDbType.Binary, binary: true, simpleDataTypeName: "BLOB", createFormat: "BINARY({0});length"));
 		AddColumnTypeMetadata(new("VARBINARY", typeBinary, SingleStoreDbType.VarBinary, binary: true, simpleDataTypeName: "BLOB", createFormat: "VARBINARY({0});length"));
@@ -79,22 +79,22 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("LONGBLOB", typeBinary, SingleStoreDbType.LongBlob, binary: true, columnSize: uint.MaxValue, simpleDataTypeName: "BLOB"));
 
 		// spatial
-		AddColumnTypeMetadata(new("GEOGRAPHY", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
+		AddColumnTypeMetadata(new("GEOGRAPHY", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
 		AddColumnTypeMetadata(new("POINT", typeString, SingleStoreDbType.GeographyPoint, columnSize: 48));
-		AddColumnTypeMetadata(new("LINESTRING", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
-		AddColumnTypeMetadata(new("POLYGON", typeString, SingleStoreDbType.Geography, columnSize: 1431655765));
+		AddColumnTypeMetadata(new("LINESTRING", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
+		AddColumnTypeMetadata(new("POLYGON", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
 
 		// date/time
 #if NET6_0_OR_GREATER
-		AddDbTypeMapping(new(typeof(DateOnly), new[] { DbType.Date }));
+		AddDbTypeMapping(new(typeof(DateOnly), [DbType.Date]));
 #endif
-		var typeDate = AddDbTypeMapping(new(typeof(DateTime), new[] { DbType.Date }));
-		var typeDateTime = AddDbTypeMapping(new(typeof(DateTime), new[] { DbType.DateTime, DbType.DateTime2, DbType.DateTimeOffset }));
-		AddDbTypeMapping(new(typeof(DateTimeOffset), new[] { DbType.DateTimeOffset }));
+		var typeDate = AddDbTypeMapping(new(typeof(DateTime), [DbType.Date]));
+		var typeDateTime = AddDbTypeMapping(new(typeof(DateTime), [DbType.DateTime, DbType.DateTime2, DbType.DateTimeOffset]));
+		AddDbTypeMapping(new(typeof(DateTimeOffset), [DbType.DateTimeOffset]));
 #if NET6_0_OR_GREATER
-		AddDbTypeMapping(new(typeof(TimeOnly), new[] { DbType.Time }));
+		AddDbTypeMapping(new(typeof(TimeOnly), [DbType.Time]));
 #endif
-		var typeTime = AddDbTypeMapping(new(typeof(TimeSpan), new[] { DbType.Time }, convert: static o => o is string s ? Utility.ParseTimeSpan(Encoding.UTF8.GetBytes(s)) : Convert.ChangeType(o, typeof(TimeSpan), CultureInfo.InvariantCulture)));
+		var typeTime = AddDbTypeMapping(new(typeof(TimeSpan), [DbType.Time], convert: static o => o is string s ? Utility.ParseTimeSpan(Encoding.UTF8.GetBytes(s)) : Convert.ChangeType(o, typeof(TimeSpan), CultureInfo.InvariantCulture)));
 		AddColumnTypeMetadata(new("DATETIME", typeDateTime, SingleStoreDbType.DateTime));
 		AddColumnTypeMetadata(new("DATE", typeDate, SingleStoreDbType.Date));
 		AddColumnTypeMetadata(new("DATE", typeDate, SingleStoreDbType.Newdate));
@@ -108,11 +108,11 @@ internal sealed class TypeMapper
 #else
 		Func<object, object> convertGuid = static o => Guid.Parse(Convert.ToString(o, CultureInfo.InvariantCulture)!);
 #endif
-		var typeGuid = AddDbTypeMapping(new(typeof(Guid), new[] { DbType.Guid }, convert: convertGuid));
+		var typeGuid = AddDbTypeMapping(new(typeof(Guid), [DbType.Guid], convert: convertGuid));
 		AddColumnTypeMetadata(new("CHAR", typeGuid, SingleStoreDbType.Guid, length: 36, simpleDataTypeName: "CHAR(36)", createFormat: "CHAR(36)"));
 
 		// null
-		var typeNull = AddDbTypeMapping(new(typeof(object), new[] { DbType.Object }));
+		var typeNull = AddDbTypeMapping(new(typeof(object), [DbType.Object]));
 		AddColumnTypeMetadata(new("NULL", typeNull, SingleStoreDbType.Null));
 	}
 
@@ -149,10 +149,15 @@ internal sealed class TypeMapper
 	{
 		m_columnTypeMetadata.Add(columnTypeMetadata);
 		var lookupKey = columnTypeMetadata.CreateLookupKey();
+#if !NETCOREAPP2_0_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
 		if (!m_columnTypeMetadataLookup.ContainsKey(lookupKey))
 			m_columnTypeMetadataLookup.Add(lookupKey, columnTypeMetadata);
 		if (!m_mySqlDbTypeToColumnTypeMetadata.ContainsKey(columnTypeMetadata.SingleStoreDbType))
 			m_mySqlDbTypeToColumnTypeMetadata.Add(columnTypeMetadata.SingleStoreDbType, columnTypeMetadata);
+#else
+		m_columnTypeMetadataLookup.TryAdd(lookupKey, columnTypeMetadata);
+		m_mySqlDbTypeToColumnTypeMetadata.TryAdd(columnTypeMetadata.SingleStoreDbType, columnTypeMetadata);
+#endif
 	}
 
 	internal DbTypeMapping? GetDbTypeMapping(Type clrType)
@@ -193,118 +198,118 @@ internal sealed class TypeMapper
 
 		switch (columnDefinition.ColumnType)
 		{
-		case ColumnType.Tiny:
-			return treatTinyAsBoolean && columnDefinition.ColumnLength == 1 && !isUnsigned ? SingleStoreDbType.Bool :
-				isUnsigned ? SingleStoreDbType.UByte : SingleStoreDbType.Byte;
+			case ColumnType.Tiny:
+				return treatTinyAsBoolean && columnDefinition.ColumnLength == 1 && !isUnsigned ? SingleStoreDbType.Bool :
+					isUnsigned ? SingleStoreDbType.UByte : SingleStoreDbType.Byte;
 
-		case ColumnType.Int24:
-			return isUnsigned ? SingleStoreDbType.UInt24 : SingleStoreDbType.Int24;
+			case ColumnType.Int24:
+				return isUnsigned ? SingleStoreDbType.UInt24 : SingleStoreDbType.Int24;
 
-		case ColumnType.Long:
-			return isUnsigned ? SingleStoreDbType.UInt32 : SingleStoreDbType.Int32;
+			case ColumnType.Long:
+				return isUnsigned ? SingleStoreDbType.UInt32 : SingleStoreDbType.Int32;
 
-		case ColumnType.Longlong:
-			return isUnsigned ? SingleStoreDbType.UInt64 : SingleStoreDbType.Int64;
+			case ColumnType.Longlong:
+				return isUnsigned ? SingleStoreDbType.UInt64 : SingleStoreDbType.Int64;
 
-		case ColumnType.Bit:
-			return SingleStoreDbType.Bit;
+			case ColumnType.Bit:
+				return SingleStoreDbType.Bit;
 
-		case ColumnType.String:
-			var columnLen = columnDefinition.ColumnLength /
-			                ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet);
-			if (guidFormat == SingleStoreGuidFormat.Char36 && columnLen == 36)
-				return SingleStoreDbType.Guid;
-			if (guidFormat == SingleStoreGuidFormat.Char32 && columnLen == 32)
-				return SingleStoreDbType.Guid;
-			if (treatChar48AsGeographyPoint && columnLen == 48)
-				return SingleStoreDbType.GeographyPoint;
-			if (columnLen == 1431655765)
-				return SingleStoreDbType.Geography;
-			goto case ColumnType.VarString;
-
-		case ColumnType.VarChar:
-		case ColumnType.VarString:
-		case ColumnType.TinyBlob:
-		case ColumnType.Blob:
-		case ColumnType.MediumBlob:
-		case ColumnType.LongBlob:
-			var type = columnDefinition.ColumnType;
-			if (columnDefinition.CharacterSet == CharacterSet.Binary)
-			{
-				if ((guidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.TimeSwapBinary16 or SingleStoreGuidFormat.LittleEndianBinary16) && columnDefinition.ColumnLength == 16)
+			case ColumnType.String:
+				var columnLen = columnDefinition.ColumnLength /
+								ProtocolUtility.GetBytesPerCharacter(columnDefinition.CharacterSet);
+				if (guidFormat == SingleStoreGuidFormat.Char36 && columnLen == 36)
 					return SingleStoreDbType.Guid;
+				if (guidFormat == SingleStoreGuidFormat.Char32 && columnLen == 32)
+					return SingleStoreDbType.Guid;
+				if (treatChar48AsGeographyPoint && columnLen == 48)
+					return SingleStoreDbType.GeographyPoint;
+				if (columnLen == 1073741823)
+					return SingleStoreDbType.Geography;
+				goto case ColumnType.VarString;
 
+			case ColumnType.VarChar:
+			case ColumnType.VarString:
+			case ColumnType.TinyBlob:
+			case ColumnType.Blob:
+			case ColumnType.MediumBlob:
+			case ColumnType.LongBlob:
+				var type = columnDefinition.ColumnType;
+				if (columnDefinition.CharacterSet == CharacterSet.Binary)
+				{
+					if ((guidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.TimeSwapBinary16 or SingleStoreGuidFormat.LittleEndianBinary16) && columnDefinition.ColumnLength == 16)
+						return SingleStoreDbType.Guid;
+
+					return type switch
+					{
+						ColumnType.String => SingleStoreDbType.Binary,
+						ColumnType.VarString => SingleStoreDbType.VarBinary,
+						ColumnType.TinyBlob => SingleStoreDbType.TinyBlob,
+						ColumnType.Blob => SingleStoreDbType.Blob,
+						ColumnType.MediumBlob => SingleStoreDbType.MediumBlob,
+						_ => SingleStoreDbType.LongBlob,
+					};
+				}
 				return type switch
 				{
-					ColumnType.String => SingleStoreDbType.Binary,
-					ColumnType.VarString => SingleStoreDbType.VarBinary,
-					ColumnType.TinyBlob => SingleStoreDbType.TinyBlob,
-					ColumnType.Blob => SingleStoreDbType.Blob,
-					ColumnType.MediumBlob => SingleStoreDbType.MediumBlob,
-					_ => SingleStoreDbType.LongBlob,
+					ColumnType.String => SingleStoreDbType.String,
+					ColumnType.VarString => SingleStoreDbType.VarChar,
+					ColumnType.TinyBlob => SingleStoreDbType.TinyText,
+					ColumnType.Blob => SingleStoreDbType.Text,
+					ColumnType.MediumBlob => SingleStoreDbType.MediumText,
+					_ => SingleStoreDbType.LongText,
 				};
-			}
-			return type switch
-			{
-				ColumnType.String => SingleStoreDbType.String,
-				ColumnType.VarString => SingleStoreDbType.VarChar,
-				ColumnType.TinyBlob => SingleStoreDbType.TinyText,
-				ColumnType.Blob => SingleStoreDbType.Text,
-				ColumnType.MediumBlob => SingleStoreDbType.MediumText,
-				_ => SingleStoreDbType.LongText,
-			};
 
-		case ColumnType.Json:
-			return SingleStoreDbType.JSON;
+			case ColumnType.Json:
+				return SingleStoreDbType.JSON;
 
-		case ColumnType.Short:
-			return isUnsigned ? SingleStoreDbType.UInt16 : SingleStoreDbType.Int16;
+			case ColumnType.Short:
+				return isUnsigned ? SingleStoreDbType.UInt16 : SingleStoreDbType.Int16;
 
-		case ColumnType.Date:
-		case ColumnType.NewDate:
-			return SingleStoreDbType.Date;
+			case ColumnType.Date:
+			case ColumnType.NewDate:
+				return SingleStoreDbType.Date;
 
-		case ColumnType.DateTime:
-			return SingleStoreDbType.DateTime;
+			case ColumnType.DateTime:
+				return SingleStoreDbType.DateTime;
 
-		case ColumnType.Timestamp:
-			return SingleStoreDbType.Timestamp;
+			case ColumnType.Timestamp:
+				return SingleStoreDbType.Timestamp;
 
-		case ColumnType.Time:
-			return SingleStoreDbType.Time;
+			case ColumnType.Time:
+				return SingleStoreDbType.Time;
 
-		case ColumnType.Year:
-			return SingleStoreDbType.Year;
+			case ColumnType.Year:
+				return SingleStoreDbType.Year;
 
-		case ColumnType.Float:
-			return SingleStoreDbType.Float;
+			case ColumnType.Float:
+				return SingleStoreDbType.Float;
 
-		case ColumnType.Double:
-			return SingleStoreDbType.Double;
+			case ColumnType.Double:
+				return SingleStoreDbType.Double;
 
-		case ColumnType.Decimal:
-			return SingleStoreDbType.Decimal;
+			case ColumnType.Decimal:
+				return SingleStoreDbType.Decimal;
 
-		case ColumnType.NewDecimal:
-			return SingleStoreDbType.NewDecimal;
+			case ColumnType.NewDecimal:
+				return SingleStoreDbType.NewDecimal;
 
-		case ColumnType.Geography:
-			return SingleStoreDbType.Geography;
+			case ColumnType.Geography:
+				return SingleStoreDbType.Geography;
 
-		case ColumnType.GeographyPoint:
-			return SingleStoreDbType.GeographyPoint;
+			case ColumnType.GeographyPoint:
+				return SingleStoreDbType.GeographyPoint;
 
-		case ColumnType.Null:
-			return SingleStoreDbType.Null;
+			case ColumnType.Null:
+				return SingleStoreDbType.Null;
 
-		case ColumnType.Enum:
-			return SingleStoreDbType.Enum;
+			case ColumnType.Enum:
+				return SingleStoreDbType.Enum;
 
-		case ColumnType.Set:
-			return SingleStoreDbType.Set;
+			case ColumnType.Set:
+				return SingleStoreDbType.Set;
 
-		default:
-			throw new NotImplementedException($"ConvertToMySqlDbType for {columnDefinition.ColumnType} is not implemented");
+			default:
+				throw new NotImplementedException($"ConvertToSingleStoreDbType for {columnDefinition.ColumnType} is not implemented");
 		}
 	}
 

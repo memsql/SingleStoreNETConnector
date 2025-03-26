@@ -2,7 +2,7 @@ using SingleStoreConnector.Protocol.Serialization;
 
 namespace SingleStoreConnector.Protocol.Payloads;
 
-internal sealed class AuthenticationMoreDataPayload
+internal readonly struct AuthenticationMoreDataPayload
 {
 	public byte[] Data { get; }
 

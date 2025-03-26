@@ -38,12 +38,9 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 		Assert.NotNull(activity);
 		Assert.Equal(ActivityKind.Client, activity.Kind);
 		Assert.Equal("Open", activity.OperationName);
-#if NET6_0_OR_GREATER
-		Assert.Equal(ActivityStatusCode.Ok, activity.Status);
-#endif
+		Assert.Equal(ActivityStatusCode.Unset, activity.Status);
 
 		AssertTags(activity.Tags, csb);
-		AssertTag(activity.Tags, "otel.status_code", "OK");
 	}
 
 	[Fact]
@@ -74,7 +71,6 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 				connection.Open();
 
 			Assert.NotNull(activities[i]);
-			AssertTag(activities[i].Tags, "otel.status_code", "OK");
 		}
 
 		// activities should have the same connection ID
@@ -104,12 +100,9 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 		Assert.NotNull(activity);
 		Assert.Equal(ActivityKind.Client, activity.Kind);
 		Assert.Equal("Open", activity.OperationName);
-#if NET6_0_OR_GREATER
 		Assert.Equal(ActivityStatusCode.Error, activity.Status);
-#endif
 
 		AssertTags(activity.Tags, csb);
-		AssertTag(activity.Tags, "otel.status_code", "ERROR");
 	}
 
 	[Fact]
@@ -140,14 +133,11 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 		Assert.NotNull(activity);
 		Assert.Equal(ActivityKind.Client, activity.Kind);
 		Assert.Equal("Execute", activity.OperationName);
-#if NET6_0_OR_GREATER
-		Assert.Equal(ActivityStatusCode.Ok, activity.Status);
-#endif
+		Assert.Equal(ActivityStatusCode.Unset, activity.Status);
 
 		AssertTags(activity.Tags, csb);
-		AssertTag(activity.Tags, "db.connection_id", connection.ServerThread.ToString(CultureInfo.InvariantCulture));
+		AssertTag(activity.Tags, "db.connection_id", connection.ServerThread.ConnectionId.ToString(CultureInfo.InvariantCulture));
 		AssertTag(activity.Tags, "db.statement", "SELECT 1;");
-		AssertTag(activity.Tags, "otel.status_code", "OK");
 	}
 
 	private void AssertTags(IEnumerable<KeyValuePair<string, string>> tags, SingleStoreConnectionStringBuilder csb)
@@ -165,7 +155,7 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 	{
 		var tag = tags.SingleOrDefault(x => x.Key == expectedTag);
 		if (tag.Key is null)
-			Assert.True(false, $"tags did not contain '{expectedTag}'");
+			Assert.Fail($"tags did not contain '{expectedTag}'");
 		Assert.Equal(expectedValue, tag.Value);
 	}
 }

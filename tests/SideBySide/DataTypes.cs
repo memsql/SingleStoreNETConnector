@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Reflection;
 using SingleStoreConnector.Core;
 #if BASELINE
 using MySql.Data.Types;
@@ -1045,6 +1044,12 @@ ORDER BY t.`Key`", Connection);
 	[InlineData("Polygon", "GEOGRAPHY", "POLYGON((0.00000000 0.00000000, 1.00000000 0.00000000, 1.00000000 1.00000000, 0.00000000 1.00000000, 0.00000000 0.00000000))")]
 	public void QueryGeography(string columnName, string dataTypeName, string expectedGeography)
 	{
+		// Disable the test for SingleStore versions earlier than 8.7 due to difference in metadata values
+		if (Connection.Session.S2ServerVersion.Version < new Version(8, 7, 0))
+		{
+			return;
+		}
+
 		var csb = CreateConnectionStringBuilder();
 		csb.TreatChar48AsGeographyPoint = true;
 		using var connectionWithParam = new SingleStoreConnection(csb.ConnectionString);
@@ -1154,12 +1159,18 @@ ORDER BY t.`Key`", Connection);
 #else
 	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, 4, typeof(int), "N", 0, 0)]
 #endif
-	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
+	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, 1073741823, typeof(string), "N", 0, 0)]
 	[InlineData("Point", "datatypes_geography", SingleStoreDbType.GeographyPoint, 48, typeof(string), "N", 0, 0)]
-	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
-	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, 1431655765, typeof(string), "N", 0, 0)]
+	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, 1073741823, typeof(string), "N", 0, 0)]
+	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, 1073741823, typeof(string), "N", 0, 0)]
 	public void GetSchemaTable(string column, string table, SingleStoreDbType mySqlDbType, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
+		// Disable the test for SingleStore versions earlier than 8.7 due to difference in metadata values for geography types
+		if (mySqlDbType == SingleStoreDbType.Geography && Connection.Session.S2ServerVersion.Version < new Version(8, 7, 0))
+		{
+			return;
+		}
+
 		SingleStoreConnection connectionWithParam = null;
 		if (mySqlDbType == SingleStoreDbType.GeographyPoint)
 		{
@@ -1345,12 +1356,18 @@ create table schema_table({createColumn});");
 	[InlineData("Timestamp", "datatypes_times", SingleStoreDbType.Timestamp, "TIMESTAMP", 26, typeof(DateTime), "N", -1, 6)]
 	[InlineData("Time", "datatypes_times", SingleStoreDbType.Time, "TIME", 18, typeof(TimeSpan), "N", -1, 6)]
 	[InlineData("Year", "datatypes_times", SingleStoreDbType.Year, "YEAR", 4, typeof(int), "N", -1, 0)]
-	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
+	[InlineData("Geography", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1073741823, typeof(string), "N", -1, 0)]
 	[InlineData("Point", "datatypes_geography", SingleStoreDbType.GeographyPoint, "POINT", 48, typeof(string), "N", -1, 0)]
-	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
-	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1431655765, typeof(string), "N", -1, 0)]
+	[InlineData("LineString", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1073741823, typeof(string), "N", -1, 0)]
+	[InlineData("Polygon", "datatypes_geography", SingleStoreDbType.Geography, "GEOGRAPHY", 1073741823, typeof(string), "N", -1, 0)]
 	public void GetColumnSchema(string column, string table, SingleStoreDbType mySqlDbType, string dataTypeName, int columnSize, Type dataType, string flags, int precision, int scale)
 	{
+		// Disable the test for SingleStore versions earlier than 8.7 due to difference in metadata values for geography types
+		if (mySqlDbType == SingleStoreDbType.Geography && Connection.Session.S2ServerVersion.Version < new Version(8, 7, 0))
+		{
+			return;
+		}
+
 		SingleStoreConnection connectionWithParam = null;
 		if (mySqlDbType == SingleStoreDbType.GeographyPoint)
 		{

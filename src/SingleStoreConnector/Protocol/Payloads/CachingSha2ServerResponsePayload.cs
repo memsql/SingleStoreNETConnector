@@ -2,7 +2,7 @@ using SingleStoreConnector.Protocol.Serialization;
 
 namespace SingleStoreConnector.Protocol.Payloads;
 
-internal sealed class CachingSha2ServerResponsePayload
+internal readonly struct CachingSha2ServerResponsePayload
 {
 	public const byte Signature = 0x01;
 

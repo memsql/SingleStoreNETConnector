@@ -5,17 +5,42 @@ namespace SingleStoreConnector.Core;
 /// </summary>
 internal struct CommandListPosition
 {
-	public CommandListPosition(IReadOnlyList<ISingleStoreCommand> commands)
+	public CommandListPosition(object commands)
 	{
-		Commands = commands;
+		m_commands = commands;
+		CommandCount = commands switch
+		{
+			SingleStoreCommand _ => 1,
+			IReadOnlyList<SingleStoreBatchCommand> list => list.Count,
+			_ => 0,
+		};
+		PreparedStatements = null;
 		CommandIndex = 0;
 		PreparedStatementIndex = 0;
 	}
 
+	public readonly ISingleStoreCommand CommandAt(int index) =>
+		m_commands switch
+		{
+			SingleStoreCommand command when index is 0 => command,
+			IReadOnlyList<SingleStoreBatchCommand> list => list[index],
+			_ => throw new ArgumentOutOfRangeException(nameof(index)),
+		};
+
 	/// <summary>
-	/// The commands in the list.
+	/// The commands in this list; either a singular <see cref="SingleStoreCommand"/> or a <see cref="IReadOnlyList{SingleStoreBatchCommand}"/>.
 	/// </summary>
-	public IReadOnlyList<ISingleStoreCommand> Commands { get; }
+	private readonly object m_commands;
+
+	/// <summary>
+	/// The number of commands in the list.
+	/// </summary>
+	public readonly int CommandCount;
+
+	/// <summary>
+	/// Associated prepared statements of commands
+	/// </summary>
+	public PreparedStatements? PreparedStatements;
 
 	/// <summary>
 	/// The index of the current command.
@@ -26,4 +51,9 @@ internal struct CommandListPosition
 	/// If the current command is a prepared statement, the index of the current prepared statement for that command.
 	/// </summary>
 	public int PreparedStatementIndex;
+
+	/// <summary>
+	/// Retrieve the last used prepared statement
+	/// </summary>
+	public PreparedStatement? LastUsedPreparedStatement;
 }

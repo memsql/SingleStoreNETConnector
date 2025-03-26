@@ -1,10 +1,3 @@
-using System;
-using System.Data;
-using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
-
 namespace SingleStoreConnector.Tests;
 
 public class ConnectionTests : IDisposable
@@ -89,7 +82,7 @@ public class ConnectionTests : IDisposable
 		m_csb.MinimumPoolSize = 0;
 		m_csb.MaximumPoolSize = 1;
 		m_csb.ConnectionLifeTime = lifeTime;
-		int serverThread;
+		ConnectionInfo serverThread;
 
 		using (var connection = new SingleStoreConnection(m_csb.ConnectionString))
 		{
@@ -186,7 +179,7 @@ public class ConnectionTests : IDisposable
 	[Fact]
 	public void ConnectionTimeout()
 	{
-		m_server.BlockOnConnect = true;
+		m_server.ConnectDelay = TimeSpan.FromSeconds(10);
 		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString);
 		csb.ConnectionTimeout = 4;
 		using var connection = new SingleStoreConnection(csb.ConnectionString);

@@ -58,11 +58,7 @@ public class ConnectAsync : IClassFixture<DatabaseFixture>
 		cts.Cancel();
 
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
-#if BASELINE
-		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await connection.OpenAsync(cts.Token));
-#else
 		await Assert.ThrowsAsync<OperationCanceledException>(async () => await connection.OpenAsync(cts.Token));
-#endif
 		await connection.OpenAsync();
 		Assert.Equal(ConnectionState.Open, connection.State);
 	}
@@ -135,7 +131,6 @@ public class ConnectAsync : IClassFixture<DatabaseFixture>
 		TestUtilities.AssertDuration(stopwatch, 1900, 1500);
 	}
 
-
 	[SkippableFact(ServerFeatures.Timeout, Baseline = "https://bugs.mysql.com/bug.php?id=94760")]
 	public async Task ConnectTimeoutAsyncCancellationToken()
 	{
@@ -186,7 +181,7 @@ public class ConnectAsync : IClassFixture<DatabaseFixture>
 		Assert.True(wasCalled);
 	}
 
-	[Fact]
+	[SkippableFact(ConfigSettings.UserHasPassword)]
 	public async Task UsePasswordProviderPasswordTakesPrecedence()
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();
@@ -445,6 +440,18 @@ public class ConnectAsync : IClassFixture<DatabaseFixture>
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		await connection.OpenAsync();
 	}
+
+	[SkippableFact(ServerFeatures.Ed25519)]
+	public async Task MultiAuthentication()
+	{
+		Ed25519AuthenticationPlugin.Install();
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.UserID = "multiAuthUser";
+		csb.Password = "secret";
+		csb.Database = null;
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		await connection.OpenAsync();
+	}
 #endif
 
 	// To create a MariaDB GSSAPI user for a current user
@@ -544,10 +551,3 @@ public class ConnectAsync : IClassFixture<DatabaseFixture>
 	readonly DatabaseFixture m_database;
 }
 
-#if BASELINE
-internal static class BaselineConnectionHelpers
-{
-	// Baseline connector capitalizes the 'B' in 'Database'
-	public static Task ChangeDatabaseAsync(this SingleStoreConnection connection, string databaseName) => connection.ChangeDataBaseAsync(databaseName);
-}
-#endif

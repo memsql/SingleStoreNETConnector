@@ -2,17 +2,20 @@
 
 ## Side-by-side Tests
 
-The `SideBySide` project is intended to verify that MySqlConnector doesn't break compatibility
-with Connector/NET and that [known bugs have been fixed](https://mysqlconnector.net/tutorials/migrating-from-connector-net/#fixed-bugs).
+The `SideBySide` project is intended to verify that SingleStoreSqlConnector doesn't break compatibility
+with Connector/NET;
 
-The tests require a MySQL server. The simplest way to run one is with [Docker](https://www.docker.com/community-edition):
+The tests require a SingleStore server. The simplest way to run one is with [Docker](https://github.com/singlestore-labs/singlestoredb-dev-image):
 
-    docker run -d --rm --name mysqlconnector -e MYSQL_ROOT_PASSWORD=pass -p 3306:3306 mysql:8.0.27 --max-allowed-packet=96M --character-set-server=utf8mb4 --log-bin-trust-function-creators=1 --local-infile=1 --max-connections=250
+    docker run \
+    -d --name singlestoredb-dev \
+    -e ROOT_PASSWORD="pass" \
+    -p 3306:3306 -p 8080:8080 -p 9000:9000 \
+    ghcr.io/singlestore-labs/singlestoredb-dev:latest
+
 
 Copy the file `SideBySide/config.json.example` to `SideBySide/config.json`, then edit
-the `config.json` file in order to connect to your server. If you are using the Docker
-command above, then the default options will work and do not need to be modified.
-Otherwise, set the following options appropriately:
+the `config.json` file in order to connect to your server. Set the following options appropriately:
 
 * `Data.ConnectionString`: The full connection string to your server. You should specify a database name. If the database does not exist, the test will attempt to create it.
 * `Data.PasswordlessUser`: (Optional) A user account in your database with no password and no roles.
@@ -37,27 +40,13 @@ Otherwise, set the following options appropriately:
   * `Tls13`: server supports TLS 1.3
   * `UnixDomainSocket`: server is accessible via a Unix domain socket
   * `UuidToBin`: server supports `UUID_TO_BIN` (MySQL 8.0 and later)
+  * `CancelSleepSuccessfully`: a "SLEEP" command produces a result set when it is cancelled, not an error payload.
 
 ## Running Tests
 
-There are two ways to run the tests: command line and Visual Studio.
-
-### Visual Studio 2017
-
-After building the solution, you should see a list of tests in the Test Explorer.  Click "Run All" to run them.
-
-### Command Line
-
-To run the tests against MySqlConnector:
+To run the tests against SingleStoreConnector:
 
 ```
 cd tests\SideBySide
-dotnet test -c Release -f net6.0
-```
-
-To run the tests against MySql.Data:
-
-```
-cd tests\SideBySide
-dotnet restore /p:Configuration=Baseline && dotnet test -c Baseline
+dotnet test -c Release -f net8.0
 ```

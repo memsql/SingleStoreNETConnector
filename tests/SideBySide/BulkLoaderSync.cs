@@ -346,15 +346,9 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		bl.Expressions.Add("five = UNHEX(five)");
 		bl.Local = false;
 #if BASELINE
-		Assert.Throws<System.NullReferenceException>(() =>
-		{
-			int rowCount = bl.Load();
-		});
+		Assert.Throws<SingleStoreException>(() => { var rowCount = bl.Load(); });
 #else
-		Assert.Throws<System.InvalidOperationException>(() =>
-		{
-			int rowCount = bl.Load();
-		});
+		Assert.Throws<InvalidOperationException>(() => { var rowCount = bl.Load(); });
 #endif
 	}
 
@@ -385,7 +379,6 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 #endif
 	}
 
-#if !BASELINE
 	[SkippableFact(ConfigSettings.LocalCsvFile)]
 	public void BulkLoadFileStreamInvalidOperation()
 	{
@@ -393,7 +386,9 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		connection.Open();
 		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
 		using var fileStream = new FileStream(AppConfig.SingleStoreBulkLoaderLocalCsvFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+#if !BASELINE
 		bl.SourceStream = fileStream;
+#endif
 		bl.TableName = m_testTable;
 		bl.CharacterSet = "UTF8";
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
@@ -403,10 +398,11 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		bl.FieldQuotationOptional = true;
 		bl.Expressions.Add("five = UNHEX(five)");
 		bl.Local = false;
-		Assert.Throws<System.InvalidOperationException>(() =>
-		{
-			int rowCount = bl.Load();
-		});
+#if !BASELINE
+		Assert.Throws<InvalidOperationException>(() => { int rowCount = bl.Load(); });
+#else
+		Assert.Throws<SingleStoreException>(() => { int rowCount = bl.Load(fileStream); });
+#endif
 	}
 
 	[SkippableFact(ConfigSettings.LocalCsvFile)]
@@ -416,7 +412,9 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		connection.Open();
 		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
 		using var fileStream = new FileStream(AppConfig.SingleStoreBulkLoaderLocalCsvFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true);
+#if !BASELINE
 		bl.SourceStream = fileStream;
+#endif
 		bl.TableName = m_testTable;
 		bl.CharacterSet = "UTF8";
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
@@ -426,7 +424,11 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		bl.FieldQuotationOptional = true;
 		bl.Expressions.Add("five = UNHEX(five)");
 		bl.Local = true;
+#if !BASELINE
 		int rowCount = bl.Load();
+#else
+		int rowCount = bl.Load(fileStream);
+#endif
 		Assert.Equal(20, rowCount);
 	}
 
@@ -437,7 +439,9 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		connection.Open();
 		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
 		using var memoryStream = new MemoryStream(m_memoryStreamBytes, false);
+#if !BASELINE
 		bl.SourceStream = memoryStream;
+#endif
 		bl.TableName = m_testTable;
 		bl.CharacterSet = "UTF8";
 		bl.Columns.AddRange(new string[] { "one", "two", "three" });
@@ -446,7 +450,11 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		bl.FieldQuotationCharacter = '"';
 		bl.FieldQuotationOptional = true;
 		bl.Local = false;
-		Assert.Throws<System.InvalidOperationException>(() => bl.Load());
+#if !BASELINE
+		Assert.Throws<InvalidOperationException>(() => bl.Load());
+#else
+		Assert.Throws<MySqlException>(() => bl.Load(memoryStream));
+#endif
 	}
 
 	[Fact]
@@ -456,7 +464,9 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		connection.Open();
 		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
 		using var memoryStream = new MemoryStream(m_memoryStreamBytes, false);
+#if !BASELINE
 		bl.SourceStream = memoryStream;
+#endif
 		bl.TableName = m_testTable;
 		bl.CharacterSet = "UTF8";
 		bl.Columns.AddRange(new string[] { "one", "two", "three" });
@@ -465,10 +475,15 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		bl.FieldQuotationCharacter = '"';
 		bl.FieldQuotationOptional = true;
 		bl.Local = true;
+#if !BASELINE
 		int rowCount = bl.Load();
+#else
+		int rowCount = bl.Load(memoryStream);
+#endif
 		Assert.Equal(5, rowCount);
 	}
 
+#if !BASELINE
 	[Fact]
 	public void BulkCopyDataReader()
 	{
@@ -516,7 +531,6 @@ insert into bulk_load_data_reader_source values(0, 'zero'),(1,'one'),(2,'two'),(
 		Assert.Throws<ArgumentNullException>(() => bulkCopy.WriteToServer(default(DataTable)));
 	}
 
-#if !BASELINE
 	[Fact]
 	public void BulkCopyDataTableWithSingleStoreDecimal()
 	{
@@ -642,7 +656,7 @@ create table bulk_load_data_table(a int, time1 time, time2 time(6));", connectio
 		}
 	}
 #endif
-#endif
+
 
 	public static IEnumerable<object[]> GetBulkCopyData() =>
 		new object[][]
@@ -694,6 +708,50 @@ create table bulk_load_data_table(a int, time1 time, time2 time(6));", connectio
 				Assert.True(reader.Read());
 				Assert.Equal(rows[i], reader.GetValue(0));
 			}
+			Assert.False(reader.Read());
+			Assert.False(reader.NextResult());
+		}
+	}
+
+	[Fact]
+	public void BulkCopyToColumnNeedingQuoting()
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("@a", typeof(string)),
+			},
+		};
+		dataTable.Rows.Add(2, "two");
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+		using (var cmd = new SingleStoreCommand($"""
+			drop table if exists bulk_load_quoted_identifier;
+			create table bulk_load_quoted_identifier(id int, `@a` text);
+			insert into bulk_load_quoted_identifier values (1, 'one');
+			""", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_quoted_identifier",
+		};
+		var result = bulkCopy.WriteToServer(dataTable);
+		Assert.Equal(1, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(@"select `@a` from bulk_load_quoted_identifier order by id;", connection))
+		{
+			using var reader = cmd.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal("one", reader.GetString(0));
+			Assert.True(reader.Read());
+			Assert.Equal("two", reader.GetString(0));
 			Assert.False(reader.Read());
 			Assert.False(reader.NextResult());
 		}

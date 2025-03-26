@@ -1,3 +1,5 @@
+using SingleStoreConnector.Protocol;
+
 namespace SideBySide;
 
 public class QueryTests : IClassFixture<DatabaseFixture>, IDisposable
@@ -124,7 +126,7 @@ INSERT INTO bug_1096 (`Name`) VALUES ('Demo-Name');");
 	public void GetOrdinalBeforeAndAfterRead()
 	{
 		using var cmd = m_database.Connection.CreateCommand();
-		cmd.CommandText = "select 0 as zero, 1 as one;";
+		cmd.CommandText = "select 0 as zero, 1 as one; select 2 as two;";
 
 		using var reader = cmd.ExecuteReader();
 		Assert.Equal(1, reader.GetOrdinal("one"));
@@ -132,6 +134,13 @@ INSERT INTO bug_1096 (`Name`) VALUES ('Demo-Name');");
 		Assert.Equal(1, reader.GetOrdinal("one"));
 		Assert.False(reader.Read());
 		Assert.Equal(1, reader.GetOrdinal("one"));
+
+		Assert.True(reader.NextResult());
+		Assert.Equal(0, reader.GetOrdinal("two"));
+		Assert.True(reader.Read());
+		Assert.Equal(0, reader.GetOrdinal("two"));
+		Assert.False(reader.Read());
+		Assert.Equal(0, reader.GetOrdinal("two"));
 	}
 
 	[Fact]
@@ -728,6 +737,43 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 		foreach (var ex in threadData.Exceptions)
 			throw ex;
 	}
+	[Fact]
+	public void GetNameAfterNextResult()
+	{
+		using var cmd = m_database.Connection.CreateCommand();
+		cmd.CommandText = "select 1 as a;";
+		using var reader = cmd.ExecuteReader();
+		Assert.False(reader.NextResult());
+#if BASELINE
+		Assert.Throws<IndexOutOfRangeException>(() => reader.GetName(0));
+#else
+		Assert.Throws<InvalidOperationException>(() => reader.GetName(0));
+#endif
+	}
+
+	[Fact]
+	public void GetNameBeforeAndAfterRead()
+	{
+		using var cmd = m_database.Connection.CreateCommand();
+		cmd.CommandText = "select '1' as a; select 1.0 as b;";
+		using var reader = cmd.ExecuteReader();
+		Assert.Equal("a", reader.GetName(0));
+
+		Assert.True(reader.Read());
+		Assert.Equal("a", reader.GetName(0));
+
+		Assert.False(reader.Read());
+		Assert.Equal("a", reader.GetName(0));
+
+		Assert.True(reader.NextResult());
+		Assert.Equal("b", reader.GetName(0));
+
+		Assert.True(reader.Read());
+		Assert.Equal("b", reader.GetName(0));
+
+		Assert.False(reader.Read());
+		Assert.Equal("b", reader.GetName(0));
+	}
 
 	[Theory]
 #if BASELINE
@@ -780,6 +826,30 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 #endif
 	}
 
+	[Fact]
+	public void GetFieldTypeBeforeAndAfterRead()
+	{
+		using var cmd = m_database.Connection.CreateCommand();
+		cmd.CommandText = "select '1' as a; select 1.0 as b;";
+		using var reader = cmd.ExecuteReader();
+		Assert.Equal(typeof(string), reader.GetFieldType(0));
+
+		Assert.True(reader.Read());
+		Assert.Equal(typeof(string), reader.GetFieldType(0));
+
+		Assert.False(reader.Read());
+		Assert.Equal(typeof(string), reader.GetFieldType(0));
+
+		Assert.True(reader.NextResult());
+		Assert.Equal(typeof(decimal), reader.GetFieldType(0));
+
+		Assert.True(reader.Read());
+		Assert.Equal(typeof(decimal), reader.GetFieldType(0));
+
+		Assert.False(reader.Read());
+		Assert.Equal(typeof(decimal), reader.GetFieldType(0));
+	}
+
 	[Theory]
 #if BASELINE
 	[InlineData("null", "VARCHAR")]
@@ -828,6 +898,30 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 #else
 		Assert.Throws<InvalidOperationException>(() => reader.GetDataTypeName(0));
 #endif
+	}
+
+	[Fact]
+	public void GetDataTypeNameBeforeAndAfterRead()
+	{
+		using var cmd = m_database.Connection.CreateCommand();
+		cmd.CommandText = "select '1' as a; select 1.0 as b;";
+		using var reader = cmd.ExecuteReader();
+		Assert.Equal("VARCHAR", reader.GetDataTypeName(0));
+
+		Assert.True(reader.Read());
+		Assert.Equal("VARCHAR", reader.GetDataTypeName(0));
+
+		Assert.False(reader.Read());
+		Assert.Equal("VARCHAR", reader.GetDataTypeName(0));
+
+		Assert.True(reader.NextResult());
+		Assert.Equal("DECIMAL", reader.GetDataTypeName(0));
+
+		Assert.True(reader.Read());
+		Assert.Equal("DECIMAL", reader.GetDataTypeName(0));
+
+		Assert.False(reader.Read());
+		Assert.Equal("DECIMAL", reader.GetDataTypeName(0));
 	}
 
 #if !BASELINE
@@ -895,11 +989,15 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 		{
 			ParameterName = "@param",
 			Direction = ParameterDirection.Output,
+			SingleStoreDbType = SingleStoreDbType.Int32,
 		});
 
+#if BASELINE
+		cmd.ExecuteNonQuery();
+		Assert.Equal(1234, cmd.Parameters["@param"].Value);
+#else
 		Assert.Throws<SingleStoreException>(() => cmd.ExecuteNonQuery());
-
-		// Issue #231: Assert.Equal(1234, cmd.Parameters["@param"].Value);
+#endif
 	}
 
 	[Fact]
@@ -983,6 +1081,33 @@ insert into long_enum_test (id, value) VALUES (0x7FFFFFFFFFFFFFFF, 1);
 		Assert.True(reader.Read());
 		Assert.Equal(long.MaxValue, reader.GetInt64(0));
 		Assert.Equal(1, reader.GetInt32(1));
+		Assert.False(reader.Read());
+	}
+
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void QueryEnumWithSingleStoreDbTypeInt16(bool prepare)
+	{
+		m_database.Connection.Execute(@"drop table if exists bug_1384;
+create table bug_1384(name text not null, enum1 smallint not null, enum2 smallint not null);
+insert into bug_1384 values('CreateNew', 1, 1), ('OpenOrCreate', 4, 4);
+");
+
+		using var command = new SingleStoreCommand("select * from bug_1384 where enum1 = @enum1 or enum2 = @enum2;", m_database.Connection)
+		{
+			Parameters =
+			{
+				new SingleStoreParameter("@enum1", SingleStoreDbType.Int16) { Value = (short) FileMode.OpenOrCreate },
+				new SingleStoreParameter("@enum2", SingleStoreDbType.Int16) { Value = FileMode.OpenOrCreate },
+			},
+		};
+		if (prepare)
+			command.Prepare();
+
+		using var reader = command.ExecuteReader();
+		Assert.True(reader.Read());
+		Assert.Equal("OpenOrCreate", reader.GetValue(0));
 		Assert.False(reader.Read());
 	}
 
@@ -1076,6 +1201,9 @@ insert into has_rows(value) values(1),(2),(3);");
 		Assert.True(reader.HasRows);
 		Assert.True(reader.HasRows);
 		Assert.True(reader.HasRows);
+
+		Assert.False(reader.NextResult());
+		Assert.False(reader.HasRows);
 	}
 
 	[Fact]
@@ -1247,17 +1375,11 @@ insert into datatypes_tinyint1(value) values(0), (1), (2), (-1), (-128), (127);"
 		for (int i = 0; i < expected.Length; i++)
 		{
 			Assert.True(reader.Read());
-#if !BASELINE
-			// https://bugs.mysql.com/bug.php?id=99091
 			Assert.Equal((sbyte) expected[i], reader.GetSByte(0));
-#endif
 			Assert.Equal((short) expected[i], reader.GetInt16(0));
 			Assert.Equal(expected[i], reader.GetInt32(0));
 			Assert.Equal((long) expected[i], reader.GetInt64(0));
-#if !BASELINE
-			// https://bugs.mysql.com/bug.php?id=99091
 			Assert.Equal(expected[i], reader.GetFieldValue<int>(0));
-#endif
 		}
 
 		Assert.False(reader.Read());
@@ -1494,6 +1616,22 @@ select mysql_query_attribute_string('attr2') as attribute, @param2 as parameter;
 		Assert.Equal(new byte[] { 0x67, 0x89, 0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89 }, buffer);
 	}
 #endif
+
+	[Fact]
+	public void ServerDoesNotSendMariaDbCacheMetadataOrQueryAttributes()
+	{
+		using var connection =  new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+
+		var serverCapabilities = connection.Session.ServerCapabilities;
+
+		// Ensure these capabilities are not set
+		Assert.False(serverCapabilities.HasFlag(ProtocolCapabilities.MariaDbCacheMetadata),
+			"Server should not send MariaDbCacheMetadata capability flag.");
+
+		Assert.False(serverCapabilities.HasFlag(ProtocolCapabilities.QueryAttributes),
+			"Server should not send QueryAttributes capability flag.");
+	}
 
 	class BoolTest
 	{

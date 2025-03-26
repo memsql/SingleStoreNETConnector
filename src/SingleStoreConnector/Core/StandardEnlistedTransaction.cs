@@ -1,16 +1,11 @@
 using System.Transactions;
-using SingleStoreConnector.Utilities;
 using IsolationLevel = System.Transactions.IsolationLevel;
 
 namespace SingleStoreConnector.Core;
 
-internal sealed class StandardEnlistedTransaction : EnlistedTransactionBase
+internal sealed class StandardEnlistedTransaction(Transaction transaction, SingleStoreConnection connection)
+	: EnlistedTransactionBase(transaction, connection)
 {
-	public StandardEnlistedTransaction(Transaction transaction, SingleStoreConnection connection)
-		: base(transaction, connection)
-	{
-	}
-
 	protected override void OnStart()
 	{
 		var isolationLevel = Transaction.IsolationLevel switch

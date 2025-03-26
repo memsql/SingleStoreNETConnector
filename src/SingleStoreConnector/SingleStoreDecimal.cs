@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
@@ -44,10 +43,10 @@ public readonly struct SingleStoreDecimal
 			}
 		}
 
-		throw new FormatException("Could not parse the value as a SingleStoreDecimal: {0}".FormatInvariant(value));
+		throw new FormatException($"Could not parse the value as a SingleStoreDecimal: {value}");
 	}
 
-	private static readonly Regex s_pattern = new(@"^-?([1-9][0-9]*|0)(\.([0-9]+))?$");
+	private static readonly Regex s_pattern = new(@"^-?([0-9]+)(\.([0-9]+))?$");
 
 	private readonly string m_value;
 }

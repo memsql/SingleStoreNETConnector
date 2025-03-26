@@ -9,36 +9,40 @@ internal static class HandshakeResponse41Payload
 	{
 		var writer = new ByteBufferWriter();
 
-		writer.Write((int) (
-			ProtocolCapabilities.Protocol41 |
-			(cs.InteractiveSession ? (serverCapabilities & ProtocolCapabilities.Interactive) : 0) |
-			(serverCapabilities & ProtocolCapabilities.LongPassword) |
-			(serverCapabilities & ProtocolCapabilities.Transactions) |
+		var clientCapabilities = (ProtocolCapabilities.Protocol41 |
+			(cs.InteractiveSession ? ProtocolCapabilities.Interactive : 0) |
+			ProtocolCapabilities.LongPassword |
+			ProtocolCapabilities.Transactions |
 			ProtocolCapabilities.SecureConnection |
-			(serverCapabilities & ProtocolCapabilities.PluginAuth) |
-			(serverCapabilities & ProtocolCapabilities.PluginAuthLengthEncodedClientData) |
+			ProtocolCapabilities.PluginAuth |
+			ProtocolCapabilities.PluginAuthLengthEncodedClientData |
 			ProtocolCapabilities.MultiStatements |
 			ProtocolCapabilities.MultiResults |
 			(cs.AllowLoadLocalInfile ? ProtocolCapabilities.LocalFiles : 0) |
-			(string.IsNullOrWhiteSpace(cs.Database) ? 0 : ProtocolCapabilities.ConnectWithDatabase) |
+			(string.IsNullOrWhiteSpace(cs.Database)
+				? 0
+				: ProtocolCapabilities.ConnectWithDatabase) |
 			(cs.UseAffectedRows ? 0 : ProtocolCapabilities.FoundRows) |
 			(useCompression ? ProtocolCapabilities.Compress : ProtocolCapabilities.None) |
-			(serverCapabilities & ProtocolCapabilities.ConnectionAttributes) |
-			(serverCapabilities & ProtocolCapabilities.SessionTrack) |
-			(serverCapabilities & ProtocolCapabilities.DeprecateEof) |
-			(serverCapabilities & ProtocolCapabilities.QueryAttributes) |
-			additionalCapabilities));
+			ProtocolCapabilities.ConnectionAttributes |
+			ProtocolCapabilities.SessionTrack |
+			ProtocolCapabilities.DeprecateEof |
+			ProtocolCapabilities.QueryAttributes |
+			ProtocolCapabilities.MariaDbCacheMetadata |
+			additionalCapabilities) & serverCapabilities;
+
+		writer.Write((int) clientCapabilities);
 		writer.Write(0x4000_0000);
 		writer.Write((byte) characterSet);
 
 		// NOTE: not new byte[19]; see https://github.com/dotnet/roslyn/issues/33088
-		ReadOnlySpan<byte> padding = new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+		ReadOnlySpan<byte> padding = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
 		writer.Write(padding);
 
 		if ((serverCapabilities & ProtocolCapabilities.LongPassword) == 0)
 		{
 			// MariaDB writes extended capabilities at the end of the padding
-			writer.Write((int) (((long) (serverCapabilities & ProtocolCapabilities.MariaDbComMulti)) >> 32));
+			writer.Write((int) ((ulong) clientCapabilities >> 32));
 		}
 		else
 		{

@@ -1,7 +1,7 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Reflection;
-using SingleStoreConnector.Core;
 
 namespace SingleStoreConnector.Utilities;
 
@@ -17,7 +17,6 @@ internal static class ActivitySourceHelper
 	public const string NetPeerNameTagName = "net.peer.name";
 	public const string NetPeerPortTagName = "net.peer.port";
 	public const string NetTransportTagName = "net.transport";
-	public const string StatusCodeTagName = "otel.status_code";
 	public const string ThreadIdTagName = "thread.id";
 
 	public const string DatabaseSystemValue = "mysql";
@@ -36,18 +35,10 @@ internal static class ActivitySourceHelper
 		return activity;
 	}
 
-	public static void SetSuccess(this Activity activity)
-	{
-		activity.SetStatus(ActivityStatusCode.Ok);
-		activity.SetTag(StatusCodeTagName, "OK");
-	}
-
 	public static void SetException(this Activity activity, Exception exception)
 	{
 		var description = exception is SingleStoreException mySqlException ? mySqlException.ErrorCode.ToString() : exception.Message;
 		activity.SetStatus(ActivityStatusCode.Error, description);
-		activity.SetTag(StatusCodeTagName, "ERROR");
-		activity.SetTag("otel.status_description", description);
 		activity.AddEvent(new ActivityEvent("exception", tags: new ActivityTagsCollection
 		{
 			{ "exception.type", exception.GetType().FullName },
@@ -65,12 +56,10 @@ internal static class ActivitySourceHelper
 		}
 	}
 
-	private static ActivitySource ActivitySource { get; } = CreateActivitySource();
+	public static Meter Meter { get; } = new("SingleStoreConnector", GetVersion());
 
-	private static ActivitySource CreateActivitySource()
-	{
-		var assembly = typeof(ActivitySourceHelper).Assembly;
-		var version = assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()!.Version;
-		return new("SingleStoreConnector", version);
-	}
+	private static ActivitySource ActivitySource { get; } = new("SingleStoreConnector", GetVersion());
+
+	private static string GetVersion() =>
+		typeof(ActivitySourceHelper).Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()!.Version;
 }

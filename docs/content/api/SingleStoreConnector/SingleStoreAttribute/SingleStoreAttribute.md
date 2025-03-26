@@ -15,11 +15,15 @@ public SingleStoreAttribute()
 
 # SingleStoreAttribute constructor (2 of 2)
 
-Initializes a new [`SingleStoreAttribute`](../SingleStoreAttribute.md) with the specified attribute name and value.
+[`SingleStoreAttribute`](../SingleStoreAttribute.md) represents an attribute that can be sent with a SingleStore query.
 
 ```csharp
 public SingleStoreAttribute(string attributeName, object? value)
 ```
+
+## Remarks
+
+See [Query Attributes](https://dev.mysql.com/doc/refman/8.0/en/query-attributes.html) for information on using query attributes.
 
 ## See Also
 

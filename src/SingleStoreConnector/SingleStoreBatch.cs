@@ -75,7 +75,7 @@ public sealed class SingleStoreBatch :
 	{
 		Connection = connection;
 		Transaction = transaction;
-		BatchCommands = new();
+		BatchCommands = [];
 		m_commandId = ICancellableCommandExtensions.GetNextId();
 	}
 
@@ -130,11 +130,14 @@ public sealed class SingleStoreBatch :
 #if NET6_0_OR_GREATER
 	protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
 #else
+	[SuppressMessage("Performance", "CA1859:Use concrete types when possible for improved performance", Justification = "Matches .NET 6.0 override")]
 	private DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
 #endif
 	{
 		this.ResetCommandTimeout();
-		return ExecuteReaderAsync(behavior, IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
+#pragma warning disable CA2012 // OK to read .Result because the ValueTask is completed
+		return ExecuteReaderAsync(behavior, IOBehavior.Synchronous, CancellationToken.None).Result;
+#pragma warning restore CA2012
 	}
 
 #if NET6_0_OR_GREATER
@@ -148,19 +151,18 @@ public sealed class SingleStoreBatch :
 		return await ExecuteReaderAsync(behavior, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 	}
 
-	private Task<SingleStoreDataReader> ExecuteReaderAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private ValueTask<SingleStoreDataReader> ExecuteReaderAsync(CommandBehavior behavior, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!IsValid(out var exception))
-		 	return Task.FromException<SingleStoreDataReader>(exception);
+			return ValueTaskExtensions.FromException<SingleStoreDataReader>(exception);
 
 		CurrentCommandBehavior = behavior;
 		foreach (SingleStoreBatchCommand batchCommand in BatchCommands)
 			batchCommand.Batch = this;
 
-		var payloadCreator = Connection!.Session.SupportsComMulti ? BatchedCommandPayloadCreator.Instance :
-			IsPrepared ? SingleCommandPayloadCreator.Instance :
+		var payloadCreator = IsPrepared ? SingleCommandPayloadCreator.Instance :
 			ConcatenatedCommandPayloadCreator.Instance;
-		return CommandExecutor.ExecuteReaderAsync(BatchCommands!.Commands, payloadCreator, behavior, default, ioBehavior, cancellationToken);
+		return CommandExecutor.ExecuteReaderAsync(new(BatchCommands!.Commands), payloadCreator, behavior, default, ioBehavior, cancellationToken);
 	}
 
 #if NET6_0_OR_GREATER
@@ -360,7 +362,7 @@ public sealed class SingleStoreBatch :
 		return exception is null && !Connection!.IgnorePrepare;
 	}
 
-	private Exception? GetExceptionForInvalidCommands()
+	private InvalidOperationException? GetExceptionForInvalidCommands()
 	{
 		foreach (var command in BatchCommands)
 		{

@@ -5,7 +5,7 @@ using SingleStoreConnector.Utilities;
 namespace SingleStoreConnector.Protocol.Payloads;
 
 // See https://dev.mysql.com/doc/internals/en/packet-ERR_Packet.html
-internal sealed class ErrorPayload
+internal readonly struct ErrorPayload
 {
 	public int ErrorCode { get; }
 	public string State { get; }

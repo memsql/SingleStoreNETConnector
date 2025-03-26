@@ -1,5 +1,4 @@
 using SingleStoreConnector.Protocol.Serialization;
-using Xunit;
 
 namespace SingleStoreConnector.Tests;
 

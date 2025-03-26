@@ -1,7 +1,3 @@
-using System.Linq;
-using SingleStoreConnector.Core;
-using Xunit;
-
 namespace SingleStoreConnector.Tests;
 
 public class LoadBalancerTests

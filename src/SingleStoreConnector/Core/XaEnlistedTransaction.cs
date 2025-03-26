@@ -3,13 +3,8 @@ using System.Transactions;
 
 namespace SingleStoreConnector.Core;
 
-internal sealed class XaEnlistedTransaction : EnlistedTransactionBase
+internal sealed class XaEnlistedTransaction(Transaction transaction, SingleStoreConnection connection) : EnlistedTransactionBase(transaction, connection)
 {
-	public XaEnlistedTransaction(Transaction transaction, SingleStoreConnection connection)
-		: base(transaction, connection)
-	{
-	}
-
 	protected override void OnStart()
 	{
 		// generate an "xid" with "gtrid" (Global TRansaction ID) from the .NET Transaction and "bqual" (Branch QUALifier)
@@ -37,7 +32,9 @@ internal sealed class XaEnlistedTransaction : EnlistedTransactionBase
 	{
 		try
 		{
-			ExecuteXaCommand("END");
+			if (!IsPrepared)
+				ExecuteXaCommand("END");
+
 			ExecuteXaCommand("ROLLBACK");
 		}
 		catch (SingleStoreException ex) when (ex.ErrorCode is SingleStoreErrorCode.XARBDeadlock)

@@ -1,8 +1,9 @@
 ---
-lastmod: 2021-11-25
+lastmod: 2025-01-16
 date: 2016-10-16
 title: Connection Options
-customtitle: SingleStore Connection String for C# .NET Core Programs
+customtitle: SingleStore Connection String Options for .NET/C#
+description: A SingleStoreConnection is configured using a connection string. The connection string options are key/value pairs described on this page.
 weight: 30
 menu:
   main:
@@ -365,7 +366,7 @@ These are the other options that SingleStoreConnector supports. They are set to 
   <tr id="InteractiveSession">
     <td>Interactive Session, Interactive, InteractiveSession</td>
     <td>false</td>
-    <td>If <code>true</code>, the session <code>wait_timeout</code> variable is initialized from the global <code>interactive_timeout<code> value instead of the global <code>wait_timeout</code> value.</td>
+    <td>If <code>true</code>, the session <code>wait_timeout</code> variable is initialized from the global <code>interactive_timeout</code> value instead of the global <code>wait_timeout</code> value.</td>
   </tr>
   <tr id="Keepalive">
     <td>Keep Alive, Keepalive</td>

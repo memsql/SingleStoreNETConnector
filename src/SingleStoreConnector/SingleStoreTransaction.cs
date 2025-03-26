@@ -40,7 +40,6 @@ public sealed class SingleStoreTransaction : DbTransaction
 				await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			Connection!.CurrentTransaction = null;
 			Connection = null;
-			activity?.SetSuccess();
 		}
 		catch (Exception ex) when (activity is { IsAllDataRequested: true })
 		{
@@ -266,7 +265,6 @@ public sealed class SingleStoreTransaction : DbTransaction
 		{
 			using var cmd = new SingleStoreCommand("rollback", Connection, this) { NoActivity = true };
 			await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			activity?.SetSuccess();
 		}
 		catch (Exception ex) when (activity is { IsAllDataRequested: true })
 		{
@@ -277,8 +275,12 @@ public sealed class SingleStoreTransaction : DbTransaction
 
 	private void VerifyValid()
 	{
+#if NET7_0_OR_GREATER
+		ObjectDisposedException.ThrowIf(m_isDisposed, this);
+#else
 		if (m_isDisposed)
 			throw new ObjectDisposedException(nameof(SingleStoreTransaction));
+#endif
 		if (Connection is null)
 			throw new InvalidOperationException("Already committed or rolled back.");
 		if (Connection.CurrentTransaction is null)

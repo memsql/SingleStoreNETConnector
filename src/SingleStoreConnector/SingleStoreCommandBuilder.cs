@@ -1,6 +1,6 @@
+using System.Globalization;
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Protocol.Serialization;
-using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
@@ -12,10 +12,14 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 
 	private static async Task DeriveParametersAsync(IOBehavior ioBehavior, SingleStoreCommand command, CancellationToken cancellationToken)
 	{
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(command);
+#else
 		if (command is null)
 			throw new ArgumentNullException(nameof(command));
+#endif
 		if (command.CommandType != CommandType.StoredProcedure)
-			throw new ArgumentException("SingleStoreCommand.CommandType must be StoredProcedure not {0}".FormatInvariant(command.CommandType), nameof(command));
+			throw new ArgumentException($"SingleStoreCommand.CommandType must be StoredProcedure not {command.CommandType}", nameof(command));
 		if (string.IsNullOrWhiteSpace(command.CommandText))
 			throw new ArgumentException("SingleStoreCommand.CommandText must be set to a stored procedure name", nameof(command));
 		if (command.Connection?.State != ConnectionState.Open)
@@ -23,13 +27,13 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 
 		// no-op check as MySQL reports at least 5.5.58
 		if (command.Connection.Session.MySqlCompatVersion.Version < ServerVersions.SupportsProcedureCache)
-			throw new NotSupportedException("MySQL Server {0} doesn't support INFORMATION_SCHEMA".FormatInvariant(command.Connection.Session.MySqlCompatVersion.OriginalString));
+			throw new NotSupportedException($"MySQL Server {command.Connection.Session.MySqlCompatVersion.OriginalString} doesn't support INFORMATION_SCHEMA");
 
 		var cachedProcedure = await command.Connection.GetCachedProcedure(command.CommandText!, revalidateMissing: true, ioBehavior, cancellationToken).ConfigureAwait(false);
 		if (cachedProcedure is null)
 		{
 			var name = NormalizedSchema.MustNormalize(command.CommandText!, command.Connection.Database);
-			throw new SingleStoreException("Procedure or function '{0}' cannot be found in database '{1}'.".FormatInvariant(name.Component, name.Schema));
+			throw new SingleStoreException($"Procedure or function '{name.Component}' cannot be found in database '{name.Schema}'.");
 		}
 
 		command.Parameters.Clear();
@@ -69,9 +73,13 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 		((SingleStoreParameter) parameter).SingleStoreDbType = (SingleStoreDbType) row[SchemaTableColumn.ProviderType];
 	}
 
-	protected override string GetParameterName(int parameterOrdinal) => "@p{0}".FormatInvariant(parameterOrdinal);
+#if NET6_0_OR_GREATER
+	protected override string GetParameterName(int parameterOrdinal) => string.Create(CultureInfo.InvariantCulture, $"@p{parameterOrdinal}");
+#else
+	protected override string GetParameterName(int parameterOrdinal) => FormattableString.Invariant($"@p{parameterOrdinal}");
+#endif
 	protected override string GetParameterName(string parameterName) => "@" + parameterName;
-	protected override string GetParameterPlaceholder(int parameterOrdinal) => "@p{0}".FormatInvariant(parameterOrdinal);
+	protected override string GetParameterPlaceholder(int parameterOrdinal) => GetParameterName(parameterOrdinal);
 
 	protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
 	{
@@ -88,7 +96,7 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 
 	public override string UnquoteIdentifier(string quotedIdentifier)
 	{
-		if (quotedIdentifier is [ '`', .., '`' ])
+		if (quotedIdentifier is ['`', .., '`'])
 			quotedIdentifier = quotedIdentifier[1..^1];
 		return quotedIdentifier.Replace("``", "`");
 	}

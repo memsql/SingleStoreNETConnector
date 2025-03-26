@@ -79,7 +79,7 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 			Assert.InRange(stopwatch.ElapsedMilliseconds, 4500, 7500);
 		}
 
-		closeTask.Wait();
+		await closeTask.ConfigureAwait(true);
 
 		foreach (var connection in connections)
 			connection.Dispose();
@@ -164,8 +164,13 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 		These variables exist for backwards compatibility with MySQL and are non-operational in SingleStore DB.
 		https://docs.singlestore.com/db/v7.6/en/reference/configuration-reference/engine-variables/list-of-engine-variables.html#character_set_client
 		*/
-		Assert.Equal("utf8", reader.GetString(0));
-		Assert.Equal("utf8", reader.GetString(1));
+		var expected = connection.S2ServerVersion.Split('.') is var parts && parts.Length >= 2
+		                                                                  && int.TryParse(parts[0], out var major)
+		                                                                  && int.TryParse(parts[1], out var minor)
+		                                                                  && (major > 8 || (major == 8 && minor >= 7)) ?
+			"utf8mb4" : "utf8";
+		Assert.Equal(expected, reader.GetString(0));
+		Assert.Equal(expected, reader.GetString(1));
 		Assert.False(await reader.ReadAsync().ConfigureAwait(false));
 	}
 
@@ -185,7 +190,7 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 			connections.Add(connection);
 		}
 
-		Func<HashSet<long>> getConnectionIds = () =>
+		Func<HashSet<ConnectionInfo>> getConnectionIds = () =>
 		{
 			var cids = GetConnectionIds(connections);
 			Assert.Equal(connections.Count, cids.Count);
@@ -248,10 +253,10 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 		csb.MinimumPoolSize = minPoolSize;
 		csb.MaximumPoolSize = maxPoolSize;
 		csb.ConnectionIdleTimeout = idleTimeout;
-		HashSet<int> serverThreadIdsBegin = new HashSet<int>();
-		HashSet<int> serverThreadIdsEnd = new HashSet<int>();
+		HashSet<ConnectionInfo> serverThreadIdsBegin = new HashSet<ConnectionInfo>();
+		HashSet<ConnectionInfo> serverThreadIdsEnd = new HashSet<ConnectionInfo>();
 
-		async Task OpenConnections(uint numConnections, HashSet<int> serverIdSet)
+		async Task OpenConnections(uint numConnections, HashSet<ConnectionInfo> serverIdSet)
 		{
 			using var connection = new SingleStoreConnection(csb.ConnectionString);
 			await connection.OpenAsync();
@@ -279,6 +284,6 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 #endif
 	}
 
-	private static HashSet<long> GetConnectionIds(IEnumerable<SingleStoreConnection> connections)
-		=> new HashSet<long>(connections.Select(x => (long) x.ServerThread));
+	private static HashSet<ConnectionInfo> GetConnectionIds(IEnumerable<SingleStoreConnection> connections)
+		=> new HashSet<ConnectionInfo>(connections.Select(x => x.ServerThread));
 }

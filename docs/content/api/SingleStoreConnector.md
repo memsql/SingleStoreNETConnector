@@ -25,11 +25,14 @@
 | class [SingleStoreConversionException](./SingleStoreConnector/SingleStoreConversionException.md) | [`SingleStoreConversionException`](./SingleStoreConnector/SingleStoreConversionException.md) is thrown when a SingleStore value can't be converted to another type. |
 | class [SingleStoreDataAdapter](./SingleStoreConnector/SingleStoreDataAdapter.md) |  |
 | class [SingleStoreDataReader](./SingleStoreConnector/SingleStoreDataReader.md) |  |
+| class [SingleStoreDataSource](./SingleStoreConnector/SingleStoreDataSource.md) | [`SingleStoreDataSource`](./SingleStoreConnector/SingleStoreDataSource.md) implements a SingleStore data source which can be used to obtain open connections, and against which commands can be executed directly. |
+| class [SingleStoreDataSourceBuilder](./SingleStoreConnector/SingleStoreDataSourceBuilder.md) | [`SingleStoreDataSourceBuilder`](./SingleStoreConnector/SingleStoreDataSourceBuilder.md) provides an API for configuring and creating a [`SingleStoreDataSource`](./SingleStoreConnector/SingleStoreDataSource.md), from which [`SingleStoreConnection`](./SingleStoreConnector/SingleStoreConnection.md) objects can be obtained. |
 | struct [SingleStoreDateTime](./SingleStoreConnector/SingleStoreDateTime.md) | Represents a SingleStore date/time value. This type can be used to store `DATETIME` values such as `0000-00-00` that can be stored in SingleStore (when [`AllowZeroDateTime`](./SingleStoreConnector/SingleStoreConnectionStringBuilder/AllowZeroDateTime.md) is true) but can't be stored in a DateTime value. |
 | enum [SingleStoreDateTimeKind](./SingleStoreConnector/SingleStoreDateTimeKind.md) | The DateTimeKind used when reading DateTime from the database. |
 | class [SingleStoreDbColumn](./SingleStoreConnector/SingleStoreDbColumn.md) |  |
 | enum [SingleStoreDbType](./SingleStoreConnector/SingleStoreDbType.md) |  |
 | struct [SingleStoreDecimal](./SingleStoreConnector/SingleStoreDecimal.md) | [`SingleStoreDecimal`](./SingleStoreConnector/SingleStoreDecimal.md) represents a SingleStore `DECIMAL` value that is too large to fit in a .NET Decimal. |
+| class [SingleStoreEndOfStreamException](./SingleStoreConnector/SingleStoreEndOfStreamException.md) |  |
 | class [SingleStoreError](./SingleStoreConnector/SingleStoreError.md) | [`SingleStoreError`](./SingleStoreConnector/SingleStoreError.md) represents an error or warning that occurred during the execution of a SQL statement. |
 | enum [SingleStoreErrorCode](./SingleStoreConnector/SingleStoreErrorCode.md) | SingleStore Server error codes. Taken from [Server Error Codes and Messages](https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html). |
 | class [SingleStoreException](./SingleStoreConnector/SingleStoreException.md) | [`SingleStoreException`](./SingleStoreConnector/SingleStoreException.md) is thrown when SingleStore Server returns an error code, or there is a communication error with the server. |

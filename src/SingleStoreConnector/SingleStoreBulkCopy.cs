@@ -3,6 +3,7 @@ using System.Buffers.Text;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Logging;
 using SingleStoreConnector.Protocol;
@@ -51,9 +52,16 @@ public sealed class SingleStoreBulkCopy
 	/// <param name="transaction">(Optional) The <see cref="SingleStoreTransaction"/> to use.</param>
 	public SingleStoreBulkCopy(SingleStoreConnection connection, SingleStoreTransaction? transaction = null)
 	{
-		m_connection = connection ?? throw new ArgumentNullException(nameof(connection));
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(connection);
+#else
+		if (connection is null)
+			throw new ArgumentNullException(nameof(connection));
+#endif
+		m_connection = connection;
 		m_transaction = transaction;
-		ColumnMappings = new();
+		m_logger = m_connection.LoggingConfiguration.BulkCopyLogger;
+		ColumnMappings = [];
 	}
 
 	/// <summary>
@@ -109,13 +117,18 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public SingleStoreBulkCopyResult WriteToServer(DataTable dataTable)
 	{
-		m_valuesEnumerator = DataRowsValuesEnumerator.Create(dataTable ?? throw new ArgumentNullException(nameof(dataTable)));
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(dataTable);
+#else
+		if (dataTable is null)
+			throw new ArgumentNullException(nameof(dataTable));
+#endif
+		m_valuesEnumerator = DataRowsValuesEnumerator.Create(dataTable);
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		return WriteToServerAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 #pragma warning restore CA2012
 	}
 
-#if NETCOREAPP || NETSTANDARD2_0_OR_GREATER
 	/// <summary>
 	/// Asynchronously copies all rows in the supplied <see cref="DataTable"/> to the destination table specified by the
 	/// <see cref="DestinationTableName"/> property of the <see cref="SingleStoreBulkCopy"/> object.
@@ -125,23 +138,15 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public async ValueTask<SingleStoreBulkCopyResult> WriteToServerAsync(DataTable dataTable, CancellationToken cancellationToken = default)
 	{
-		m_valuesEnumerator = DataRowsValuesEnumerator.Create(dataTable ?? throw new ArgumentNullException(nameof(dataTable)));
-		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
-	}
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(dataTable);
 #else
-	/// <summary>
-	/// Asynchronously copies all rows in the supplied <see cref="DataTable"/> to the destination table specified by the
-	/// <see cref="DestinationTableName"/> property of the <see cref="SingleStoreBulkCopy"/> object.
-	/// </summary>
-	/// <param name="dataTable">The <see cref="DataTable"/> to copy.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
-	public async Task<SingleStoreBulkCopyResult> WriteToServerAsync(DataTable dataTable, CancellationToken cancellationToken = default)
-	{
-		m_valuesEnumerator = DataRowsValuesEnumerator.Create(dataTable ?? throw new ArgumentNullException(nameof(dataTable)));
+		if (dataTable is null)
+			throw new ArgumentNullException(nameof(dataTable));
+#endif
+		m_valuesEnumerator = DataRowsValuesEnumerator.Create(dataTable);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
 	}
-#endif
 
 	/// <summary>
 	/// Copies all rows in the supplied sequence of <see cref="DataRow"/> objects to the destination table specified by the
@@ -153,13 +158,18 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public SingleStoreBulkCopyResult WriteToServer(IEnumerable<DataRow> dataRows, int columnCount)
 	{
-		m_valuesEnumerator = new DataRowsValuesEnumerator(dataRows ?? throw new ArgumentNullException(nameof(dataRows)), columnCount);
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(dataRows);
+#else
+		if (dataRows is null)
+			throw new ArgumentNullException(nameof(dataRows));
+#endif
+		m_valuesEnumerator = new DataRowsValuesEnumerator(dataRows, columnCount);
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		return WriteToServerAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 #pragma warning restore CA2012
 	}
 
-#if NETCOREAPP || NETSTANDARD2_0_OR_GREATER
 	/// <summary>
 	/// Asynchronously copies all rows in the supplied sequence of <see cref="DataRow"/> objects to the destination table specified by the
 	/// <see cref="DestinationTableName"/> property of the <see cref="SingleStoreBulkCopy"/> object. The number of columns
@@ -171,25 +181,15 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public async ValueTask<SingleStoreBulkCopyResult> WriteToServerAsync(IEnumerable<DataRow> dataRows, int columnCount, CancellationToken cancellationToken = default)
 	{
-		m_valuesEnumerator = new DataRowsValuesEnumerator(dataRows ?? throw new ArgumentNullException(nameof(dataRows)), columnCount);
-		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
-	}
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(dataRows);
 #else
-	/// <summary>
-	/// Asynchronously copies all rows in the supplied sequence of <see cref="DataRow"/> objects to the destination table specified by the
-	/// <see cref="DestinationTableName"/> property of the <see cref="SingleStoreBulkCopy"/> object. The number of columns
-	/// to be read from the <see cref="DataRow"/> objects must be specified in advance.
-	/// </summary>
-	/// <param name="dataRows">The collection of <see cref="DataRow"/> objects.</param>
-	/// <param name="columnCount">The number of columns to copy (in each row).</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
-	public async Task<SingleStoreBulkCopyResult> WriteToServerAsync(IEnumerable<DataRow> dataRows, int columnCount, CancellationToken cancellationToken = default)
-	{
-		m_valuesEnumerator = new DataRowsValuesEnumerator(dataRows ?? throw new ArgumentNullException(nameof(dataRows)), columnCount);
+		if (dataRows is null)
+			throw new ArgumentNullException(nameof(dataRows));
+#endif
+		m_valuesEnumerator = new DataRowsValuesEnumerator(dataRows, columnCount);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
 	}
-#endif
 
 	/// <summary>
 	/// Copies all rows in the supplied <see cref="IDataReader"/> to the destination table specified by the
@@ -199,13 +199,18 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public SingleStoreBulkCopyResult WriteToServer(IDataReader dataReader)
 	{
-		m_valuesEnumerator = DataReaderValuesEnumerator.Create(dataReader ?? throw new ArgumentNullException(nameof(dataReader)));
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(dataReader);
+#else
+		if (dataReader is null)
+			throw new ArgumentNullException(nameof(dataReader));
+#endif
+		m_valuesEnumerator = DataReaderValuesEnumerator.Create(dataReader);
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		return WriteToServerAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 #pragma warning restore CA2012
 	}
 
-#if NETCOREAPP || NETSTANDARD2_0_OR_GREATER
 	/// <summary>
 	/// Asynchronously copies all rows in the supplied <see cref="IDataReader"/> to the destination table specified by the
 	/// <see cref="DestinationTableName"/> property of the <see cref="SingleStoreBulkCopy"/> object.
@@ -215,30 +220,22 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public async ValueTask<SingleStoreBulkCopyResult> WriteToServerAsync(IDataReader dataReader, CancellationToken cancellationToken = default)
 	{
-		m_valuesEnumerator = DataReaderValuesEnumerator.Create(dataReader ?? throw new ArgumentNullException(nameof(dataReader)));
-		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
-	}
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(dataReader);
 #else
-	/// <summary>
-	/// Asynchronously copies all rows in the supplied <see cref="IDataReader"/> to the destination table specified by the
-	/// <see cref="DestinationTableName"/> property of the <see cref="SingleStoreBulkCopy"/> object.
-	/// </summary>
-	/// <param name="dataReader">The <see cref="IDataReader"/> to copy from.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
-	public async Task<SingleStoreBulkCopyResult> WriteToServerAsync(IDataReader dataReader, CancellationToken cancellationToken = default)
-	{
-		m_valuesEnumerator = DataReaderValuesEnumerator.Create(dataReader ?? throw new ArgumentNullException(nameof(dataReader)));
+		if (dataReader is null)
+			throw new ArgumentNullException(nameof(dataReader));
+#endif
+		m_valuesEnumerator = DataReaderValuesEnumerator.Create(dataReader);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
 	}
-#endif
 
 	private async ValueTask<SingleStoreBulkCopyResult> WriteToServerAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var tableName = DestinationTableName ?? throw new InvalidOperationException("DestinationTableName must be set before calling WriteToServer");
 		m_wasAborted = false;
 
-		Log.Debug("Starting bulk copy to {0}", tableName);
+		Log.StartingBulkCopy(m_logger, tableName);
 		var bulkLoader = new SingleStoreBulkLoader(m_connection)
 		{
 			CharacterSet = "utf8mb4",
@@ -274,7 +271,7 @@ public sealed class SingleStoreBulkCopy
 				var destinationColumn = reader.GetName(i);
 				if (schema[i].DataTypeName == "BIT")
 				{
-					AddColumnMapping(columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = CAST(%VAR% AS UNSIGNED)");
+					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = CAST(%VAR% AS UNSIGNED)");
 				}
 				else if (schema[i].DataTypeName == "YEAR")
 				{
@@ -286,11 +283,11 @@ public sealed class SingleStoreBulkCopy
 					var type = schema[i].DataType;
 					if (type == typeof(byte[]) || (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
 					{
-						AddColumnMapping(columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = UNHEX(%VAR%)");
+						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = UNHEX(%VAR%)");
 					}
 					else if (addDefaultMappings)
 					{
-						Log.Debug("Adding default column mapping from SourceOrdinal {0} to DestinationColumn {1}", i, destinationColumn);
+						Log.AddingDefaultColumnMapping(m_logger, i, destinationColumn);
 						columnMappings.Add(new(i, destinationColumn));
 					}
 				}
@@ -303,14 +300,14 @@ public sealed class SingleStoreBulkCopy
 			var columnMapping = columnMappings.FirstOrDefault(x => x.SourceOrdinal == i);
 			if (columnMapping is null)
 			{
-				Log.Debug("Ignoring column with SourceOrdinal {0}", i);
+				Log.IgnoringColumn(m_logger, i);
 				bulkLoader.Columns.Add("@`temporary_column_dotnet_connector_ignore`");
 			}
 			else
 			{
 				if (columnMapping.DestinationColumn.Length == 0)
 					throw new InvalidOperationException($"SingleStoreBulkCopyColumnMapping.DestinationName is not set for SourceOrdinal {columnMapping.SourceOrdinal}");
-				if (columnMapping.DestinationColumn[0] == '@')
+				if (columnMapping.DestinationColumn[0] == '@' && columnMapping.Expression is not null)
 					bulkLoader.Columns.Add(columnMapping.DestinationColumn);
 				else
 					bulkLoader.Columns.Add(QuoteIdentifier(columnMapping.DestinationColumn));
@@ -342,11 +339,11 @@ public sealed class SingleStoreBulkCopy
 		if (closeConnection)
 			m_connection.Close();
 
-		Log.Debug("Finished bulk copy to {0}", tableName);
+		Log.FinishedBulkCopy(m_logger, tableName);
 
 		if (!m_wasAborted && rowsInserted != m_rowsCopied && ConflictOption is SingleStoreBulkLoaderConflictOption.None)
 		{
-			Log.Error("Bulk copy to DestinationTableName={0} failed; RowsCopied={1}; RowsInserted={2}", tableName, m_rowsCopied, rowsInserted);
+			Log.BulkCopyFailed(m_logger, tableName, m_rowsCopied, rowsInserted);
 			throw new SingleStoreException(SingleStoreErrorCode.BulkCopyFailed, $"{m_rowsCopied} row{(m_rowsCopied == 1 ? " was" : "s were")} copied to {tableName} but only {rowsInserted} {(rowsInserted == 1 ? "was" : "were")} inserted.");
 		}
 
@@ -354,7 +351,7 @@ public sealed class SingleStoreBulkCopy
 
 		static string QuoteIdentifier(string identifier) => "`" + identifier.Replace("`", "``") + "`";
 
-		static void AddColumnMapping(List<SingleStoreBulkCopyColumnMapping> columnMappings, bool addDefaultMappings, int destinationOrdinal, string destinationColumn, string variableName, string expression)
+		static void AddColumnMapping(ILogger logger, List<SingleStoreBulkCopyColumnMapping> columnMappings, bool addDefaultMappings, int destinationOrdinal, string destinationColumn, string variableName, string expression)
 		{
 			expression = expression.Replace("%COL%", "`" + destinationColumn + "`").Replace("%VAR%", variableName);
 			var columnMapping = columnMappings.FirstOrDefault(x => destinationColumn.Equals(x.DestinationColumn, StringComparison.OrdinalIgnoreCase));
@@ -362,18 +359,18 @@ public sealed class SingleStoreBulkCopy
 			{
 				if (columnMapping.Expression is not null)
 				{
-					Log.Info("Column mapping for SourceOrdinal {0}, DestinationColumn {1} already has Expression {2}", columnMapping.SourceOrdinal, destinationColumn, columnMapping.Expression);
+					Log.ColumnMappingAlreadyHasExpression(logger, columnMapping.SourceOrdinal, destinationColumn, columnMapping.Expression);
 				}
 				else
 				{
-					Log.Trace("Setting expression to map SourceOrdinal {0} to DestinationColumn {1}", columnMapping.SourceOrdinal, destinationColumn);
+					Log.SettingExpressionToMapColumn(logger, columnMapping.SourceOrdinal, destinationColumn, expression);
 					columnMappings.Remove(columnMapping);
 					columnMappings.Add(new(columnMapping.SourceOrdinal, variableName, expression));
 				}
 			}
 			else if (addDefaultMappings)
 			{
-				Log.Debug("Adding default column mapping from SourceOrdinal {0} to DestinationColumn {1}", destinationOrdinal, destinationColumn);
+				Log.AddingDefaultColumnMapping(logger, destinationOrdinal, destinationColumn);
 				columnMappings.Add(new(destinationOrdinal, variableName, expression));
 			}
 		}
@@ -713,12 +710,12 @@ public sealed class SingleStoreBulkCopy
 		}
 	}
 
-	private static readonly char[] s_specialCharacters = new char[] { '\t', '\\', '\n' };
-	private static readonly ISingleStoreConnectorLogger Log = SingleStoreConnectorLogManager.CreateLogger(nameof(SingleStoreBulkCopy));
-	private static readonly Encoding s_utf8Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+	private static readonly char[] s_specialCharacters = [ '\t', '\\', '\n' ];
+	private static readonly UTF8Encoding s_utf8Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
 	private readonly SingleStoreConnection m_connection;
 	private readonly SingleStoreTransaction? m_transaction;
+	private readonly ILogger m_logger;
 	private int m_rowsCopied;
 	private IValuesEnumerator? m_valuesEnumerator;
 	private bool m_wasAborted;

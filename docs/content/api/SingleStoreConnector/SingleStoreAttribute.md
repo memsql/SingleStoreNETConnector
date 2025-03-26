@@ -11,7 +11,7 @@ public sealed class SingleStoreAttribute : ICloneable
 | name | description |
 | --- | --- |
 | [SingleStoreAttribute](SingleStoreAttribute/SingleStoreAttribute.md)() | Initializes a new [`SingleStoreAttribute`](./SingleStoreAttribute.md). |
-| [SingleStoreAttribute](SingleStoreAttribute/SingleStoreAttribute.md)(…) | Initializes a new [`SingleStoreAttribute`](./SingleStoreAttribute.md) with the specified attribute name and value. |
+| [SingleStoreAttribute](SingleStoreAttribute/SingleStoreAttribute.md)(…) | [`SingleStoreAttribute`](./SingleStoreAttribute.md) represents an attribute that can be sent with a SingleStore query. |
 | [AttributeName](SingleStoreAttribute/AttributeName.md) { get; set; } | Gets or sets the attribute name. |
 | [Value](SingleStoreAttribute/Value.md) { get; set; } | Gets or sets the attribute value. |
 | [Clone](SingleStoreAttribute/Clone.md)() | Returns a new [`SingleStoreAttribute`](./SingleStoreAttribute.md) with the same property values as this instance. |

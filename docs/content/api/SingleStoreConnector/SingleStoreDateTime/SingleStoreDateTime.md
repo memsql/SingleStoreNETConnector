@@ -38,7 +38,7 @@ public SingleStoreDateTime(SingleStoreDateTime other)
 
 # SingleStoreDateTime constructor (3 of 3)
 
-Initializes a new instance of [`SingleStoreDateTime`](../SingleStoreDateTime.md).
+Represents a SingleStore date/time value. This type can be used to store `DATETIME` values such as `0000-00-00` that can be stored in SingleStore (when [`AllowZeroDateTime`](../SingleStoreConnectionStringBuilder/AllowZeroDateTime.md) is true) but can't be stored in a DateTime value.
 
 ```csharp
 public SingleStoreDateTime(int year, int month, int day, int hour, int minute, int second, 

@@ -38,6 +38,63 @@ public static class TestUtilities
 		}
 	}
 
+	public static void AssertExecuteScalarReturnsOneOrIsCanceled(SingleStoreCommand command) =>
+		AssertExecuteScalarReturnsOneOrThrowsException(command, SingleStoreErrorCode.QueryInterrupted);
+
+#if !BASELINE
+	public static void AssertExecuteScalarReturnsOneOrTimesOut(SingleStoreCommand command) =>
+		AssertExecuteScalarReturnsOneOrThrowsException(command, SingleStoreErrorCode.CommandTimeoutExpired);
+#endif
+
+	private static void AssertExecuteScalarReturnsOneOrThrowsException(SingleStoreCommand command, SingleStoreErrorCode expectedCode)
+	{
+		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.CancelSleepSuccessfully))
+		{
+			AssertIsOne(command.ExecuteScalar());
+		}
+		else
+		{
+			var ex = Assert.Throws<SingleStoreException>(command.ExecuteScalar);
+#if BASELINE
+			Assert.Equal((int) expectedCode, ex.Number);
+#else
+			Assert.Equal(expectedCode, ex.ErrorCode);
+#endif
+		}
+	}
+
+	public static async Task AssertExecuteScalarReturnsOneOrIsCanceledAsync(SingleStoreCommand command, CancellationToken token = default) =>
+		await AssertExecuteScalarReturnsOneOrThrowsExceptionAsync(command, SingleStoreErrorCode.QueryInterrupted, token);
+
+#if !BASELINE
+	public static async Task AssertExecuteScalarReturnsOneOrTimesOutAsync(SingleStoreCommand command, CancellationToken token = default) =>
+		await AssertExecuteScalarReturnsOneOrThrowsExceptionAsync(command, SingleStoreErrorCode.CommandTimeoutExpired, token);
+#endif
+
+	private static async Task AssertExecuteScalarReturnsOneOrThrowsExceptionAsync(SingleStoreCommand command, SingleStoreErrorCode expectedCode, CancellationToken token)
+	{
+		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.CancelSleepSuccessfully))
+		{
+			AssertIsOne(await command.ExecuteScalarAsync(token));
+		}
+		else
+		{
+			var ex = await Assert.ThrowsAnyAsync<Exception>(async () => await command.ExecuteScalarAsync(token));
+			var exception = ex as SingleStoreException;
+			while (exception is null && ex is not null)
+			{
+				ex = ex.InnerException;
+				exception = ex as SingleStoreException;
+			}
+			Assert.NotNull(exception);
+#if BASELINE
+			Assert.Equal((int) expectedCode, exception.Number);
+#else
+			Assert.Equal(expectedCode, exception.ErrorCode);
+#endif
+		}
+	}
+
 	/// <summary>
 	/// Asserts that <paramref name="stopwatch"/> is in the range [minimumMilliseconds, minimumMilliseconds + lengthMilliseconds].
 	/// </summary>
@@ -88,6 +145,9 @@ public static class TestUtilities
 
 		if (configSettings.HasFlag(ConfigSettings.PasswordlessUser) && string.IsNullOrWhiteSpace(AppConfig.PasswordlessUser))
 			return "Requires PasswordlessUser in config.json";
+
+		if (configSettings.HasFlag(ConfigSettings.UserHasPassword) && csb.Password.Length == 0)
+			return "Requires password in connection string";
 
 		if (configSettings.HasFlag(ConfigSettings.GSSAPIUser) && string.IsNullOrWhiteSpace(AppConfig.GSSAPIUser))
 			return "Requires GSSAPIUser in config.json";

@@ -1,5 +1,4 @@
 using System.Collections;
-using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
@@ -9,7 +8,7 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 {
 	internal SingleStoreParameterCollection()
 	{
-		m_parameters = new();
+		m_parameters = [];
 		m_nameToIndex = new(StringComparer.OrdinalIgnoreCase);
 	}
 
@@ -26,13 +25,25 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 
 	public override int Add(object value)
 	{
-		AddParameter((SingleStoreParameter) (value ?? throw new ArgumentNullException(nameof(value))), m_parameters.Count);
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(value);
+#else
+		if (value is null)
+			throw new ArgumentNullException(nameof(value));
+#endif
+		AddParameter((SingleStoreParameter) value, m_parameters.Count);
 		return m_parameters.Count - 1;
 	}
 
 	public SingleStoreParameter Add(SingleStoreParameter parameter)
 	{
-		AddParameter(parameter ?? throw new ArgumentNullException(nameof(parameter)), m_parameters.Count);
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(parameter);
+#else
+		if (parameter is null)
+			throw new ArgumentNullException(nameof(parameter));
+#endif
+		AddParameter(parameter, m_parameters.Count);
 		return parameter;
 	}
 
@@ -80,7 +91,7 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 	{
 		var index = IndexOf(parameterName);
 		if (index == -1)
-			throw new ArgumentException("Parameter '{0}' not found in the collection".FormatInvariant(parameterName), nameof(parameterName));
+			throw new ArgumentException($"Parameter '{parameterName}' not found in the collection", nameof(parameterName));
 		return m_parameters[index];
 	}
 
@@ -124,7 +135,13 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 
 	protected override void SetParameter(int index, DbParameter value)
 	{
-		var newParameter = (SingleStoreParameter) (value ?? throw new ArgumentNullException(nameof(value)));
+#if NET6_0_OR_GREATER
+		ArgumentNullException.ThrowIfNull(value);
+#else
+		if (value is null)
+			throw new ArgumentNullException(nameof(value));
+#endif
+		var newParameter = (SingleStoreParameter) value;
 		var oldParameter = m_parameters[index];
 		if (oldParameter.NormalizedParameterName is not null)
 			m_nameToIndex.Remove(oldParameter.NormalizedParameterName);
@@ -163,7 +180,7 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 		if (newName.Length != 0)
 		{
 			if (m_nameToIndex.ContainsKey(newName))
-				throw new SingleStoreException(@"There is already a parameter with the name '{0}' in this collection.".FormatInvariant(parameter.ParameterName));
+				throw new SingleStoreException($"There is already a parameter with the name '{parameter.ParameterName}' in this collection.");
 			m_nameToIndex[newName] = index;
 		}
 	}
@@ -171,7 +188,7 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 	private void AddParameter(SingleStoreParameter parameter, int index)
 	{
 		if (!string.IsNullOrEmpty(parameter.NormalizedParameterName) && NormalizedIndexOf(parameter.NormalizedParameterName) != -1)
-			throw new SingleStoreException(@"Parameter '{0}' has already been defined.".FormatInvariant(parameter.ParameterName));
+			throw new SingleStoreException($"Parameter '{parameter.ParameterName}' has already been defined.");
 		if (index < m_parameters.Count)
 		{
 			foreach (var pair in m_nameToIndex.ToList())

@@ -28,12 +28,18 @@ new SingleStoreBulkCopyColumnMapping
 public sealed class SingleStoreBulkCopyColumnMapping
 ```
 
+| parameter | description |
+| --- | --- |
+| sourceOrdinal | The zero-based ordinal position of the source column. |
+| destinationColumn | The name of the destination column. |
+| expression | The optional expression to be used to set the destination column. |
+
 ## Public Members
 
 | name | description |
 | --- | --- |
 | [SingleStoreBulkCopyColumnMapping](SingleStoreBulkCopyColumnMapping/SingleStoreBulkCopyColumnMapping.md)() | Initializes [`SingleStoreBulkCopyColumnMapping`](./SingleStoreBulkCopyColumnMapping.md) with the default values. |
-| [SingleStoreBulkCopyColumnMapping](SingleStoreBulkCopyColumnMapping/SingleStoreBulkCopyColumnMapping.md)(…) | Initializes [`SingleStoreBulkCopyColumnMapping`](./SingleStoreBulkCopyColumnMapping.md) to the specified values. |
+| [SingleStoreBulkCopyColumnMapping](SingleStoreBulkCopyColumnMapping/SingleStoreBulkCopyColumnMapping.md)(…) | Use [`SingleStoreBulkCopyColumnMapping`](./SingleStoreBulkCopyColumnMapping.md) to specify how to map columns in the source data to columns in the destination table when using [`SingleStoreBulkCopy`](./SingleStoreBulkCopy.md). |
 | [DestinationColumn](SingleStoreBulkCopyColumnMapping/DestinationColumn.md) { get; set; } | The name of the destination column to copy to. To use an expression, this should be the name of a unique user-defined variable. |
 | [Expression](SingleStoreBulkCopyColumnMapping/Expression.md) { get; set; } | An optional expression for setting a destination column. To use an expression, the [`DestinationColumn`](./SingleStoreBulkCopyColumnMapping/DestinationColumn.md) should be set to the name of a user-defined variable and this expression should set a column using that variable. |
 | [SourceOrdinal](SingleStoreBulkCopyColumnMapping/SourceOrdinal.md) { get; set; } | The zero-based ordinal position of the source column to map from. |

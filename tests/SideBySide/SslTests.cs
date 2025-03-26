@@ -62,19 +62,11 @@ public class SslTests : IClassFixture<DatabaseFixture>
 		var certificateFilePath = Path.Combine(AppConfig.CertsPath, certificateFile);
 
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
-#if NETFRAMEWORK
 		connection.ProvideClientCertificatesCallback = x =>
 		{
 			x.Add(new X509Certificate2(certificateFilePath, certificateFilePassword));
-			return Task.CompletedTask;
+			return default;
 		};
-#else
-		connection.ProvideClientCertificatesCallback = async x =>
-		{
-			var certificateBytes = await File.ReadAllBytesAsync(certificateFilePath);
-			x.Add(new X509Certificate2(certificateBytes, certificateFilePassword));
-		};
-#endif
 
 		await connection.OpenAsync();
 		Assert.True(connection.SslIsEncrypted);
@@ -265,25 +257,6 @@ public class SslTests : IClassFixture<DatabaseFixture>
 		using var reader = await cmd.ExecuteReaderAsync();
 		Assert.True(reader.Read());
 		Assert.Equal("TLSv1.1", reader.GetString(1));
-	}
-#endif
-
-#if NETCOREAPP3_1
-	[SkippableFact(ConfigSettings.RequiresSsl)]
-	public async Task RequireTls13()
-	{
-		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.Tls13))
-			return;
-
-		var csb = AppConfig.CreateConnectionStringBuilder();
-		csb.TlsVersion = "TLS 1.3";
-
-		using var connection = new SingleStoreConnection(csb.ConnectionString);
-#if !BASELINE
-		await Assert.ThrowsAsync<SingleStoreException>(async () => await connection.OpenAsync());
-#else
-		await Assert.ThrowsAsync<Win32Exception>(async () => await connection.OpenAsync());
-#endif
 	}
 #endif
 
