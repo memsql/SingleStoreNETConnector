@@ -15,7 +15,7 @@ if __name__ == "__main__":
         hostname = f.read()
     password = os.getenv("SQL_USER_PASSWORD")
 
-    with open("./.circleci/SideBySide/config.json", "r") as f_in:
+    with open("./.github/workflows/SideBySide/config.json", "r") as f_in:
         config_content = f_in.read()
 
     config_content = config_content.replace("SINGLESTORE_HOST", hostname, 1)
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     config_content = config_content.replace("SQL_USER_NAME", "admin", 1)
 
     for target_framework in NET_FRAMEWORKS:
-        with open(rf"C:\Users\circleci\project\artifacts\bin\SideBySide\release_{target_framework}\config.json", "w") as f_out:
+        with open(rf"C:\Users\github\project\artifacts\bin\SideBySide\release_{target_framework}\config.json", "w") as f_out:
             f_out.write(config_content)
 
     with open(os.path.join(home_dir, "CONNECTION_STRING"), "w") as f_conn:

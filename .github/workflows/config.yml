@@ -58,14 +58,14 @@ jobs:
           dotnet --info
 
       - name: Start SingleStore Cluster
-        run: ./.circleci/setup_cluster.sh
+        run: ./.github/workflows/setup_cluster.sh
 
       - name: Build connector
         run: dotnet build -c Release
 
       - name: Copy config file for SideBySide tests
         run: |
-          cp ./.circleci/SideBySide/config.json tests/SideBySide/config.json
+          cp ./.github/workflows/SideBySide/config.json tests/SideBySide/config.json
           sed -i "s|SINGLESTORE_HOST|127.0.0.1|g" tests/SideBySide/config.json
           sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
           sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
@@ -107,23 +107,23 @@ jobs:
         run: dotnet build -c Release
 
       - name: Start SingleStore for SideBySide tests
-        run: python .circleci\s2ms_cluster.py start singlestoretest
+        run: python .github\workflows\s2ms_cluster.py start singlestoretest
 
       - name: Fill test config
-        run: python .circleci\fill_test_config.py
+        run: python .github\workflows\fill_test_config.py
 
       - name: Run Unit tests
-        run: .\.circleci\run-test-windows.ps1 -test_block SingleStoreConnector.Tests -target_framework net8.0
+        run: .\.github\workflows\run-test-windows.ps1 -test_block SingleStoreConnector.Tests -target_framework net8.0
 
       - name: Run Conformance tests
-        run: .\.circleci\run-test-windows.ps1 -test_block Conformance.Tests -target_framework net8.0
+        run: .\.github\workflows\run-test-windows.ps1 -test_block Conformance.Tests -target_framework net8.0
 
       - name: Run SideBySide tests
-        run: .\.circleci\run-test-windows.ps1 -test_block SideBySide -target_framework net8.0
+        run: .\.github\workflows\run-test-windows.ps1 -test_block SideBySide -target_framework net8.0
 
       - name: Terminate test cluster
         if: always()
-        run: python .circleci\s2ms_cluster.py terminate
+        run: python .github\workflows\s2ms_cluster.py terminate
 
   publish:
     if: startsWith(github.ref, 'refs/tags/')
