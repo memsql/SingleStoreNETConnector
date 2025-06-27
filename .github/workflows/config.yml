@@ -42,6 +42,11 @@ jobs:
           echo "=== AFTER ==="
           df -h
 
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
       - name: Install dependencies
         run: |
           sudo apt-get update
