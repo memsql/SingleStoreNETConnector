@@ -69,8 +69,8 @@ jobs:
           sed -i "s|SINGLESTORE_HOST|127.0.0.1|g" tests/SideBySide/config.json
           sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
           sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
-          mkdir -p /home/runner/work/artifacts/bin/SideBySide/release_net8.0/
-          cp tests/SideBySide/config.json /home/runner/work/artifacts/bin/SideBySide/release_net8.0/config.json
+          mkdir -p /home/runner/work/SingleStoreNETConnector/SingleStoreNETConnector/artifacts/bin/SideBySide/release_net8.0/
+          cp tests/SideBySide/config.json /home/runner/work/SingleStoreNETConnector/SingleStoreNETConnector/artifacts/bin/SideBySide/release_net8.0/config.json
 
       - name: Run Unit tests
         run: |
