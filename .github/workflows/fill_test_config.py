@@ -30,5 +30,7 @@ if __name__ == "__main__":
         with open(os.path.join(dir_path, "config.json"), "w") as f_out:
             f_out.write(config_content)
 
+    home_dir = os.path.expanduser("~")
+
     with open(os.path.join(home_dir, "CONNECTION_STRING"), "w") as f_conn:
         f_conn.write(json.loads(config_content)["Data"]["ConnectionString"])
