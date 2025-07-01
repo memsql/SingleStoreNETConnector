@@ -22,6 +22,8 @@ if __name__ == "__main__":
     config_content = config_content.replace("SQL_USER_PASSWORD", password, 1)
     config_content = config_content.replace("SQL_USER_NAME", "admin", 1)
 
+    base_path = os.getenv("GITHUB_WORKSPACE", os.getcwd())
+
     for target_framework in NET_FRAMEWORKS:
         dir_path = os.path.join(base_path, f"artifacts/bin/SideBySide/release_{target_framework}")
         os.makedirs(dir_path, exist_ok=True)
