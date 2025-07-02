@@ -13,6 +13,7 @@ jobs:
   test-ubuntu:
     runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
         singlestore_image:
           - singlestore/cluster-in-a-box:alma-8.7.12-483e5f8acb-4.1.0-1.17.15
@@ -92,6 +93,8 @@ jobs:
 
   test-windows:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
 
@@ -111,6 +114,9 @@ jobs:
 
       - name: Fill test config
         run: python .github\workflows\fill_test_config.py
+
+      - name: Dump final config.json
+        run: type artifacts\bin\SideBySide\release_net8.0\config.json
 
       - name: Run Unit tests
         run: .\.github\workflows\run-test-windows.ps1 -test_block SingleStoreConnector.Tests -target_framework net8.0
