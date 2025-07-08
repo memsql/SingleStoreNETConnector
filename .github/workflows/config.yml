@@ -115,6 +115,16 @@ jobs:
       - name: Fill test config
         run: python .github\workflows\fill_test_config.py
 
+      # …in your test-windows job, after “Fill test config”:
+      - name: Export CONFORMANCE connection string
+        # run under bash so we can use $GITHUB_ENV
+        shell: bash
+        run: |
+          # read the connection string that fill_test_config.py just wrote
+          CONN_STR=$(< "$HOME/CONNECTION_STRING")
+          # expose it to subsequent steps
+          echo "CONNECTION_STRING=$CONN_STR" >> $GITHUB_ENV
+
       - name: Dump final config.json
         run: type artifacts\bin\SideBySide\release_net8.0\config.json
 
