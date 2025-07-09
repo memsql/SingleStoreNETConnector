@@ -22,9 +22,9 @@ if __name__ == "__main__":
     config_content = config_content.replace("SQL_USER_PASSWORD", password, 1)
     config_content = config_content.replace("SQL_USER_NAME", "admin", 1)
 
-    obj = json.loads(config_content)
-    obj["Data"]["ConnectionString"] += ";SslMode=Required;SslProtocols=Tls12;TrustServerCertificate=True"
-    config_content = json.dumps(obj, indent=4)
+    config = json.loads(config_content)
+    config["Data"]["ConnectionString"] += ";SslMode=Required;TlsVersion=TLS 1.2;TrustServerCertificate=True"
+    config_content = json.dumps(config, indent=4)
 
     print("Generated config content:")
     print(config_content)
