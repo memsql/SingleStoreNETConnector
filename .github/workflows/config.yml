@@ -114,17 +114,10 @@ jobs:
 
       - name: Fill test config
         run: python .github\workflows\fill_test_config.py
-
-      # …in your test-windows job, after “Fill test config”:
-      - name: Export CONFORMANCE connection string
-        # run under bash so we can use $GITHUB_ENV
+      
+      - name: Export full connection string
         shell: bash
-        run: |
-          CONN_STR=$(< "$HOME/CONNECTION_STRING")
-          echo "CONNECTION_STRING=$CONN_STR" >> $GITHUB_ENV
-
-      - name: Dump final config.json
-        run: type artifacts\bin\SideBySide\release_net8.0\config.json
+        run: echo "CONNECTION_STRING=$(< $HOME/CONNECTION_STRING)" >> $GITHUB_ENV
 
       - name: Run Unit tests
         run: .\.github\workflows\run-test-windows.ps1 -test_block SingleStoreConnector.Tests -target_framework net8.0
