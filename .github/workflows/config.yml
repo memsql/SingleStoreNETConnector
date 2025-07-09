@@ -120,9 +120,7 @@ jobs:
         # run under bash so we can use $GITHUB_ENV
         shell: bash
         run: |
-          # read the connection string that fill_test_config.py just wrote
           CONN_STR=$(< "$HOME/CONNECTION_STRING")
-          # expose it to subsequent steps
           echo "CONNECTION_STRING=$CONN_STR" >> $GITHUB_ENV
 
       - name: Dump final config.json
