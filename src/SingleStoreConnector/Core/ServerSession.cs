@@ -1061,11 +1061,6 @@ internal sealed partial class ServerSession
 					// if this is the final IP address in the list, throw a fatal exception; otherwise try the next IP address
 					if (hostNameIndex == hostNames.Count - 1 && ipAddressIndex == ipAddresses.Length - 1)
 					{
-						// right before throwing, dump the host info to stderr:
-						Console.Error.WriteLine(
-							$"[Conformance] final connect attempt: host='{hostName}' " +
-							$"(resolved to {ipAddressString}) port={cs.Port}");
-
 						lock (m_lock)
 							m_state = State.Failed;
 						if (hostNames.Count == 1 && ipAddresses.Length == 1)

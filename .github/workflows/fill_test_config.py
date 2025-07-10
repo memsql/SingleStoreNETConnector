@@ -22,13 +22,6 @@ if __name__ == "__main__":
     config_content = config_content.replace("SQL_USER_PASSWORD", password, 1)
     config_content = config_content.replace("SQL_USER_NAME", "admin", 1)
 
-    config = json.loads(config_content)
-    config["Data"]["ConnectionString"] += ";SslMode=Required"
-    config_content = json.dumps(config, indent=4)
-
-    print("Generated config content:")
-    print(config_content)
-
     base_path = os.getenv("GITHUB_WORKSPACE", os.getcwd())
 
     for target_framework in NET_FRAMEWORKS:
