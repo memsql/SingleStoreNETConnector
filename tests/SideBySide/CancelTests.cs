@@ -374,7 +374,10 @@ create table cancel_completed_command(id integer not null primary key, value tex
 	[SkippableFact(ServerFeatures.Timeout)]
 	public async Task CancelSlowQueryWithTokenAfterNextResult()
 	{
-		using var cmd = new SingleStoreCommand("SELECT 1; " + c_slowQuery, m_database.Connection);
+		using var cmd = new SingleStoreCommand("SELECT 1; " + c_slowQuery, m_database.Connection)
+		{
+			CommandTimeout = 0
+		};
 		using var reader = await cmd.ExecuteReaderAsync();
 
 		// first resultset should be available immediately
