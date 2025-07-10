@@ -53,12 +53,13 @@ VALUES ('a'), ('b'), ('c'), ('d'), ('e'), ('f'), ('g'), ('h'), ('i'), ('j');");
 			connection.Open();
 		}
 
+		var collation = connection.Query<string>("SELECT @@collation_connection;").Single();
+		var caseInsensitive = collation.EndsWith("_ci", StringComparison.OrdinalIgnoreCase);
+
 		using var reader = connection.ExecuteReader(@"
 		SELECT 'B' INTO @param;
 		SELECT * FROM mix_collations a WHERE a.test_col = @param");
 
-		var collation = connection.Query<string>("SELECT @@collation_connection;").Single();
-		var caseInsensitive = collation.EndsWith("_ci", StringComparison.OrdinalIgnoreCase);
 		// only expect a row when the collation is CI
 		Assert.Equal(caseInsensitive, reader.Read());
 	}
