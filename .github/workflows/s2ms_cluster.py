@@ -5,8 +5,8 @@ import sys
 import time
 from typing import Dict, Optional
 
-SQL_USER_PASSWORD = os.getenv("SQL_USER_PASSWORD")  # project UI env-var reference
-S2MS_API_KEY = os.getenv("S2MS_API_KEY")  # project UI env-var reference
+SQL_USER_PASSWORD = os.getenv("SQL_USER_PASSWORD")
+S2MS_API_KEY = os.getenv("S2MS_API_KEY")
 
 WORKSPACE_GROUP_BASE_NAME = ".NET-connector-ci-test-cluster"
 WORKSPACE_NAME = "tests"
