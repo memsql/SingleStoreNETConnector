@@ -1,0 +1,157 @@
+name: SingleStore .NET Connector
+
+on: [push]
+
+env:
+  DOTNET_VERSION: 8.0.405
+  CONNECTOR_VERSION: 1.2.0
+  LICENSE_KEY: ${{ secrets.LICENSE_KEY }}
+  SQL_USER_PASSWORD: ${{ secrets.SQL_USER_PASSWORD }}
+  S2MS_API_KEY: ${{ secrets.S2MS_API_KEY }}
+
+jobs:
+  test-ubuntu:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        singlestore_image:
+          - singlestore/cluster-in-a-box:alma-8.7.12-483e5f8acb-4.1.0-1.17.15
+          - singlestore/cluster-in-a-box:alma-8.5.22-fe61f40cd1-4.1.0-1.17.11
+    env:
+      SINGLESTORE_IMAGE: ${{ matrix.singlestore_image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove unnecessary pre-installed toolchains for free disk spaces
+        run: |
+          echo "=== BEFORE ==="
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo rm -rf /opt/hostedtoolcache/Ruby
+          sudo rm -rf /opt/hostedtoolcache/Go
+          docker system prune -af || true
+          sudo apt-get clean
+          echo "=== AFTER ==="
+          df -h
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https 
+          sudo apt-get install -y mariadb-client-core-10.6
+          sudo apt-get install -y mariadb-client-10.6
+          sudo apt-get update
+          sudo apt-get install -y dotnet-sdk-8.0
+          dotnet --info
+
+      - name: Start SingleStore Cluster
+        run: ./.github/workflows/setup_cluster.sh
+
+      - name: Build connector
+        run: dotnet build -c Release
+
+      - name: Copy config file for SideBySide tests
+        run: |
+          cp ./.github/workflows/SideBySide/config.json tests/SideBySide/config.json
+          sed -i "s|SINGLESTORE_HOST|127.0.0.1|g" tests/SideBySide/config.json
+          sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
+          sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
+          mkdir -p /home/runner/work/SingleStoreNETConnector/SingleStoreNETConnector/artifacts/bin/SideBySide/release_net8.0/
+          cp tests/SideBySide/config.json /home/runner/work/SingleStoreNETConnector/SingleStoreNETConnector/artifacts/bin/SideBySide/release_net8.0/config.json
+
+      - name: Run Unit tests
+        run: |
+          cd tests/SingleStoreConnector.Tests
+          dotnet test -f net8.0 -c Release --no-build
+          cd ../../
+
+      - name: Run Conformance tests
+        run: |
+          cd tests/Conformance.Tests
+          dotnet test -f net8.0 -c Release --no-build
+          cd ../../
+
+      - name: Run SideBySide tests
+        run: |
+          cd tests/SideBySide
+          dotnet test -f net8.0 -c Release --no-build
+          cd ../../
+
+  test-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python dependencies
+        run: pip install singlestoredb
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build project binaries
+        run: dotnet build -c Release
+
+      - name: Start SingleStore for SideBySide tests
+        run: python .github\workflows\s2ms_cluster.py start singlestoretest
+
+      - name: Fill test config
+        run: python .github\workflows\fill_test_config.py
+      
+      - name: Export full connection string
+        shell: bash
+        run: echo "CONNECTION_STRING=$(< $HOME/CONNECTION_STRING)" >> $GITHUB_ENV
+
+      - name: Run Unit tests
+        run: .\.github\workflows\run-test-windows.ps1 -test_block SingleStoreConnector.Tests -target_framework net8.0
+
+      - name: Run Conformance tests
+        run: .\.github\workflows\run-test-windows.ps1 -test_block Conformance.Tests -target_framework net8.0
+
+      - name: Run SideBySide tests
+        run: .\.github\workflows\run-test-windows.ps1 -test_block SideBySide -target_framework net8.0
+
+      - name: Terminate test cluster
+        if: always()
+        run: python .github\workflows\s2ms_cluster.py terminate
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build project binaries
+        run: dotnet build -c Release
+
+      - name: Create CI Artifacts directory
+        run: mkdir net_connector
+
+      - name: Build NuGet package
+        run: dotnet pack -c Release --output net_connector -p:PackageVersion=${{ env.CONNECTOR_VERSION }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: net_connector
+          path: net_connector/
+

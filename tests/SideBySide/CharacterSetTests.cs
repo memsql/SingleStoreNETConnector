@@ -53,10 +53,15 @@ VALUES ('a'), ('b'), ('c'), ('d'), ('e'), ('f'), ('g'), ('h'), ('i'), ('j');");
 			connection.Open();
 		}
 
+		var collation = connection.Query<string>("SELECT @@collation_connection;").Single();
+		var caseInsensitive = collation.EndsWith("_ci", StringComparison.OrdinalIgnoreCase);
+
 		using var reader = connection.ExecuteReader(@"
 		SELECT 'B' INTO @param;
 		SELECT * FROM mix_collations a WHERE a.test_col = @param");
-		Assert.True(reader.Read());
+
+		// only expect a row when the collation is CI
+		Assert.Equal(caseInsensitive, reader.Read());
 	}
 
 	[Theory]
@@ -80,13 +85,23 @@ VALUES ('a'), ('b'), ('c'), ('d'), ('e'), ('f'), ('g'), ('h'), ('i'), ('j');");
 		var collation = connection.Query<string>(@"select @@collation_connection;").Single();
 		/*
 		 Default value for @@collation_connection in SingleStore was "utf8_general_ci" (till 8.7). Starting from 8.7 the default value is "utf8mb4_general_ci"
-		 (https://docs.singlestore.com/db/v7.6/en/reference/configuration-reference/engine-variables/list-of-engine-variables.html#collation_connection)
+		 (https://docs.singlestore.com/db/v7.6/en/reference/configuration-reference/engine-variables/list-of-engine-variables.html#collation_connection). Starting
+		 from 9.0 the default value is "utf8mb4_bin" (https://docs.singlestore.com/db/v9.0/release-notes/singlestore-memsql/9-0-release-notes/maintenance-release-changelog-v-9-0/).
 		 */
-		var expected = connection.S2ServerVersion.Split('.') is var parts && parts.Length >= 2
-		                                                        && int.TryParse(parts[0], out var major)
-		                                                        && int.TryParse(parts[1], out var minor)
-		                                                        && (major > 8 || (major == 8 && minor >= 7)) ?
-			"utf8mb4_general_ci" : "utf8_general_ci";
+		var parts = connection.S2ServerVersion.Split('.');
+		if (parts.Length < 2
+		    || !int.TryParse(parts[0], out var major)
+		    || !int.TryParse(parts[1], out var minor))
+			throw new InvalidOperationException($"Unrecognized version: {connection.S2ServerVersion}");
+
+		string expected;
+		if (major >= 9)
+			expected = "utf8mb4_bin";
+		else if (major > 8 || (major == 8 && minor >= 7))
+			expected = "utf8mb4_general_ci";
+		else
+			expected = "utf8_general_ci";
+
 		Assert.Equal(expected, collation);
 	}
 
