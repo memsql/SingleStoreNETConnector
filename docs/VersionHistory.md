@@ -2,6 +2,11 @@
 
 ## Release Notes
 
+### 1.3.0
+
+TODO
+
+
 ### 1.2.0
 
 Basically all the changes introduced with MySqlConnector 2.3.0:

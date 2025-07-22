@@ -2,7 +2,7 @@ import json
 import os
 from s2ms_cluster import WORKSPACE_ENDPOINT_FILE
 
-NET_FRAMEWORKS = ["net462", "net472", "net6.0", "net7.0", "net8.0"]
+NET_FRAMEWORKS = ["net462", "net472", "net6.0", "net7.0", "net8.0", "net9.0"]
 
 
 if __name__ == "__main__":
