@@ -48,3 +48,33 @@ builder.Services.AddSingleStoreDataSource("Server=server;User ID=test;Password=t
 	x => x.UseRemoteCertificateValidationCallback((sender, certificate, chain, sslPolicyErrors) => { /* custom logic */ })
 );
 ```
+
+## Keyed Services
+
+Use the `AddKeyedSingleStoreDataSource` method to register a `SingleStoreDataSource` as a [keyed service](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8#keyed-di-services).
+This is useful if you have multiple connection strings or need to connect to multiple databases.
+If the service key is a string, it will automatically be used as the `SingleStoreDataSource` name;
+to customize this, call the `AddKeyedSingleStoreDataSource(object?, string, Action<SingleStoreDataSourceBuilder>)` overload and call `SingleStoreDataSourceBuilder.UseName`.
+
+```csharp
+builder.Services.AddKeyedSingleStoreDataSource("users", builder.Configuration.GetConnectionString("Users"));
+builder.Services.AddKeyedSingleStoreDataSource("products", builder.Configuration.GetConnectionString("Products"));
+
+app.MapGet("/users/{userId}", async (int userId, [FromKeyedServices("users")] SingleStoreConnection connection) =>
+{
+    await connection.OpenAsync();
+    await using var command = connection.CreateCommand();
+    command.CommandText = "SELECT name FROM users WHERE user_id = @userId LIMIT 1";
+    command.Parameters.AddWithValue("@userId", userId);
+    return $"Hello, {await command.ExecuteScalarAsync()}";
+});
+
+app.MapGet("/products/{productId}", async (int productId, [FromKeyedServices("products")] SingleStoreConnection connection) =>
+{
+    await connection.OpenAsync();
+    await using var command = connection.CreateCommand();
+    command.CommandText = "SELECT name FROM products WHERE product_id = @productId LIMIT 1";
+    command.Parameters.AddWithValue("@productId", productId);
+    return await command.ExecuteScalarAsync();
+});
+```
