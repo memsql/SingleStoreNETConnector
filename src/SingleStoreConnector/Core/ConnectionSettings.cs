@@ -1,4 +1,7 @@
+#if NETCOREAPP3_0_OR_GREATER
 using System.Net.Security;
+#endif
+using System.Net;
 using System.Security.Authentication;
 using SingleStoreConnector.Utilities;
 
@@ -26,7 +29,7 @@ internal sealed class ConnectionSettings
 			if (csb.LoadBalance != SingleStoreLoadBalance.RoundRobin)
 				throw new NotSupportedException("LoadBalance not supported when ConnectionProtocol=NamedPipe");
 			ConnectionProtocol = SingleStoreConnectionProtocol.NamedPipe;
-			HostNames = (csb.Server == "." || string.Equals(csb.Server, "localhost", StringComparison.OrdinalIgnoreCase)) ? s_localhostPipeServer : [ csb.Server ];
+			HostNames = (csb.Server == "." || string.Equals(csb.Server, "localhost", StringComparison.OrdinalIgnoreCase)) ? s_localhostPipeServer : [csb.Server];
 			PipeName = csb.PipeName;
 		}
 		else if (csb.ConnectionProtocol == SingleStoreConnectionProtocol.SharedMemory)
@@ -121,7 +124,7 @@ internal sealed class ConnectionSettings
 		AllowPublicKeyRetrieval = csb.AllowPublicKeyRetrieval;
 		AllowUserVariables = csb.AllowUserVariables;
 		AllowZeroDateTime = csb.AllowZeroDateTime;
-		ApplicationName = csb.ApplicationName;
+		ApplicationName = csb.ApplicationName is { Length: 0 } ? null : csb.ApplicationName;
 		AutoEnlist = csb.AutoEnlist;
 		CancellationTimeout = csb.CancellationTimeout;
 		ConnAttrsExtra = csb.ConnectionAttributes;
@@ -150,7 +153,9 @@ internal sealed class ConnectionSettings
 		static int ToSigned(uint value) => value >= int.MaxValue ? int.MaxValue : (int) value;
 	}
 
-	public ConnectionSettings CloneWith(string host, int port, string userId) => new ConnectionSettings(this, host, port, userId);
+	public ConnectionSettings CloneWith(string host, int port, string userId) => new(this, host, port, userId, null);
+
+	public ConnectionSettings CloneWith(IPAddress ipAddress) => new(this, HostNames![0], Port, UserID, ipAddress);
 
 	private static SingleStoreGuidFormat GetEffectiveGuidFormat(SingleStoreGuidFormat guidFormat, bool oldGuids)
 	{
@@ -182,6 +187,7 @@ internal sealed class ConnectionSettings
 	public string ConnectionString { get; }
 	public SingleStoreConnectionProtocol ConnectionProtocol { get; }
 	public IReadOnlyList<string>? HostNames { get; }
+	public IPAddress? IPAddress { get; }
 	public SingleStoreLoadBalance LoadBalance { get; }
 	public int Port { get; }
 	public string PipeName { get; }
@@ -218,7 +224,7 @@ internal sealed class ConnectionSettings
 	public bool AllowPublicKeyRetrieval { get; }
 	public bool AllowUserVariables { get; }
 	public bool AllowZeroDateTime { get; }
-	public string ApplicationName { get; }
+	public string? ApplicationName { get; }
 	public bool AutoEnlist { get; }
 	public int CancellationTimeout { get; }
 	public int ConnectionTimeout { get; }
@@ -270,13 +276,18 @@ internal sealed class ConnectionSettings
 		}
 	}
 
-	private ConnectionSettings(ConnectionSettings other, string host, int port, string userId)
+	private ConnectionSettings(ConnectionSettings other, string host, int port, string userId, IPAddress? ipAddress)
 	{
-		ConnectionStringBuilder = other.ConnectionStringBuilder;
-		ConnectionString = other.ConnectionString;
+		ConnectionStringBuilder = new SingleStoreConnectionStringBuilder(other.ConnectionString);
+		ConnectionStringBuilder.Port = (uint) port;
+		ConnectionStringBuilder.Server = host;
+		ConnectionStringBuilder.UserID = userId;
+
+		ConnectionString = ConnectionStringBuilder.ConnectionString;
 
 		ConnectionProtocol = SingleStoreConnectionProtocol.Sockets;
 		HostNames = [host];
+		IPAddress = ipAddress;
 		LoadBalance = other.LoadBalance;
 		Port = port;
 		PipeName = other.PipeName;
@@ -332,5 +343,5 @@ internal sealed class ConnectionSettings
 		UseXaTransactions = other.UseXaTransactions;
 	}
 
-	private static readonly string[] s_localhostPipeServer = { "." };
+	private static readonly string[] s_localhostPipeServer = ["."];
 }
