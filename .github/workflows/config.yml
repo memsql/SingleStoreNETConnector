@@ -1,6 +1,9 @@
 name: SingleStore .NET Connector
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 env:
   DOTNET_VERSION: 9.0.303
@@ -67,25 +70,25 @@ jobs:
           sed -i "s|SINGLESTORE_HOST|127.0.0.1|g" tests/SideBySide/config.json
           sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
           sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
-          mkdir -p /home/runner/work/SingleStoreNETConnector/SingleStoreNETConnector/artifacts/bin/SideBySide/release_net8.0/
-          cp tests/SideBySide/config.json /home/runner/work/SingleStoreNETConnector/SingleStoreNETConnector/artifacts/bin/SideBySide/release_net8.0/config.json
+          mkdir -p /home/runner/work/SingleStoreNETConnector/SingleStoreNETConnector/artifacts/bin/SideBySide/release_net9.0/
+          cp tests/SideBySide/config.json /home/runner/work/SingleStoreNETConnector/SingleStoreNETConnector/artifacts/bin/SideBySide/release_net9.0/config.json
 
       - name: Run Unit tests
         run: |
           cd tests/SingleStoreConnector.Tests
-          dotnet test -f net8.0 -c Release --no-build
+          dotnet test -f net9.0 -c Release --no-build
           cd ../../
 
       - name: Run Conformance tests
         run: |
           cd tests/Conformance.Tests
-          dotnet test -f net8.0 -c Release --no-build
+          dotnet test -f net9.0 -c Release --no-build
           cd ../../
 
       - name: Run SideBySide tests
         run: |
           cd tests/SideBySide
-          dotnet test -f net8.0 -c Release --no-build
+          dotnet test -f net9.0 -c Release --no-build
           cd ../../
 
   test-windows:
@@ -117,13 +120,13 @@ jobs:
         run: echo "CONNECTION_STRING=$(< $HOME/CONNECTION_STRING)" >> $GITHUB_ENV
 
       - name: Run Unit tests
-        run: .\.github\workflows\run-test-windows.ps1 -test_block SingleStoreConnector.Tests -target_framework net8.0
+        run: .\.github\workflows\run-test-windows.ps1 -test_block SingleStoreConnector.Tests -target_framework net9.0
 
       - name: Run Conformance tests
-        run: .\.github\workflows\run-test-windows.ps1 -test_block Conformance.Tests -target_framework net8.0
+        run: .\.github\workflows\run-test-windows.ps1 -test_block Conformance.Tests -target_framework net9.0
 
       - name: Run SideBySide tests
-        run: .\.github\workflows\run-test-windows.ps1 -test_block SideBySide -target_framework net8.0
+        run: .\.github\workflows\run-test-windows.ps1 -test_block SideBySide -target_framework net9.0
 
       - name: Terminate test cluster
         if: always()

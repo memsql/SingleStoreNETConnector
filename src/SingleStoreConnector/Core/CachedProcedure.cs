@@ -34,9 +34,9 @@ internal sealed class CachedProcedure
 			cmd.Parameters.AddWithValue("@component", component);
 
 			using var reader = await cmd.ExecuteReaderNoResetTimeoutAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
-			await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			_ = reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			routineCount = reader.GetInt32(0);
-			await reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			_ = reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			while (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
 			{
@@ -108,10 +108,10 @@ internal sealed class CachedProcedure
 			return [];
 
 		// strip precision specifier containing comma
-		parametersSql = s_numericTypes.Replace(parametersSql, @"$1");
+		parametersSql = s_numericTypes.Replace(parametersSql, "$1");
 
 		// strip enum values containing commas (these would have been stripped by ParseDataType anyway)
-		parametersSql = s_enum.Replace(parametersSql, "ENUM");
+		parametersSql = s_enumOrSet.Replace(parametersSql, "$1");
 
 		var parameters = parametersSql.Split(',');
 		var cachedParameters = new List<CachedParameter>(parameters.Length);
@@ -123,17 +123,17 @@ internal sealed class CachedProcedure
 			if (parameter.StartsWith("INOUT ", StringComparison.OrdinalIgnoreCase))
 			{
 				direction = "INOUT";
-				parameter = parameter.Substring(6);
+				parameter = parameter[6..];
 			}
 			else if (parameter.StartsWith("OUT ", StringComparison.OrdinalIgnoreCase))
 			{
 				direction = "OUT";
-				parameter = parameter.Substring(4);
+				parameter = parameter[4..];
 			}
 			else if (parameter.StartsWith("IN ", StringComparison.OrdinalIgnoreCase))
 			{
 				direction = "IN";
-				parameter = parameter.Substring(3);
+				parameter = parameter[3..];
 			}
 
 			var parts = s_parameterName.Match(parameter);
@@ -150,7 +150,7 @@ internal sealed class CachedProcedure
 	{
 		sql = s_characterSet.Replace(sql, "");
 		sql = s_collate.Replace(sql, "");
-		sql = s_enum.Replace(sql, "ENUM");
+		sql = s_enumOrSet.Replace(sql, "$1");
 
 		length = 0;
 		var match = s_length.Match(sql);
@@ -161,7 +161,7 @@ internal sealed class CachedProcedure
 		}
 
 		var list = sql.Trim().Split(' ');
-		var type = string.Empty;
+		string? type;
 
 		if (list.Length < 2 || !s_typeMapping.TryGetValue(list[0] + ' ' + list[1], out type))
 		{
@@ -215,7 +215,7 @@ internal sealed class CachedProcedure
 	private static readonly Regex s_singleLineComments = new(@"(^|\s)--.*?$", RegexOptions.Multiline);
 	private static readonly Regex s_multipleSpaces = new(@"\s+");
 	private static readonly Regex s_numericTypes = new(@"(DECIMAL|DEC|FIXED|NUMERIC|FLOAT|DOUBLE PRECISION|DOUBLE|REAL)\s*\([0-9]+(,\s*[0-9]+)\)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-	private static readonly Regex s_enum = new(@"ENUM\s*\([^)]+\)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+	private static readonly Regex s_enumOrSet =  new(@"(ENUM|SET)\s*\([^)]+\)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 	private static readonly Regex s_parameterName = new(@"^(?:`((?:[\u0001-\u005F\u0061-\uFFFF]+|``)+)`|([A-Za-z0-9$_\u0080-\uFFFF]+)) (.*)$");
 	private static readonly Regex s_characterSet = new(" (CHARSET|CHARACTER SET) [A-Za-z0-9_]+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 	private static readonly Regex s_collate = new(" (COLLATE) [A-Za-z0-9_]+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
