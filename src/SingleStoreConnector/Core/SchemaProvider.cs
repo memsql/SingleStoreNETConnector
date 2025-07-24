@@ -1,4 +1,6 @@
+#if NET6_0_OR_GREATER
 using System.Globalization;
+#endif
 using SingleStoreConnector.Protocol.Serialization;
 
 namespace SingleStoreConnector.Core;
@@ -383,6 +385,22 @@ internal sealed partial class SchemaProvider(SingleStoreConnection connection)
 
 	private async Task FillDataTableAsync(IOBehavior ioBehavior, DataTable dataTable, string tableName, List<KeyValuePair<string, string>>? columns, CancellationToken cancellationToken)
 	{
+		await FillDataTableAsync(ioBehavior, dataTable, command =>
+		{
+#pragma warning disable CA2100
+			command.CommandText = "SELECT " + string.Join(", ", dataTable.Columns.Cast<DataColumn>().Select(static x => x!.ColumnName)) + " FROM INFORMATION_SCHEMA." + tableName;
+#pragma warning restore CA2100
+			if (columns is { Count: > 0 })
+			{
+				command.CommandText += " WHERE " + string.Join(" AND ", columns.Select(static x => $@"{x.Key} = @{x.Key}"));
+				foreach (var column in columns)
+					command.Parameters.AddWithValue("@" + column.Key, column.Value);
+			}
+		}, cancellationToken).ConfigureAwait(false);
+	}
+
+	private async Task FillDataTableAsync(IOBehavior ioBehavior, DataTable dataTable, Action<SingleStoreCommand> configureCommand, CancellationToken cancellationToken)
+	{
 		Action? close = null;
 		if (connection.State != ConnectionState.Open)
 		{
@@ -408,25 +426,117 @@ internal sealed partial class SchemaProvider(SingleStoreConnection connection)
 
 		using (var command = connection.CreateCommand())
 		{
-#pragma warning disable CA2100
-			command.CommandText = "SELECT " + string.Join(", ", dataTable.Columns.Cast<DataColumn>().Select(static x => x!.ColumnName)) + " FROM INFORMATION_SCHEMA." + tableName;
-#pragma warning restore CA2100
-			if (columns is { Count: > 0 })
-			{
-				command.CommandText += " WHERE " + string.Join(" AND ", columns.Select(x => $@"{x.Key} = @{x.Key}"));
-				foreach (var column in columns)
-					command.Parameters.AddWithValue("@" + column.Key, column.Value);
-			}
+			configureCommand(command);
 
 			using var reader = await command.ExecuteReaderAsync(default, ioBehavior, cancellationToken).ConfigureAwait(false);
 			while (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
 			{
 				var rowValues = new object[dataTable.Columns.Count];
-				reader.GetValues(rowValues);
+				_ = reader.GetValues(rowValues);
 				dataTable.Rows.Add(rowValues);
 			}
 		}
 
 		close?.Invoke();
 	}
+
+	private Task DoFillForeignKeysAsync(IOBehavior ioBehavior, DataTable dataTable, string?[]? restrictionValues, CancellationToken cancellationToken) =>
+		FillDataTableAsync(ioBehavior, dataTable, command =>
+		{
+			command.CommandText = """
+				SELECT rc.constraint_catalog, rc.constraint_schema, rc.constraint_name,
+					kcu.table_catalog, kcu.table_schema,
+					rc.table_name, rc.match_option, rc.update_rule, rc.delete_rule,
+					NULL as referenced_table_catalog, kcu.referenced_table_schema, rc.referenced_table_name
+				FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+					LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON
+					(
+						(kcu.constraint_catalog = rc.constraint_catalog OR (kcu.constraint_catalog IS NULL AND rc.constraint_catalog IS NULL)) AND
+						(kcu.constraint_schema = rc.constraint_schema OR (kcu.constraint_schema IS NULL AND rc.constraint_schema IS NULL)) AND
+						(kcu.constraint_name = rc.constraint_name OR (kcu.constraint_name IS NULL AND rc.constraint_name IS NULL))
+					)
+				WHERE kcu.ORDINAL_POSITION = 1
+				""";
+
+			if (restrictionValues is [_, { Length: > 0 } schema, ..])
+			{
+				command.CommandText += " AND rc.constraint_schema LIKE @schema";
+				command.Parameters.AddWithValue("@schema", schema);
+			}
+			if (restrictionValues is [_, _, { Length: > 0 } table, ..])
+			{
+				command.CommandText += " AND rc.table_name LIKE @table";
+				command.Parameters.AddWithValue("@table", table);
+			}
+			if (restrictionValues is [_, _, _, { Length: > 0 } constraint, ..])
+			{
+				command.CommandText += " AND rc.constraint_name LIKE @constraint";
+				command.Parameters.AddWithValue("@constraint", constraint);
+			}
+		}, cancellationToken);
+
+	private Task DoFillIndexesAsync(IOBehavior ioBehavior, DataTable dataTable, string?[]? restrictionValues, CancellationToken cancellationToken) =>
+		FillDataTableAsync(ioBehavior, dataTable, command =>
+		{
+			command.CommandText = """
+				SELECT null AS INDEX_CATALOG, INDEX_SCHEMA,
+					INDEX_NAME, TABLE_NAME,
+					!NON_UNIQUE as `UNIQUE`,
+					INDEX_NAME='PRIMARY' as `PRIMARY`,
+					INDEX_TYPE as TYPE, COMMENT
+				FROM INFORMATION_SCHEMA.STATISTICS
+				WHERE SEQ_IN_INDEX=1
+				""";
+
+			if (restrictionValues is [_, { Length: > 0 } schema, ..])
+			{
+				command.CommandText += " AND INDEX_SCHEMA LIKE @schema";
+				command.Parameters.AddWithValue("@schema", schema);
+			}
+			if (restrictionValues is [_, _, { Length: > 0 } table, ..])
+			{
+				command.CommandText += " AND TABLE_NAME LIKE @table";
+				command.Parameters.AddWithValue("@table", table);
+			}
+			if (restrictionValues is [_, _, _, { Length: > 0 } index, ..])
+			{
+				command.CommandText += " AND INDEX_NAME LIKE @index";
+				command.Parameters.AddWithValue("@index", index);
+			}
+		}, cancellationToken);
+
+	private Task DoFillIndexColumnsAsync(IOBehavior ioBehavior, DataTable dataTable, string?[]? restrictionValues, CancellationToken cancellationToken) =>
+		FillDataTableAsync(ioBehavior, dataTable, command =>
+		{
+			command.CommandText = """
+				SELECT null AS INDEX_CATALOG, INDEX_SCHEMA,
+					INDEX_NAME, TABLE_NAME,
+					COLUMN_NAME,
+					SEQ_IN_INDEX as `ORDINAL_POSITION`,
+					COLLATION as SORT_ORDER
+				FROM INFORMATION_SCHEMA.STATISTICS
+				WHERE 1=1
+				""";
+
+			if (restrictionValues is [_, { Length: > 0 } schema, ..])
+			{
+				command.CommandText += " AND INDEX_SCHEMA LIKE @schema";
+				command.Parameters.AddWithValue("@schema", schema);
+			}
+			if (restrictionValues is [_, _, { Length: > 0 } table, ..])
+			{
+				command.CommandText += " AND TABLE_NAME LIKE @table";
+				command.Parameters.AddWithValue("@table", table);
+			}
+			if (restrictionValues is [_, _, _, { Length: > 0 } index, ..])
+			{
+				command.CommandText += " AND INDEX_NAME LIKE @index";
+				command.Parameters.AddWithValue("@index", index);
+			}
+			if (restrictionValues is [_, _, _, _, { Length: > 0 } column, ..])
+			{
+				command.CommandText += " AND COLUMN_NAME LIKE @column";
+				command.Parameters.AddWithValue("@column", column);
+			}
+		}, cancellationToken);
 }
