@@ -10,6 +10,7 @@ internal sealed class SingleStoreConnectorLoggingConfiguration(ILoggerFactory lo
 	public ILogger CommandLogger { get; } = loggerFactory.CreateLogger("SingleStoreConnector.SingleStoreCommand");
 	public ILogger PoolLogger { get; } = loggerFactory.CreateLogger("SingleStoreConnector.ConnectionPool");
 	public ILogger BulkCopyLogger { get; } = loggerFactory.CreateLogger("SingleStoreConnector.SingleStoreBulkCopy");
+	public ILogger TransactionLogger { get; } = loggerFactory.CreateLogger("SingleStoreConnector.Transaction");
 
 	public static SingleStoreConnectorLoggingConfiguration NullConfiguration { get; } = new SingleStoreConnectorLoggingConfiguration(NullLoggerFactory.Instance);
 	public static SingleStoreConnectorLoggingConfiguration GlobalConfiguration { get; set; } = NullConfiguration;

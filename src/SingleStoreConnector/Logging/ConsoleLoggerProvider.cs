@@ -7,7 +7,7 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 {
 	public ConsoleLoggerProvider(SingleStoreConnectorLogLevel minimumLevel = SingleStoreConnectorLogLevel.Info, bool isColored = true)
 	{
-		if (minimumLevel < SingleStoreConnectorLogLevel.Trace || minimumLevel > SingleStoreConnectorLogLevel.Fatal)
+		if (minimumLevel is < SingleStoreConnectorLogLevel.Trace or > SingleStoreConnectorLogLevel.Fatal)
 			throw new ArgumentOutOfRangeException(nameof(minimumLevel), "minimumLevel must be between Trace and Fatal");
 
 		m_minimumLevel = minimumLevel;
@@ -57,7 +57,7 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 		}
 
 		private static readonly string[] s_levels =
-		{
+		[
 			"",
 			"[TRACE]",
 			"[DEBUG]",
@@ -65,10 +65,10 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 			"[WARN]",
 			"[ERROR]",
 			"[FATAL]",
-		};
+		];
 
 		private static readonly ConsoleColor[] s_colors =
-		{
+		[
 			ConsoleColor.Black,
 			ConsoleColor.DarkGray,
 			ConsoleColor.Gray,
@@ -76,7 +76,7 @@ public class ConsoleLoggerProvider : ISingleStoreConnectorLoggerProvider
 			ConsoleColor.Yellow,
 			ConsoleColor.Red,
 			ConsoleColor.Red,
-		};
+		];
 
 		private ConsoleLoggerProvider Provider { get; } = provider;
 		private string Name { get; } = name;

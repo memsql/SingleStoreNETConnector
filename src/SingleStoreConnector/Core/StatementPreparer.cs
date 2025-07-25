@@ -16,9 +16,9 @@ internal sealed class StatementPreparer(string commandText, SingleStoreParameter
 		parser.Parse(CommandText);
 		for (var i = 0; i < statements.Count; i++)
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP3_1_OR_GREATER
-			statements[i].StatementBytes = writer.ArraySegment[statementStartEndIndexes[i * 2]..statementStartEndIndexes[i * 2 + 1]];
+			statements[i].StatementBytes = writer.ArraySegment[statementStartEndIndexes[i * 2]..statementStartEndIndexes[(i * 2) + 1]];
 #else
-			statements[i].StatementBytes = writer.ArraySegment.Slice(statementStartEndIndexes[i * 2], statementStartEndIndexes[i * 2 + 1] - statementStartEndIndexes[i * 2]);
+			statements[i].StatementBytes = writer.ArraySegment.Slice(statementStartEndIndexes[i * 2], statementStartEndIndexes[(i * 2) + 1] - statementStartEndIndexes[i * 2]);
 #endif
 		return new ParsedStatements(statements, writer.ToPayloadData());
 	}
@@ -126,9 +126,9 @@ internal sealed class StatementPreparer(string commandText, SingleStoreParameter
 			Writer.Write((byte) '?');
 
 			// store the parameter index
-			Statements[Statements.Count - 1].ParameterNames.Add(parameterName);
-			Statements[Statements.Count - 1].NormalizedParameterNames.Add(parameterName == null ? null : SingleStoreParameter.NormalizeParameterName(parameterName));
-			Statements[Statements.Count - 1].ParameterIndexes.Add(parameterIndex);
+			Statements[^1].ParameterNames.Add(parameterName);
+			Statements[^1].NormalizedParameterNames.Add(parameterName == null ? null : SingleStoreParameter.NormalizeParameterName(parameterName));
+			Statements[^1].ParameterIndexes.Add(parameterIndex);
 		}
 
 		protected override void OnStatementEnd(int index)
