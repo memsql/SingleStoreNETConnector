@@ -3,12 +3,13 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Logging;
+using SingleStoreConnector.Plugins;
 using SingleStoreConnector.Protocol.Serialization;
 
 namespace SingleStoreConnector;
 
 /// <summary>
-/// <see cref="SingleStoreDataSource"/> implements a SingleStore data source which can be used to obtain open connections, and against which commands can be executed directly.
+/// <see cref="SingleStoreDataSource"/> implements a SingleStore data source which can be used to obtain open connections
 /// </summary>
 public sealed class SingleStoreDataSource : DbDataSource
 {
@@ -19,7 +20,7 @@ public sealed class SingleStoreDataSource : DbDataSource
 	/// <exception cref="ArgumentNullException">Thrown if <paramref name="connectionString"/> is <c>null</c>.</exception>
 	public SingleStoreDataSource(string connectionString)
 		: this(connectionString ?? throw new ArgumentNullException(nameof(connectionString)),
-			SingleStoreConnectorLoggingConfiguration.NullConfiguration, null, null, null, null, default, default)
+			SingleStoreConnectorLoggingConfiguration.NullConfiguration, null, null, null, null, default, default, default, default)
 	{
 	}
 
@@ -30,7 +31,9 @@ public sealed class SingleStoreDataSource : DbDataSource
 		RemoteCertificateValidationCallback? remoteCertificateValidationCallback,
 		Func<SingleStoreProvidePasswordContext, CancellationToken, ValueTask<string>>? periodicPasswordProvider,
 		TimeSpan periodicPasswordProviderSuccessRefreshInterval,
-		TimeSpan periodicPasswordProviderFailureRefreshInterval)
+		TimeSpan periodicPasswordProviderFailureRefreshInterval,
+		ZstandardPlugin? zstandardPlugin,
+		SingleStoreConnectionOpenedCallback? connectionOpenedCallback)
 	{
 		m_connectionString = connectionString;
 		LoggingConfiguration = loggingConfiguration;
@@ -38,6 +41,8 @@ public sealed class SingleStoreDataSource : DbDataSource
 		m_clientCertificatesCallback = clientCertificatesCallback;
 		m_remoteCertificateValidationCallback = remoteCertificateValidationCallback;
 		m_logger = loggingConfiguration.DataSourceLogger;
+		m_zstandardPlugin = zstandardPlugin;
+		m_connectionOpenedCallback = connectionOpenedCallback;
 
 		Pool = ConnectionPool.CreatePool(m_connectionString, LoggingConfiguration, name);
 		m_id = Interlocked.Increment(ref s_lastId);
@@ -143,7 +148,8 @@ public sealed class SingleStoreDataSource : DbDataSource
 		{
 			ProvideClientCertificatesCallback = m_clientCertificatesCallback,
 			ProvidePasswordCallback = m_providePasswordCallback,
-			RemoteCertificateValidationCallback = m_remoteCertificateValidationCallback
+			RemoteCertificateValidationCallback = m_remoteCertificateValidationCallback,
+			ConnectionOpenedCallback = m_connectionOpenedCallback,
 		};
 	}
 
@@ -190,13 +196,13 @@ public sealed class SingleStoreDataSource : DbDataSource
 				await m_periodicPasswordProvider!(m_providePasswordContext!,
 					m_passwordProviderTimerCancellationTokenSource!.Token).ConfigureAwait(false);
 			m_providePasswordCallback = ProvidePasswordFromField;
-			m_passwordProviderTimer!.Change(m_periodicPasswordProviderSuccessRefreshInterval, Timeout.InfiniteTimeSpan);
+			_ = m_passwordProviderTimer!.Change(m_periodicPasswordProviderSuccessRefreshInterval, Timeout.InfiniteTimeSpan);
 		}
 		catch (Exception e)
 		{
 			// queue a refresh after the 'failure' interval
 			Log.PeriodicPasswordProviderFailed(m_logger, e, m_id, e.Message);
-			m_passwordProviderTimer!.Change(m_periodicPasswordProviderFailureRefreshInterval, Timeout.InfiniteTimeSpan);
+			_ = m_passwordProviderTimer!.Change(m_periodicPasswordProviderFailureRefreshInterval, Timeout.InfiniteTimeSpan);
 			throw new SingleStoreException("The periodic password provider failed", e);
 		}
 	}
@@ -234,6 +240,8 @@ public sealed class SingleStoreDataSource : DbDataSource
 
 	private readonly TimeSpan m_periodicPasswordProviderSuccessRefreshInterval;
 	private readonly TimeSpan m_periodicPasswordProviderFailureRefreshInterval;
+	private readonly ZstandardPlugin? m_zstandardPlugin;
+	private readonly SingleStoreConnectionOpenedCallback? m_connectionOpenedCallback;
 	private readonly SingleStoreProvidePasswordContext? m_providePasswordContext;
 	private readonly CancellationTokenSource? m_passwordProviderTimerCancellationTokenSource;
 	private readonly Timer? m_passwordProviderTimer;
