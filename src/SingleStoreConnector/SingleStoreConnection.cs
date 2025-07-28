@@ -1,7 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+#if NET6_0_OR_GREATER
 using System.Globalization;
+#endif
+using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
@@ -9,6 +12,8 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Logging;
+using SingleStoreConnector.Plugins;
+using SingleStoreConnector.Protocol;
 using SingleStoreConnector.Protocol.Payloads;
 using SingleStoreConnector.Protocol.Serialization;
 using SingleStoreConnector.Utilities;
@@ -47,6 +52,7 @@ namespace SingleStoreConnector
 			m_connectionString = connectionString;
 			LoggingConfiguration = loggingConfiguration;
 			m_logger = loggingConfiguration.ConnectionLogger;
+			m_transactionLogger = loggingConfiguration.TransactionLogger;
 		}
 
 #pragma warning disable CA2012 // Safe because method completes synchronously
@@ -148,6 +154,7 @@ namespace SingleStoreConnector
 			CancellationToken cancellationToken = default) =>
 			BeginTransactionAsync(isolationLevel, isReadOnly, AsyncIOBehavior, cancellationToken);
 
+		// set session transaction isolation level read uncommitted;start transaction with consistent snapshot,read write;
 		private async ValueTask<SingleStoreTransaction> BeginTransactionAsync(IsolationLevel isolationLevel,
 			bool? isReadOnly, IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
@@ -159,37 +166,167 @@ namespace SingleStoreConnector
 				throw new InvalidOperationException(
 					"Cannot begin a transaction when already enlisted in a transaction.");
 
-			var isolationLevelValue = isolationLevel switch
+			Log.StartingTransaction(m_transactionLogger, m_session!.Id);
+
+			// get the bytes for both payloads concatenated together (suitable for pipelining)
+			var startTransactionPayload = GetStartTransactionPayload(isolationLevel, isReadOnly, m_session.SupportsQueryAttributes);
+
+			if (GetInitializedConnectionSettings() is { UseCompression: false, Pipelining: not false })
 			{
-				IsolationLevel.ReadCommitted => "read committed",
+				// send the two packets together
+				await m_session.SendRawAsync(startTransactionPayload, ioBehavior, cancellationToken).ConfigureAwait(false);
+
+				// read the two OK replies
+				var payload = await m_session.ReceiveReplyAsync(1, ioBehavior, cancellationToken).ConfigureAwait(false);
+				OkPayload.Verify(payload.Span, m_session);
+
+				payload = await m_session.ReceiveReplyAsync(1, ioBehavior, cancellationToken).ConfigureAwait(false);
+				OkPayload.Verify(payload.Span, m_session);
+			}
+			else
+			{
+				// send the two packets separately
+				await m_session.SendAsync(new Protocol.PayloadData(startTransactionPayload.Slice(4, startTransactionPayload.Span[0])), ioBehavior, cancellationToken).ConfigureAwait(false);
+
+				var payload = await m_session.ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+				OkPayload.Verify(payload.Span, m_session);
+
+				await m_session.SendAsync(new Protocol.PayloadData(startTransactionPayload.Slice(8 + startTransactionPayload.Span[0], startTransactionPayload.Span[startTransactionPayload.Span[0] + 4])), ioBehavior, cancellationToken).ConfigureAwait(false);
+
+				payload = await m_session.ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+				OkPayload.Verify(payload.Span, m_session);
+			}
+
+			var transaction = new SingleStoreTransaction(this, isolationLevel, m_transactionLogger);
+			CurrentTransaction = transaction;
+			return transaction;
+		}
+
+		/// <summary>
+		/// Returns a <see cref="ReadOnlyMemory{Byte}"/> containing two payloads to set the isolation level and start a transaction.
+		/// </summary>
+		internal static ReadOnlyMemory<byte> GetStartTransactionPayload(IsolationLevel isolationLevel, bool? isReadOnly, bool supportsQueryAttributes)
+		{
+			var isolationLevelIndex = isolationLevel switch
+			{
+				IsolationLevel.ReadCommitted => 1,
 
 				// default Isolation Level in SingleStore is read committed
-				IsolationLevel.Unspecified => "read committed",
+				IsolationLevel.Unspecified => 1,
 
 				_ => throw new NotSupportedException($"IsolationLevel.{isolationLevel} is not supported."),
 			};
 
-			using (var cmd = new SingleStoreCommand($"set session transaction isolation level {isolationLevelValue};",
-				       this) { NoActivity = true })
-			{
-				await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			var consistentSnapshotIndex = isolationLevel == IsolationLevel.Snapshot ? 1 : 0;
 
-				var consistentSnapshotText =
-					isolationLevel == IsolationLevel.Snapshot ? " with consistent snapshot" : "";
-				var readOnlyText = isReadOnly switch
+			var readOnlyIndex = isReadOnly switch
+			{
+				null => 0,
+				false => 1,
+				true => 2,
+			};
+
+			var index = ((((supportsQueryAttributes ? 1 : 0) * 5) + isolationLevelIndex + consistentSnapshotIndex) * 3) + readOnlyIndex;
+
+			if (s_startTransactionPayloads[index].IsEmpty)
+			{
+				// create payload that's (four-byte header)(query)(set isolation level X)(four-byte header)(query)(start transaction)
+				var payload = new byte[125];
+				var startIndex = 4;
+				var length = 0;
+
+				payload[startIndex] = (byte) CommandKind.Query;
+				startIndex++;
+				length++;
+
+				if (supportsQueryAttributes)
 				{
-					true => " read only",
-					false => " read write",
-					null => "",
+					payload[startIndex + 1] = 1;
+					startIndex += 2;
+					length += 2;
+				}
+
+				// copy in 'set isolation level' prefix
+				ReadOnlySpan<byte> setIsolationLevelText = "set session transaction isolation level "u8;
+				setIsolationLevelText.CopyTo(payload.AsSpan(startIndex));
+				length += setIsolationLevelText.Length;
+				startIndex += setIsolationLevelText.Length;
+
+				// copy in isolation level
+				ReadOnlySpan<byte> isolationLevelText = isolationLevelIndex switch
+				{
+					0 => "read uncommitted"u8,
+					1 => "read committed"u8,
+					2 => "serializable"u8,
+					_ => "repeatable read"u8,
 				};
-				var separatorText = (consistentSnapshotText.Length == 0 || readOnlyText.Length == 0) ? "" : ",";
-				cmd.CommandText = $"start transaction{consistentSnapshotText}{separatorText}{readOnlyText};";
-				await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+				isolationLevelText.CopyTo(payload.AsSpan(startIndex));
+				startIndex += isolationLevelText.Length;
+				length += isolationLevelText.Length;
+
+				payload[startIndex] = (byte) ';';
+				startIndex++;
+				length++;
+
+				// set the length of the first payload
+				payload[0] = (byte) length;
+
+				startIndex += 4;
+
+				payload[startIndex] = (byte) CommandKind.Query;
+				startIndex++;
+				length = 1;
+
+				if (supportsQueryAttributes)
+				{
+					payload[startIndex + 1] = 1;
+					startIndex += 2;
+					length += 2;
+				}
+
+				// copy in 'start transaction' prefix
+				ReadOnlySpan<byte> startTransactionText = "start transaction"u8;
+				startTransactionText.CopyTo(payload.AsSpan(startIndex));
+				length += startTransactionText.Length;
+				startIndex += startTransactionText.Length;
+
+				// copy in 'with consistent snapshot'
+				if (consistentSnapshotIndex == 1)
+				{
+					ReadOnlySpan<byte> consistentSnapshotText = " with consistent snapshot"u8;
+					consistentSnapshotText.CopyTo(payload.AsSpan(startIndex));
+					length += consistentSnapshotText.Length;
+					startIndex += consistentSnapshotText.Length;
+				}
+
+				if (consistentSnapshotIndex > 0 && readOnlyIndex > 0)
+				{
+					payload[startIndex] = (byte) ',';
+					startIndex++;
+					length++;
+				}
+
+				ReadOnlySpan<byte> readOnlyText = readOnlyIndex switch
+				{
+					1 => " read write"u8,
+					2 => " read only"u8,
+					_ => ""u8,
+				};
+				readOnlyText.CopyTo(payload.AsSpan(startIndex));
+				startIndex += readOnlyText.Length;
+				length += readOnlyText.Length;
+
+				payload[startIndex] = (byte) ';';
+				startIndex++;
+				length++;
+
+				// store length at the beginning of the second payload
+				payload[payload[0] + 4] = (byte) length;
+
+				s_startTransactionPayloads[index] = new ReadOnlyMemory<byte>(payload, 0, payload[0] + payload[payload[0] + 4] + 8);
 			}
 
-			var transaction = new SingleStoreTransaction(this, isolationLevel);
-			CurrentTransaction = transaction;
-			return transaction;
+			return s_startTransactionPayloads[index];
 		}
 
 		public override void EnlistTransaction(System.Transactions.Transaction? transaction)
@@ -220,7 +357,7 @@ namespace SingleStoreConnector
 				else
 				{
 					m_enlistedTransaction = GetInitializedConnectionSettings().UseXaTransactions
-						? (EnlistedTransactionBase) new XaEnlistedTransaction(transaction, this)
+						? new XaEnlistedTransaction(transaction, this)
 						: new StandardEnlistedTransaction(transaction, this);
 					m_enlistedTransaction.Start();
 
@@ -374,7 +511,9 @@ namespace SingleStoreConnector
 			using (var initDatabasePayload = InitDatabasePayload.Create(databaseName))
 				await m_session!.SendAsync(initDatabasePayload, ioBehavior, cancellationToken).ConfigureAwait(false);
 			var payload = await m_session.ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Verify(payload.Span, m_session.SupportsDeprecateEof, m_session.SupportsSessionTrack);
+			OkPayload.Verify(payload.Span, m_session);
+
+			// for non session tracking servers
 			m_session.DatabaseOverride = databaseName;
 		}
 
@@ -410,7 +549,7 @@ namespace SingleStoreConnector
 
 		internal async Task OpenAsync(IOBehavior? ioBehavior, CancellationToken cancellationToken)
 		{
-			var openStartTickCount = Environment.TickCount;
+			var openStartingTimestamp = Stopwatch.GetTimestamp();
 
 			VerifyNotDisposed();
 			cancellationToken.ThrowIfCancellationRequested();
@@ -438,13 +577,20 @@ namespace SingleStoreConnector
 						ActivitySourceHelper.CopyTags(m_session!.ActivityTags, activity);
 						m_hasBeenOpened = true;
 						SetState(ConnectionState.Open);
+
+						if (ConnectionOpenedCallback is { } autoEnlistConnectionOpenedCallback)
+						{
+							cancellationToken.ThrowIfCancellationRequested();
+							await autoEnlistConnectionOpenedCallback(new(this, SingleStoreConnectionOpenedConditions.None), cancellationToken).ConfigureAwait(false);
+						}
+
 						return;
 					}
 				}
 
 				try
 				{
-					m_session = await CreateSessionAsync(pool, openStartTickCount, activity, ioBehavior,
+					m_session = await CreateSessionAsync(pool, openStartingTimestamp, activity, ioBehavior,
 						cancellationToken).ConfigureAwait(false);
 					m_hasBeenOpened = true;
 					SetState(ConnectionState.Open);
@@ -471,6 +617,12 @@ namespace SingleStoreConnector
 
 				if (m_connectionSettings.AutoEnlist && System.Transactions.Transaction.Current is not null)
 					EnlistTransaction(System.Transactions.Transaction.Current);
+
+				if (ConnectionOpenedCallback is { } connectionOpenedCallback)
+				{
+					cancellationToken.ThrowIfCancellationRequested();
+					await connectionOpenedCallback(new(this, m_session.Conditions), cancellationToken).ConfigureAwait(false);
+				}
 			}
 			catch (Exception ex) when (activity is { IsAllDataRequested: true })
 			{
@@ -795,14 +947,14 @@ namespace SingleStoreConnector
 
 		internal void Cancel(ICancellableCommand command, int commandId, bool isCancel)
 		{
-			if (m_session?.Id is not string sessionId || State != ConnectionState.Open ||
-			    m_session?.TryStartCancel(command) is not true)
+			// NOTE: read and cache m_session in a local variable because it can be set to null by CloseAsync on another thread
+			if (m_session is not { } session || State != ConnectionState.Open || !session.TryStartCancel(command))
 			{
 				Log.IgnoringCancellationForCommand(m_logger, commandId);
 				return;
 			}
 
-			Log.CommandHasBeenCanceled(m_logger, commandId, sessionId, isCancel ? "Cancel()" : "command timeout");
+			Log.CommandHasBeenCanceled(m_logger, commandId, session.Id, isCancel ? "Cancel()" : "command timeout");
 
 			try
 			{
@@ -811,17 +963,32 @@ namespace SingleStoreConnector
 				{
 					AutoEnlist = false, Pooling = false,
 				};
-				if (m_session.IPEndPoint is { Address: { } ipAddress, Port: { } port })
-				{
-					csb.Server = ipAddress.ToString();
-					csb.Port = (uint) port;
-				}
 
-				csb.UserID = m_session.UserID;
+				// connect directly to the session's IP address to ensure we're cancelling the query on the right server (in a load-balanced scenario)
+				IPAddress? ipAddress = null;
+				if (session.IPEndPoint is { Address: { } sessionIpAddress, Port: { } port })
+				{
+					// set the hostname to the existing session's hostname (for SSL validation)
+					csb.Server = session.HostName;
+					csb.Port = (uint) port;
+					ipAddress = sessionIpAddress;
+				}
+				csb.UserID = session.UserID;
 				var cancellationTimeout = GetConnectionSettings().CancellationTimeout;
 				csb.ConnectionTimeout = cancellationTimeout < 1 ? 3u : (uint) cancellationTimeout;
 
+				// forcibly set the IP address the new connection should use
+				var connectionSettings = new ConnectionSettings(csb);
+				if (ipAddress is not null)
+					connectionSettings = connectionSettings.CloneWith(ipAddress);
+
 				using var connection = CloneWith(csb.ConnectionString);
+				connection.m_connectionSettings = connectionSettings;
+
+				// clear the callback because this is not intended to be a user-visible SingleStoreConnection that will execute setup logic; it's a
+				// non-pooled connection that will execute "KILL QUERY" then immediately be closed
+				connection.ConnectionOpenedCallback = null;
+
 				connection.Open();
 #if NET6_0_OR_GREATER
 			var killQuerySql =
@@ -833,20 +1000,20 @@ namespace SingleStoreConnector
 #endif
 				using var killCommand = new SingleStoreCommand(killQuerySql, connection);
 				killCommand.CommandTimeout = cancellationTimeout < 1 ? 3 : cancellationTimeout;
-				m_session?.DoCancel(command, killCommand);
+				session.DoCancel(command, killCommand);
 			}
 			catch (InvalidOperationException ex)
 			{
 				// ignore a rare race condition where the connection is open at the beginning of the method, but closed by the time
 				// KILL QUERY is executed: https://github.com/mysql-net/MySqlConnector/issues/1002
-				Log.IgnoringCancellationForClosedConnection(m_logger, ex, sessionId);
-				m_session?.AbortCancel(command);
+				Log.IgnoringCancellationForClosedConnection(m_logger, ex, session.Id);
+				session.AbortCancel(command);
 			}
 			catch (SingleStoreException ex)
 			{
 				// cancelling the query failed; setting the state back to 'Querying' will allow another call to 'Cancel' to try again
-				Log.CancelingCommandFailed(m_logger, ex, sessionId, command.CommandId);
-				m_session?.AbortCancel(command);
+				Log.CancelingCommandFailed(m_logger, ex, session.Id, command.CommandId);
+				session.AbortCancel(command);
 			}
 		}
 
@@ -902,6 +1069,8 @@ namespace SingleStoreConnector
 
 		internal SingleStoreTransaction? CurrentTransaction { get; set; }
 		internal SingleStoreConnectorLoggingConfiguration LoggingConfiguration { get; }
+		internal ZstandardPlugin? ZstandardPlugin { get; set; }
+		internal SingleStoreConnectionOpenedCallback? ConnectionOpenedCallback { get; set; }
 		internal bool AllowLoadLocalInfile => GetInitializedConnectionSettings().AllowLoadLocalInfile;
 		internal bool AllowUserVariables => GetInitializedConnectionSettings().AllowUserVariables;
 		internal bool AllowZeroDateTime => GetInitializedConnectionSettings().AllowZeroDateTime;
@@ -966,7 +1135,7 @@ namespace SingleStoreConnector
 			}
 		}
 
-		private async ValueTask<ServerSession> CreateSessionAsync(ConnectionPool? pool, int startTickCount,
+		private async ValueTask<ServerSession> CreateSessionAsync(ConnectionPool? pool, long startingTimestamp,
 			Activity? activity, IOBehavior? ioBehavior, CancellationToken cancellationToken)
 		{
 			MetricsReporter.AddPendingRequest(pool);
@@ -985,7 +1154,7 @@ namespace SingleStoreConnector
 				if (connectionSettings.ConnectionTimeout != 0)
 					timeoutSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(Math.Max(1,
 						connectionSettings.ConnectionTimeoutMilliseconds -
-						unchecked(Environment.TickCount - startTickCount))));
+						Utility.GetElapsedMilliseconds(startingTimestamp))));
 				if (cancellationToken.CanBeCanceled && timeoutSource is not null)
 					linkedSource =
 						CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
@@ -995,7 +1164,7 @@ namespace SingleStoreConnector
 				if (pool is not null)
 				{
 					// this returns an open session
-					return await pool.GetSessionAsync(this, startTickCount,
+					return await pool.GetSessionAsync(this, startingTimestamp,
 							connectionSettings.ConnectionTimeoutMilliseconds, activity, actualIOBehavior, connectToken)
 						.ConfigureAwait(false);
 				}
@@ -1007,25 +1176,15 @@ namespace SingleStoreConnector
 						connectionSettings.HostNames!.Count > 1
 							? RandomLoadBalancer.Instance
 							: FailOverLoadBalancer.Instance;
-
-					var session = new ServerSession(m_logger);
+					var session = await ServerSession.ConnectAndRedirectAsync(m_logger, m_logger, NonPooledConnectionPoolMetadata.Instance, connectionSettings, loadBalancer, this, null, startingTimestamp, null, actualIOBehavior, connectToken).ConfigureAwait(false);
 					session.OwningConnection = new WeakReference<SingleStoreConnection>(this);
 					Log.CreatedNonPooledSession(m_logger, session.Id);
-					try
-					{
-						await session.ConnectAsync(connectionSettings, this, startTickCount, loadBalancer, activity,
-							actualIOBehavior, connectToken).ConfigureAwait(false);
-						return session;
-					}
-					catch (Exception)
-					{
-						await session.DisposeAsync(actualIOBehavior, default).ConfigureAwait(false);
-						throw;
-					}
+					return session;
 				}
 			}
 			catch (OperationCanceledException) when (timeoutSource?.IsCancellationRequested is true)
 			{
+				MetricsReporter.AddTimeout(pool, connectionSettings);
 				var messageSuffix = (pool?.IsEmpty is true) ? " All pooled connections are in use." : "";
 				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost,
 					"Connect Timeout expired." + messageSuffix);
@@ -1033,8 +1192,14 @@ namespace SingleStoreConnector
 			catch (SingleStoreException ex) when ((timeoutSource?.IsCancellationRequested is true) ||
 			                                      (ex.ErrorCode == SingleStoreErrorCode.CommandTimeoutExpired))
 			{
+				MetricsReporter.AddTimeout(pool, connectionSettings);
 				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Connect Timeout expired.",
 					ex);
+			}
+			catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.UnableToConnectToHost && ex.Message == "Connect Timeout expired.")
+			{
+				MetricsReporter.AddTimeout(pool, connectionSettings);
+				throw;
 			}
 			finally
 			{
@@ -1053,6 +1218,8 @@ namespace SingleStoreConnector
 		internal bool SslIsMutuallyAuthenticated => m_session!.SslIsMutuallyAuthenticated;
 
 		internal SslProtocols SslProtocol => m_session!.SslProtocol;
+
+		internal IPEndPoint? SessionEndPoint => m_session!.IPEndPoint;
 
 		internal void SetState(ConnectionState newState)
 		{
@@ -1085,6 +1252,7 @@ namespace SingleStoreConnector
 			ProvideClientCertificatesCallback = other.ProvideClientCertificatesCallback;
 			ProvidePasswordCallback = other.ProvidePasswordCallback;
 			RemoteCertificateValidationCallback = other.RemoteCertificateValidationCallback;
+			ConnectionOpenedCallback = other.ConnectionOpenedCallback;
 		}
 
 		private void VerifyNotDisposed()
@@ -1135,12 +1303,10 @@ namespace SingleStoreConnector
 				// This connection is being closed, so create a new SingleStoreConnection that will own the ServerSession
 				// (which remains open). This ensures the ServerSession always has a valid OwningConnection (even
 				// if 'this' is GCed.
-				var connection = new SingleStoreConnection
+				var connection = new SingleStoreConnection(this, m_dataSource, m_connectionString, hasBeenOpened: true)
 				{
-					m_connectionString = m_connectionString,
 					m_connectionSettings = m_connectionSettings,
 					m_connectionState = m_connectionState,
-					m_hasBeenOpened = true,
 				};
 				connection.TakeSessionFrom(this);
 
@@ -1175,6 +1341,9 @@ namespace SingleStoreConnector
 			{
 				if (m_session is not null)
 				{
+					// under exceptional circumstances, we may enter this code without having called FinishQuerying, which clears this field
+					m_activeReader = null;
+
 					if (GetInitializedConnectionSettings().Pooling)
 					{
 						await m_session.ReturnToPoolAsync(ioBehavior, this).ConfigureAwait(false);
@@ -1218,14 +1387,17 @@ namespace SingleStoreConnector
 
 		private static readonly StateChangeEventArgs s_stateChangeOpenClosed =
 			new(ConnectionState.Open, ConnectionState.Closed);
-
+#if NET9_0_OR_GREATER
+	private static readonly Lock s_lock = new();
+#else
 		private static readonly object s_lock = new();
-
-		private static readonly Dictionary<System.Transactions.Transaction, List<EnlistedTransactionBase>>
-			s_transactionConnections = [];
+#endif
+		private static readonly Dictionary<System.Transactions.Transaction, List<EnlistedTransactionBase>> s_transactionConnections = [];
+		private static readonly ReadOnlyMemory<byte>[] s_startTransactionPayloads = new ReadOnlyMemory<byte>[5 * 3 * 2];
 
 		private readonly SingleStoreDataSource? m_dataSource;
 		private readonly ILogger m_logger;
+		private readonly ILogger m_transactionLogger;
 		private string m_connectionString;
 		private ConnectionSettings? m_connectionSettings;
 		private ServerSession? m_session;

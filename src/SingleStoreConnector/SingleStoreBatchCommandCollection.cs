@@ -34,18 +34,18 @@ public sealed class SingleStoreBatchCommandCollection
 	public SingleStoreBatchCommand this[int index] { get => m_commands[index]; set => m_commands[index] = value; }
 	public int Count => m_commands.Count;
 	public bool IsReadOnly => false;
-	public void Add(SingleStoreBatchCommand item) => m_commands.Add((SingleStoreBatchCommand) item);
+	public void Add(SingleStoreBatchCommand item) => m_commands.Add(item);
 	public void Clear() => m_commands.Clear();
-	public bool Contains(SingleStoreBatchCommand item) => m_commands.Contains((SingleStoreBatchCommand) item);
+	public bool Contains(SingleStoreBatchCommand item) => m_commands.Contains(item);
 	public void CopyTo(SingleStoreBatchCommand[] array, int arrayIndex) => throw new NotImplementedException();
 	public IEnumerator<SingleStoreBatchCommand> GetEnumerator()
 	{
 		foreach (var command in m_commands)
 			yield return command;
 	}
-	public int IndexOf(SingleStoreBatchCommand item) => m_commands.IndexOf((SingleStoreBatchCommand) item);
-	public void Insert(int index, SingleStoreBatchCommand item) => m_commands.Insert(index, (SingleStoreBatchCommand) item);
-	public bool Remove(SingleStoreBatchCommand item) => m_commands.Remove((SingleStoreBatchCommand) item);
+	public int IndexOf(SingleStoreBatchCommand item) => m_commands.IndexOf(item);
+	public void Insert(int index, SingleStoreBatchCommand item) => m_commands.Insert(index, item);
+	public bool Remove(SingleStoreBatchCommand item) => m_commands.Remove(item);
 	public void RemoveAt(int index) => m_commands.RemoveAt(index);
 	IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 #endif

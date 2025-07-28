@@ -710,8 +710,8 @@ public sealed class SingleStoreBulkCopy
 		}
 	}
 
-	private static readonly char[] s_specialCharacters = [ '\t', '\\', '\n' ];
-	private static readonly UTF8Encoding s_utf8Encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+	private static readonly char[] s_specialCharacters = ['\t', '\\', '\n'];
+	private static readonly UTF8Encoding s_utf8Encoding = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
 	private readonly SingleStoreConnection m_connection;
 	private readonly SingleStoreTransaction? m_transaction;
