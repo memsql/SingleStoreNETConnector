@@ -5,38 +5,38 @@ namespace SingleStoreConnector.Protocol.Payloads;
 
 internal static class HandshakeResponse41Payload
 {
-	private static ByteBufferWriter CreateCapabilitiesPayload(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, bool useCompression, CharacterSet characterSet, ProtocolCapabilities additionalCapabilities = 0)
+	private static ByteBufferWriter CreateCapabilitiesPayload(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, CompressionMethod compressionMethod, CharacterSet characterSet, ProtocolCapabilities additionalCapabilities = 0)
 	{
 		var writer = new ByteBufferWriter();
 
-		var clientCapabilities = (ProtocolCapabilities.Protocol41 |
-			(cs.InteractiveSession ? ProtocolCapabilities.Interactive : 0) |
-			ProtocolCapabilities.LongPassword |
-			ProtocolCapabilities.Transactions |
+		var clientCapabilities =
+			ProtocolCapabilities.Protocol41 |
+			(cs.InteractiveSession ? (serverCapabilities & ProtocolCapabilities.Interactive) : 0) |
+			(serverCapabilities & ProtocolCapabilities.LongPassword) |
+			(serverCapabilities & ProtocolCapabilities.Transactions) |
 			ProtocolCapabilities.SecureConnection |
-			ProtocolCapabilities.PluginAuth |
-			ProtocolCapabilities.PluginAuthLengthEncodedClientData |
+			(serverCapabilities & ProtocolCapabilities.PluginAuth) |
+			(serverCapabilities & ProtocolCapabilities.PluginAuthLengthEncodedClientData) |
 			ProtocolCapabilities.MultiStatements |
 			ProtocolCapabilities.MultiResults |
 			(cs.AllowLoadLocalInfile ? ProtocolCapabilities.LocalFiles : 0) |
-			(string.IsNullOrWhiteSpace(cs.Database)
-				? 0
-				: ProtocolCapabilities.ConnectWithDatabase) |
+			(string.IsNullOrWhiteSpace(cs.Database) ? 0 : ProtocolCapabilities.ConnectWithDatabase) |
 			(cs.UseAffectedRows ? 0 : ProtocolCapabilities.FoundRows) |
-			(useCompression ? ProtocolCapabilities.Compress : ProtocolCapabilities.None) |
-			ProtocolCapabilities.ConnectionAttributes |
-			ProtocolCapabilities.SessionTrack |
-			ProtocolCapabilities.DeprecateEof |
-			ProtocolCapabilities.QueryAttributes |
-			ProtocolCapabilities.MariaDbCacheMetadata |
-			additionalCapabilities) & serverCapabilities;
+			(compressionMethod == CompressionMethod.Zlib ? ProtocolCapabilities.Compress : ProtocolCapabilities.None) |
+			(serverCapabilities & ProtocolCapabilities.ConnectionAttributes) |
+			(serverCapabilities & ProtocolCapabilities.SessionTrack) |
+			(serverCapabilities & ProtocolCapabilities.DeprecateEof) |
+			(compressionMethod == CompressionMethod.Zstandard ? ProtocolCapabilities.ZstandardCompressionAlgorithm : 0) |
+			(serverCapabilities & ProtocolCapabilities.QueryAttributes) |
+			(serverCapabilities & ProtocolCapabilities.MariaDbCacheMetadata) |
+			additionalCapabilities;
 
 		writer.Write((int) clientCapabilities);
 		writer.Write(0x4000_0000);
 		writer.Write((byte) characterSet);
 
 		// NOTE: not new byte[19]; see https://github.com/dotnet/roslyn/issues/33088
-		ReadOnlySpan<byte> padding = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+		ReadOnlySpan<byte> padding = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 		writer.Write(padding);
 
 		if ((serverCapabilities & ProtocolCapabilities.LongPassword) == 0)
@@ -52,13 +52,13 @@ internal static class HandshakeResponse41Payload
 		return writer;
 	}
 
-	public static PayloadData CreateWithSsl(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, bool useCompression, CharacterSet characterSet) =>
-		CreateCapabilitiesPayload(serverCapabilities, cs, useCompression, characterSet, ProtocolCapabilities.Ssl).ToPayloadData();
+	public static PayloadData CreateWithSsl(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, CompressionMethod compressionMethod, CharacterSet characterSet) =>
+		CreateCapabilitiesPayload(serverCapabilities, cs, compressionMethod, characterSet, ProtocolCapabilities.Ssl).ToPayloadData();
 
-	public static PayloadData Create(InitialHandshakePayload handshake, ConnectionSettings cs, string password, bool useCompression, CharacterSet characterSet, byte[]? connectionAttributes)
+	public static PayloadData Create(InitialHandshakePayload handshake, ConnectionSettings cs, string password, CompressionMethod compressionMethod, int? compressionLevel, CharacterSet characterSet, byte[]? connectionAttributes)
 	{
 		// TODO: verify server capabilities
-		var writer = CreateCapabilitiesPayload(handshake.ProtocolCapabilities, cs, useCompression, characterSet);
+		var writer = CreateCapabilitiesPayload(handshake.ProtocolCapabilities, cs, compressionMethod, characterSet);
 		writer.WriteNullTerminatedString(cs.UserID);
 		var authenticationResponse = AuthenticationUtility.CreateAuthenticationResponse(handshake.AuthPluginData, password);
 		writer.Write((byte) authenticationResponse.Length);
@@ -72,6 +72,10 @@ internal static class HandshakeResponse41Payload
 
 		if (connectionAttributes is not null)
 			writer.Write(connectionAttributes);
+
+		// Zstandard compression level
+		if (compressionMethod == CompressionMethod.Zstandard)
+			writer.Write((byte) (compressionLevel ?? 10));
 
 		return writer.ToPayloadData();
 	}

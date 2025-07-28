@@ -18,8 +18,9 @@ internal sealed class StreamByteHandler : IByteHandler
 
 	public ValueTask<int> ReadBytesAsync(Memory<byte> buffer, IOBehavior ioBehavior)
 	{
-		return ioBehavior == IOBehavior.Asynchronous ? new ValueTask<int>(DoReadBytesAsync(buffer)) :
+		return
 			RemainingTimeout <= 0 ? ValueTaskExtensions.FromException<int>(SingleStoreException.CreateForTimeout()) :
+			ioBehavior == IOBehavior.Asynchronous ? new ValueTask<int>(DoReadBytesAsync(buffer)) :
 			m_stream.CanTimeout ? DoReadBytesSync(buffer) :
 			DoReadBytesSyncOverAsync(buffer);
 
@@ -34,9 +35,9 @@ internal sealed class StreamByteHandler : IByteHandler
 			}
 			catch (Exception ex)
 			{
-				if (RemainingTimeout != Constants.InfiniteTimeout && ex is IOException { InnerException: SocketException { SocketErrorCode: SocketError.TimedOut } })
-					return ValueTaskExtensions.FromException<int>(SingleStoreException.CreateForTimeout(ex));
-				return ValueTaskExtensions.FromException<int>(ex);
+				return RemainingTimeout != Constants.InfiniteTimeout && ex is IOException { InnerException: SocketException { SocketErrorCode: SocketError.TimedOut } } ?
+					ValueTaskExtensions.FromException<int>(SingleStoreException.CreateForTimeout(ex)) :
+					ValueTaskExtensions.FromException<int>(ex);
 			}
 			if (RemainingTimeout != Constants.InfiniteTimeout)
 				RemainingTimeout -= unchecked(Environment.TickCount - startTime);
