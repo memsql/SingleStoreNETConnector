@@ -154,19 +154,19 @@ public sealed class DataTypes : IClassFixture<DataTypesFixture>, IDisposable
 			Assert.True(await reader.ReadAsync().ConfigureAwait(false));
 			switch (flags[i])
 			{
-			case 0: // normal
-				Assert.Equal(values[i], getInt(reader, 0));
-				Assert.Equal(values[i], getIntByName(reader, column));
-				break;
+				case 0: // normal
+					Assert.Equal(values[i], getInt(reader, 0));
+					Assert.Equal(values[i], getIntByName(reader, column));
+					break;
 
-			case 1: // null
-				Assert.True(await reader.IsDBNullAsync(0).ConfigureAwait(false));
-				break;
+				case 1: // null
+					Assert.True(await reader.IsDBNullAsync(0).ConfigureAwait(false));
+					break;
 
-			case 2: // overflow
-				Assert.Throws<OverflowException>(() => getInt(reader, 0));
-				Assert.Throws<OverflowException>(() => getIntByName(reader, column));
-				break;
+				case 2: // overflow
+					Assert.Throws<OverflowException>(() => getInt(reader, 0));
+					Assert.Throws<OverflowException>(() => getIntByName(reader, column));
+					break;
 			}
 		}
 		Assert.False(await reader.ReadAsync().ConfigureAwait(false));
@@ -558,11 +558,11 @@ UNHEX('33221100554477668899AABBCCDDEEFF'),
 				new() { Value = guidAsLittleEndianBinary16 },
 				new() { Value = guidAsChar36 },
 				new() { Value = isBinary16 ? guidAsBinary16 : isTimeSwapBinary16 ? guidAsTimeSwapBinary16 : guidAsLittleEndianBinary16 },
-				new() { Value = isChar36 ? (object) guid : guidAsChar36 },
-				new() { Value = isChar32 ? (object) guid : guidAsChar32 },
-				new() { Value = isBinary16 ? (object) guid : guidAsBinary16 },
-				new() { Value = isTimeSwapBinary16 ? (object) guid : guidAsTimeSwapBinary16 },
-				new() { Value = isLittleEndianBinary16 ? (object) guid : guidAsLittleEndianBinary16 },
+				new() { Value = isChar36 ? guid : guidAsChar36 },
+				new() { Value = isChar32 ? guid : guidAsChar32 },
+				new() { Value = isBinary16 ? guid : guidAsBinary16 },
+				new() { Value = isTimeSwapBinary16 ? guid : guidAsTimeSwapBinary16 },
+				new() { Value = isLittleEndianBinary16 ? guid : guidAsLittleEndianBinary16 },
 				new() { Value = guidAsChar32 },
 				new() { Value = isBinary16 ? guidAsBinary16 : isTimeSwapBinary16 ? guidAsTimeSwapBinary16 : guidAsLittleEndianBinary16 },
 			}
@@ -665,7 +665,7 @@ UNHEX('33221100554477668899AABBCCDDEEFF'),
 		using var cmd = connection.CreateCommand();
 		cmd.CommandText = @"select cast(0 as date), cast(0 as datetime);";
 
-		using var reader = (SingleStoreDataReader) cmd.ExecuteReader();
+		using var reader = cmd.ExecuteReader();
 		Assert.True(reader.Read());
 		if (convertZeroDateTime)
 		{
@@ -1908,6 +1908,6 @@ end;";
 
 	private SingleStoreConnection Connection { get; }
 
-	private SingleStoreConnectionStringBuilder CreateConnectionStringBuilder() => new SingleStoreConnectionStringBuilder(AppConfig.ConnectionString);
+	private SingleStoreConnectionStringBuilder CreateConnectionStringBuilder() => new(AppConfig.ConnectionString);
 }
 

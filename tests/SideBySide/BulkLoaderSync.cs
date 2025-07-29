@@ -52,9 +52,11 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(GetConnectionString());
 		connection.Open();
-		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
-		bl.FileName = AppConfig.SingleStoreBulkLoaderTsvFile;
-		bl.TableName = m_testTable;
+		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
+		{
+			FileName = AppConfig.SingleStoreBulkLoaderTsvFile,
+			TableName = m_testTable,
+		};
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
 		bl.NumberOfLinesToSkip = 1;
 		bl.Expressions.Add("five = UNHEX(five)");
@@ -68,9 +70,11 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(GetLocalConnectionString());
 		connection.Open();
-		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
-		bl.FileName = AppConfig.SingleStoreBulkLoaderLocalTsvFile;
-		bl.TableName = m_testTable;
+		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
+		{
+			FileName = AppConfig.SingleStoreBulkLoaderLocalTsvFile,
+			TableName = m_testTable,
+		};
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
 		bl.NumberOfLinesToSkip = 1;
 		bl.Expressions.Add("five = UNHEX(five)");
@@ -84,10 +88,12 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(GetConnectionString());
 		connection.Open();
-		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
-		bl.FileName = AppConfig.SingleStoreBulkLoaderCsvFile;
-		bl.TableName = m_testTable;
-		bl.CharacterSet = "UTF8";
+		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
+		{
+			FileName = AppConfig.SingleStoreBulkLoaderCsvFile,
+			TableName = m_testTable,
+			CharacterSet = "UTF8",
+		};
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
 		bl.NumberOfLinesToSkip = 1;
 		bl.FieldTerminator = ",";
@@ -104,10 +110,12 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(GetLocalConnectionString());
 		connection.Open();
-		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
-		bl.FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile;
-		bl.TableName = m_testTable;
-		bl.CharacterSet = "UTF8";
+		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
+		{
+			FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile,
+			TableName = m_testTable,
+			CharacterSet = "UTF8",
+		};
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
 		bl.NumberOfLinesToSkip = 1;
 		bl.FieldTerminator = ",";
@@ -128,10 +136,12 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		if (string.IsNullOrEmpty(secureFilePath) || secureFilePath == "NULL")
 			return;
 
-		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
-		bl.FileName = Path.Combine(secureFilePath, AppConfig.SingleStoreBulkLoaderCsvFile + "-junk");
-		bl.TableName = m_testTable;
-		bl.CharacterSet = "UTF8";
+		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
+		{
+			FileName = Path.Combine(secureFilePath, AppConfig.SingleStoreBulkLoaderCsvFile + "-junk"),
+			TableName = m_testTable,
+			CharacterSet = "UTF8",
+		};
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
 		bl.NumberOfLinesToSkip = 1;
 		bl.FieldTerminator = ",";
@@ -168,11 +178,13 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(GetLocalConnectionString());
 		connection.Open();
-		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
-		bl.Timeout = 3; //Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
-		bl.FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile + "-junk";
-		bl.TableName = m_testTable;
-		bl.CharacterSet = "UTF8";
+		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
+		{
+			Timeout = 3, //Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
+			FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile + "-junk",
+			TableName = m_testTable,
+			CharacterSet = "UTF8",
+		};
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
 		bl.NumberOfLinesToSkip = 1;
 		bl.FieldTerminator = ",";
@@ -335,9 +347,11 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(GetConnectionString());
 		connection.Open();
-		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
-		bl.TableName = m_testTable;
-		bl.CharacterSet = "UTF8";
+		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
+		{
+			TableName = m_testTable,
+			CharacterSet = "UTF8",
+		};
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
 		bl.NumberOfLinesToSkip = 1;
 		bl.FieldTerminator = ",";
@@ -357,8 +371,10 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(GetConnectionString());
 		connection.Open();
-		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection);
-		bl.FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile;
+		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
+		{
+			FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile,
+		};
 		bl.Columns.AddRange(new string[] { "one", "two", "three", "four", "five" });
 		bl.NumberOfLinesToSkip = 1;
 		bl.FieldTerminator = ",";
@@ -1274,21 +1290,21 @@ create table bulk_load_data_table(a int not null primary key auto_increment, b t
 
 		switch (conflictOption)
 		{
-		case SingleStoreBulkLoaderConflictOption.None:
-			var exception = Assert.Throws<SingleStoreException>(() => bulkCopy.WriteToServer(dataTable));
-			Assert.Equal(SingleStoreErrorCode.DuplicateKeyEntry, exception.ErrorCode);
-			return;
+			case SingleStoreBulkLoaderConflictOption.None:
+				var exception = Assert.Throws<SingleStoreException>(() => bulkCopy.WriteToServer(dataTable));
+				Assert.Equal(SingleStoreErrorCode.DuplicateKeyEntry, exception.ErrorCode);
+				return;
 
-		case SingleStoreBulkLoaderConflictOption.Replace:
-			var replaceResult = bulkCopy.WriteToServer(dataTable);
-			Assert.Equal(expectedRowsInserted, replaceResult.RowsInserted);
-			Assert.Empty(replaceResult.Warnings);
-			break;
+			case SingleStoreBulkLoaderConflictOption.Replace:
+				var replaceResult = bulkCopy.WriteToServer(dataTable);
+				Assert.Equal(expectedRowsInserted, replaceResult.RowsInserted);
+				Assert.Empty(replaceResult.Warnings);
+				break;
 
-		case SingleStoreBulkLoaderConflictOption.Ignore:
-			var ignoreResult = bulkCopy.WriteToServer(dataTable);
-			Assert.Equal(expectedRowsInserted, ignoreResult.RowsInserted);
-			break;
+			case SingleStoreBulkLoaderConflictOption.Ignore:
+				var ignoreResult = bulkCopy.WriteToServer(dataTable);
+				Assert.Equal(expectedRowsInserted, ignoreResult.RowsInserted);
+				break;
 		}
 
 		using (var cmd = new SingleStoreCommand("select b from bulk_load_data_table;", connection))

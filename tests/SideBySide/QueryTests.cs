@@ -21,8 +21,10 @@ public class QueryTests : IClassFixture<DatabaseFixture>, IDisposable
 	[InlineData(false, false, true)]
 	public void Bug1096(bool sprocBeforeInsert, bool sprocAfterInsert, bool sprocTwiceBeforeInsert)
 	{
-		var csb = new SingleStoreConnectionStringBuilder(AppConfig.ConnectionString);
-		csb.UseAffectedRows = true;
+		var csb = new SingleStoreConnectionStringBuilder(AppConfig.ConnectionString)
+		{
+			UseAffectedRows = true,
+		};
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		connection.Open();
 
@@ -934,6 +936,48 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 		Assert.False(reader.NextResult());
 		Assert.Empty(reader.GetColumnSchema());
 	}
+
+	[Fact]
+	public void GetColumnSchemaForTableAlias()
+	{
+		using var cmd = m_database.Connection.CreateCommand();
+		cmd.CommandText = """
+		                  drop table if exists column_schema_table2;
+		                  drop table if exists column_schema_table1;
+		                  create table column_schema_table1(id int not null primary key);
+		                  create table column_schema_table2(id int not null primary key,
+		                  	table1_id1 int not null,
+		                  	table1_id2 int not null,
+		                  	foreign key (table1_id1) references column_schema_table1(id),
+		                  	foreign key (table1_id2) references column_schema_table1(id));
+		                  insert into column_schema_table1(id) values(1),(2);
+		                  insert into column_schema_table2(id, table1_id1, table1_id2) values(3, 1, 2);
+		                  """;
+		cmd.ExecuteNonQuery();
+
+		cmd.CommandText = """
+		                  select t2.id as id2, t1a.id as ida, t1b.id as idb
+		                  from column_schema_table2 t2
+		                  join column_schema_table1 t1a on t2.table1_id1 = t1a.id
+		                  join column_schema_table1 t1b on t2.table1_id2 = t1b.id;
+		                  """;
+		using var reader = cmd.ExecuteReader();
+		Assert.True(reader.Read());
+		var schema = reader.GetColumnSchema();
+		Assert.Equal(3, schema.Count);
+		Assert.Equal("id2", schema[0].ColumnName);
+		Assert.Equal("ida", schema[1].ColumnName);
+		Assert.Equal("idb", schema[2].ColumnName);
+		Assert.Equal("id", schema[0].BaseColumnName);
+		Assert.Equal("id", schema[1].BaseColumnName);
+		Assert.Equal("id", schema[2].BaseColumnName);
+		Assert.Equal("column_schema_table2", schema[0].BaseTableName);
+		Assert.Equal("column_schema_table1", schema[1].BaseTableName);
+		Assert.Equal("column_schema_table1", schema[2].BaseTableName);
+		Assert.Equal("t2", ((SingleStoreDbColumn) schema[0]).TableName);
+		Assert.Equal("t1a", ((SingleStoreDbColumn) schema[1]).TableName);
+		Assert.Equal("t1b", ((SingleStoreDbColumn) schema[2]).TableName);
+	}
 #endif
 
 	private void UseReaderWithoutDisposingThread(object obj)
@@ -1378,7 +1422,7 @@ insert into datatypes_tinyint1(value) values(0), (1), (2), (-1), (-128), (127);"
 			Assert.Equal((sbyte) expected[i], reader.GetSByte(0));
 			Assert.Equal((short) expected[i], reader.GetInt16(0));
 			Assert.Equal(expected[i], reader.GetInt32(0));
-			Assert.Equal((long) expected[i], reader.GetInt64(0));
+			Assert.Equal(expected[i], reader.GetInt64(0));
 			Assert.Equal(expected[i], reader.GetFieldValue<int>(0));
 		}
 

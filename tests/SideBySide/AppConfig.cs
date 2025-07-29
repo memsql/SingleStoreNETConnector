@@ -50,7 +50,7 @@ public static class AppConfig
 	public static string SingleStoreBulkLoaderTsvFile => Config.GetValue<string>("Data:SingleStoreBulkLoaderTsvFile");
 	public static string SingleStoreBulkLoaderLocalTsvFile => Config.GetValue<string>("Data:SingleStoreBulkLoaderLocalTsvFile");
 
-	public static SingleStoreConnectionStringBuilder CreateConnectionStringBuilder() => new SingleStoreConnectionStringBuilder(ConnectionString);
+	public static SingleStoreConnectionStringBuilder CreateConnectionStringBuilder() => new(ConnectionString);
 
 	public static SingleStoreConnectionStringBuilder CreateSha256ConnectionStringBuilder()
 	{

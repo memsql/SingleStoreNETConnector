@@ -64,7 +64,11 @@ public class SslTests : IClassFixture<DatabaseFixture>
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		connection.ProvideClientCertificatesCallback = x =>
 		{
+#if NET9_0_OR_GREATER
+			x.Add(X509CertificateLoader.LoadPkcs12FromFile(certificateFilePath, certificateFilePassword));
+#else
 			x.Add(new X509Certificate2(certificateFilePath, certificateFilePassword));
+#endif
 			return default;
 		};
 
@@ -103,7 +107,9 @@ public class SslTests : IClassFixture<DatabaseFixture>
 		Assert.True(connection.SslIsEncrypted);
 		Assert.True(connection.SslIsSigned);
 		Assert.True(connection.SslIsAuthenticated);
+#if !NET9_0_OR_GREATER
 		Assert.True(connection.SslIsMutuallyAuthenticated);
+#endif
 #endif
 		cmd.CommandText = "SHOW SESSION STATUS LIKE 'Ssl_version'";
 		var sslVersion = (string) await cmd.ExecuteScalarAsync();
@@ -117,7 +123,11 @@ public class SslTests : IClassFixture<DatabaseFixture>
 		// Create a mock of certificate store
 		var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
 		store.Open(OpenFlags.ReadWrite);
+#if NET9_0_OR_GREATER
+		var certificate = X509CertificateLoader.LoadPkcs12FromFile(Path.Combine(AppConfig.CertsPath, certFile), null);
+#else
 		var certificate = new X509Certificate2(Path.Combine(AppConfig.CertsPath, certFile));
+#endif
 		store.Add(certificate);
 
 		var csb = AppConfig.CreateConnectionStringBuilder();
@@ -133,7 +143,9 @@ public class SslTests : IClassFixture<DatabaseFixture>
 			Assert.True(connection.SslIsEncrypted);
 			Assert.True(connection.SslIsSigned);
 			Assert.True(connection.SslIsAuthenticated);
+#if !NET9_0_OR_GREATER
 			Assert.True(connection.SslIsMutuallyAuthenticated);
+#endif
 #endif
 			cmd.CommandText = "SHOW SESSION STATUS LIKE 'Ssl_version'";
 			var sslVersion = (string) await cmd.ExecuteScalarAsync();
@@ -181,7 +193,10 @@ public class SslTests : IClassFixture<DatabaseFixture>
 		csb.SslMode = SingleStoreSslMode.VerifyCA;
 		csb.SslCa = Path.Combine(AppConfig.CertsPath, "non-ca-client-cert.pem");
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
-		await Assert.ThrowsAsync<SingleStoreException>(async () => await connection.OpenAsync());
+		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.TlsFingerprintValidation))
+			await connection.OpenAsync();
+		else
+			await Assert.ThrowsAsync<SingleStoreException>(async () => await connection.OpenAsync());
 	}
 
 #if !BASELINE
@@ -198,10 +213,41 @@ public class SslTests : IClassFixture<DatabaseFixture>
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		connection.RemoteCertificateValidationCallback = (s, c, h, e) => true;
 
-		if (expectedSuccess)
+		if (expectedSuccess || AppConfig.SupportedFeatures.HasFlag(ServerFeatures.TlsFingerprintValidation))
 			await connection.OpenAsync();
 		else
 			await Assert.ThrowsAsync<SingleStoreException>(async () => await connection.OpenAsync());
+	}
+#endif
+
+	[SkippableFact(ServerFeatures.TlsFingerprintValidation)]
+	public async Task ConnectZeroConfigurationSslNative()
+	{
+		// permit connection without any Ssl configuration.
+		// reference https://mariadb.org/mission-impossible-zero-configuration-ssl/
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.CertificateFile = null;
+		csb.SslMode = SingleStoreSslMode.VerifyFull;
+		csb.SslCa = "";
+		csb.UserID = "ssltest";
+		csb.Password = "test";
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		await connection.OpenAsync();
+	}
+
+#if !BASELINE
+	[SkippableFact(ServerFeatures.TlsFingerprintValidation | ServerFeatures.Ed25519)]
+	public async Task ConnectZeroConfigurationSslEd25519()
+	{
+		SingleStoreConnector.Authentication.Ed25519.Ed25519AuthenticationPlugin.Install();
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.CertificateFile = null;
+		csb.SslMode = SingleStoreSslMode.VerifyFull;
+		csb.SslCa = "";
+		csb.UserID = "ed25519user";
+		csb.Password = "Ed255!9";
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		await connection.OpenAsync();
 	}
 #endif
 
