@@ -546,7 +546,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 			// set 'collation_connection' to the server default
 			await SendAsync(m_setNamesPayload, ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+			OkPayload.Verify(payload.Span, this);
 
 			await GetRealServerDetailsAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 
