@@ -33,7 +33,7 @@ internal sealed class FakeSingleStoreServerConnection
 
 				if (m_server.SendIncompletePostHandshakeResponse)
 				{
-					await stream.WriteAsync(new byte[] { 1, 0, 0, 2 }, 0, 4);
+					await stream.WriteAsync([1, 0, 0, 2], 0, 4);
 					return;
 				}
 
@@ -54,149 +54,159 @@ internal sealed class FakeSingleStoreServerConnection
 
 					switch ((CommandKind) bytes[0])
 					{
-					case CommandKind.Quit:
-						await SendAsync(stream, 1, WriteOk);
-						keepRunning = false;
-						break;
-
-					case CommandKind.Ping:
-						await SendAsync(stream, 1, WriteOk);
-						break;
-
-					case CommandKind.ResetConnection:
-						if (m_server.ResetDelay is { } resetDelay)
-							await Task.Delay(resetDelay);
-						await SendAsync(stream, 1, WriteOk);
-						break;
-
-					case CommandKind.ChangeUser:
-						await SendAsync(stream, 1, WriteOk);
-						break;
-
-					case CommandKind.Query:
-						var query = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
-						Match match;
-						if (query == "SET NAMES utf8mb4;")
-						{
+						case CommandKind.Quit:
 							await SendAsync(stream, 1, WriteOk);
-						}
-						else if (query == "SET NAMES utf8;")
-						{
+							keepRunning = false;
+							break;
+
+						case CommandKind.Ping:
 							await SendAsync(stream, 1, WriteOk);
-						}
-						else if ((match = Regex.Match(query, @"^SELECT ([0-9])(;|$)")).Success)
-						{
-							var number = match.Groups[1].Value;
-							var data = new byte[number.Length + 1];
-							data[0] = (byte) number.Length;
-							Encoding.UTF8.GetBytes(number, 0, number.Length, data, 1);
+							break;
 
-							await SendAsync(stream, 1, x => x.Write((byte) 1)); // one column
-							await SendAsync(stream, 2, x => x.Write(new byte[] { 3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x5F, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 3, 0x81, 0, 0, 0, 0 })); // column definition
-							await SendAsync(stream, 3, x => x.Write(new byte[] { 0xFE, 0, 0, 2, 0 })); // EOF
-							await SendAsync(stream, 4, x => x.Write(data));
-							await SendAsync(stream, 5, x => x.Write(new byte[] { 0xFE, 0, 0, 2, 0 })); // EOF
-						}
-						else if ((match = Regex.Match(query, @"^SELECT ([0-9]+), ([0-9]+), ([0-9-]+), ([0-9]+)(;|$)")).Success)
-						{
-							// command is "SELECT {value}, {delay}, {pauseStep}, {flags}"
-							var number = match.Groups[1].Value;
-							var value = int.Parse(number);
-							var delay = int.Parse(match.Groups[2].Value);
-							var pauseStep = int.Parse(match.Groups[3].Value);
-							var flags = int.Parse(match.Groups[4].Value);
-							var ignoreCancellation = (flags & 1) == 1;
-							var bufferOutput = (flags & 2) == 2;
+						case CommandKind.ResetConnection:
+							if (m_server.ResetDelay is { } resetDelay)
+								await Task.Delay(resetDelay);
+							await SendAsync(stream, 1, WriteOk);
+							break;
 
-							var data = new byte[number.Length + 1];
-							data[0] = (byte) number.Length;
-							Encoding.UTF8.GetBytes(number, 0, number.Length, data, 1);
+						case CommandKind.ChangeUser:
+							await SendAsync(stream, 1, WriteOk);
+							break;
 
-							var negativeOne = new byte[] { 2, 0x2D, 0x31 };
-							var packets = new[]
+						case CommandKind.Query:
+							var query = Encoding.UTF8.GetString(bytes, 1, bytes.Length - 1);
+							Match match;
+							if (query == "SET NAMES utf8mb4;")
 							{
-								new byte[] { 0xFF, 0x25, 0x05, 0x23, 0x37, 0x30, 0x31, 0x30, 0x30 }.Concat(Encoding.ASCII.GetBytes("Query execution was interrupted")).ToArray(), // error
-								new byte[] { 1 }, // one column
-								new byte[] { 3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x5F, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 3, 0x81, 0, 0, 0, 0 }, // column definition
-								new byte[] { 0xFE, 0, 0, 2, 0 }, // EOF
-								data,
-								negativeOne,
-								negativeOne,
-								new byte[] { 0xFE, 0, 0, 10, 0 }, // EOF, more results exist
-								new byte[] { 1 }, // one column
-								new byte[] { 3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x5F, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 3, 0x81, 0, 0, 0, 0 }, // column definition
-								new byte[] { 0xFE, 0, 0, 2, 0 }, // EOF
-								negativeOne,
-								new byte[] { 0xFE, 0, 0, 2, 0 }, // EOF
-							};
-
-							if (bufferOutput)
+								await SendAsync(stream, 1, WriteOk);
+							}
+							else if ((match = Regex.Match(query, @"^SELECT ([0-9])(;|$)")).Success)
 							{
-								// if 'bufferOutput' is set, perform the delay immediately then send all the output afterwards, as though it were buffered on the server
-								var queryInterrupted = false;
-								if (ignoreCancellation)
-									await Task.Delay(delay, token);
+								var number = match.Groups[1].Value;
+								var data = new byte[number.Length + 1];
+								data[0] = (byte) number.Length;
+								Encoding.UTF8.GetBytes(number, 0, number.Length, data, 1);
+
+								await SendAsync(stream, 1, x => x.Write((byte) 1)); // one column
+								await SendAsync(stream, 2, x => x.Write(new byte[] { 3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x5F, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 3, 0x81, 0, 0, 0, 0 })); // column definition
+								await SendAsync(stream, 3, x => x.Write(new byte[] { 0xFE, 0, 0, 2, 0 })); // EOF
+								await SendAsync(stream, 4, x => x.Write(data));
+								await SendAsync(stream, 5, x => x.Write(new byte[] { 0xFE, 0, 0, 2, 0 })); // EOF
+							}
+							else if ((match = Regex.Match(query, @"^SELECT ([0-9]+), ([0-9]+), ([0-9-]+), ([0-9]+)(;|$)")).Success)
+							{
+								// command is "SELECT {value}, {delay}, {pauseStep}, {flags}"
+								var number = match.Groups[1].Value;
+								var value = int.Parse(number);
+								var delay = int.Parse(match.Groups[2].Value);
+								var pauseStep = int.Parse(match.Groups[3].Value);
+								var flags = int.Parse(match.Groups[4].Value);
+								var ignoreCancellation = (flags & 1) == 1;
+								var bufferOutput = (flags & 2) == 2;
+
+								var data = new byte[number.Length + 1];
+								data[0] = (byte) number.Length;
+								Encoding.UTF8.GetBytes(number, 0, number.Length, data, 1);
+
+								var negativeOne = new byte[] { 2, 0x2D, 0x31 };
+								var packets = new[]
+								{
+									new byte[] { 0xFF, 0x25, 0x05, 0x23, 0x37, 0x30, 0x31, 0x30, 0x30 }.Concat(Encoding.ASCII.GetBytes("Query execution was interrupted")).ToArray(), // error
+									[1], // one column
+									[3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x5F, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 3, 0x81, 0, 0, 0, 0], // column definition
+									[0xFE, 0, 0, 2, 0], // EOF
+									data,
+									negativeOne,
+									negativeOne,
+									[0xFE, 0, 0, 10, 0], // EOF, more results exist
+									[1], // one column
+									[3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x5F, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 3, 0x81, 0, 0, 0, 0], // column definition
+									[0xFE, 0, 0, 2, 0], // EOF
+									negativeOne,
+									[0xFE, 0, 0, 2, 0], // EOF
+								};
+
+								if (bufferOutput)
+								{
+									// if 'bufferOutput' is set, perform the delay immediately then send all the output afterwards, as though it were buffered on the server
+									var queryInterrupted = false;
+									if (ignoreCancellation)
+										await Task.Delay(delay, token);
+									else
+										queryInterrupted = CancelQueryEvent.Wait(delay, token);
+
+									for (var step = 1; step < pauseStep; step++)
+										await SendAsync(stream, step, x => x.Write(packets[step]));
+									await SendAsync(stream, pauseStep, x => x.Write(packets[queryInterrupted ? 0 : pauseStep]));
+								}
 								else
-									queryInterrupted = CancelQueryEvent.Wait(delay, token);
+								{
+									var queryInterrupted = false;
+									for (var step = 1; step < packets.Length && !queryInterrupted; step++)
+									{
+										if (pauseStep == step || pauseStep == -1)
+										{
+											if (ignoreCancellation)
+												await Task.Delay(delay, token);
+											else
+												queryInterrupted = CancelQueryEvent.Wait(delay, token);
+										}
 
-								for (var step = 1; step < pauseStep; step++)
-									await SendAsync(stream, step, x => x.Write(packets[step]));
-								await SendAsync(stream, pauseStep, x => x.Write(packets[queryInterrupted ? 0 : pauseStep]));
+										await SendAsync(stream, step, x => x.Write(packets[queryInterrupted ? 0 : step]));
+									}
+								}
+							}
+							else if ((match = Regex.Match(query, @"^KILL QUERY ([0-9]+)(;|$)", RegexOptions.IgnoreCase)).Success)
+							{
+								var connectionId = int.Parse(match.Groups[1].Value);
+								m_server.CancelQuery(connectionId);
+								await SendAsync(stream, 1, WriteOk);
+							}
+							else if (query == "SELECT SLEEP(0) INTO @dummy;")
+							{
+								var wasSet = CancelQueryEvent.Wait(0, token);
+								await SendAsync(stream, 1, WriteOk);
+							}
+							else if (query == "select infinity")
+							{
+								var packets = new[]
+								{
+									new byte[] { 2 }, // two columns
+									[3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x46, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 4, 0x01, 0, 0x1F, 0, 0], // column definition (float)
+									[3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x44, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 5, 0x01, 0, 0x1F, 0, 0], // column definition (double)
+									[0xFE, 0, 0, 2, 0], // EOF
+									[3, 0x6e, 0x61, 0x6e, 3, 0x6e, 0x61, 0x6e], // nan
+									[3, 0x69, 0x6e, 0x66, 3, 0x69, 0x6e, 0x66], // inf
+									[4, 0x2d, 0x69, 0x6e, 0x66, 4, 0x2d, 0x69, 0x6e, 0x66], // -inf
+									[0xFE, 0, 0, 2, 0], // EOF
+								};
+								for (var packetIndex = 0; packetIndex < packets.Length; packetIndex++)
+									await SendAsync(stream, packetIndex + 1, x => x.Write(packets[packetIndex]));
+							}
+							else if (query == "select disconnect")
+							{
+								var packets = new[]
+								{
+									new byte[] { 1 }, // one column
+									[3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x41, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 3, 0x01, 0, 0x1F, 0, 0], // column definition (int)
+									[0xFE, 0, 0, 2, 0], // EOF
+									[1, 0x31], // 1
+								};
+								for (var packetIndex = 0; packetIndex < packets.Length; packetIndex++)
+									await SendAsync(stream, packetIndex + 1, x => x.Write(packets[packetIndex]));
+								stream.Close();
+								client.Close();
 							}
 							else
 							{
-								var queryInterrupted = false;
-								for (var step = 1; step < packets.Length && !queryInterrupted; step++)
-								{
-									if (pauseStep == step || pauseStep == -1)
-									{
-										if (ignoreCancellation)
-											await Task.Delay(delay, token);
-										else
-											queryInterrupted = CancelQueryEvent.Wait(delay, token);
-									}
-
-									await SendAsync(stream, step, x => x.Write(packets[queryInterrupted ? 0 : step]));
-								}
+								await SendAsync(stream, 1, x => WriteError(x, "Unhandled query: " + query));
 							}
-						}
-						else if ((match = Regex.Match(query, @"^KILL QUERY ([0-9]+)(;|$)", RegexOptions.IgnoreCase)).Success)
-						{
-							var connectionId = int.Parse(match.Groups[1].Value);
-							m_server.CancelQuery(connectionId);
-							await SendAsync(stream, 1, WriteOk);
-						}
-						else if (query == "SELECT SLEEP(0) INTO @dummy;")
-						{
-							var wasSet = CancelQueryEvent.Wait(0, token);
-							await SendAsync(stream, 1, WriteOk);
-						}
-						else if (query == "select infinity")
-						{
-							var packets = new[]
-							{
-								new byte[] { 2 }, // two columns
-								new byte[] { 3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x46, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 4, 0x01, 0, 0x1F, 0, 0 }, // column definition (float)
-								new byte[] { 3, 0x64, 0x65, 0x66, 0, 0, 0, 1, 0x44, 0, 0x0c, 0x3f, 0, 1, 0, 0, 0, 5, 0x01, 0, 0x1F, 0, 0 }, // column definition (double)
-								new byte[] { 0xFE, 0, 0, 2, 0 }, // EOF
-								new byte[] { 3, 0x6e, 0x61, 0x6e, 3, 0x6e, 0x61, 0x6e }, // nan
-								new byte[] { 3, 0x69, 0x6e, 0x66, 3, 0x69, 0x6e, 0x66 }, // inf
-								new byte[] { 4, 0x2d, 0x69, 0x6e, 0x66, 4, 0x2d, 0x69, 0x6e, 0x66 }, // -inf
-								new byte[] { 0xFE, 0, 0, 2, 0 }, // EOF
-							};
-							for (var packetIndex = 0; packetIndex < packets.Length; packetIndex++)
-								await SendAsync(stream, packetIndex + 1, x => x.Write(packets[packetIndex]));
-						}
-						else
-						{
-							await SendAsync(stream, 1, x => WriteError(x, "Unhandled query: " + query));
-						}
-						break;
+							break;
 
-					default:
-						Console.WriteLine("** UNHANDLED ** {0}", (CommandKind) bytes[0]);
-						await SendAsync(stream, 1, x => WriteError(x));
-						break;
+						default:
+							Console.WriteLine("** UNHANDLED ** {0}", (CommandKind) bytes[0]);
+							await SendAsync(stream, 1, x => WriteError(x));
+							break;
 					}
 				}
 			}

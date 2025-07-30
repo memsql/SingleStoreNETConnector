@@ -24,7 +24,7 @@ public class SingleStoreDecimalTests
 	[Fact]
 	public void TestToDecimal()
 	{
-		decimal doubleVal = 1.2M ;
+		decimal doubleVal = 1.2M;
 		string stringVal = "1.2";
 		SingleStoreDecimal mySqlDecimal = new SingleStoreDecimal(stringVal);
 		Assert.Equal(doubleVal, mySqlDecimal.Value);
