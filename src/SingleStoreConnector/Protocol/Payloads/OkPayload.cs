@@ -99,19 +99,19 @@ internal sealed class OkPayload
 									if (systemVariableName.SequenceEqual("character_set_client"u8) && systemVariableValueLength != 0)
 									{
 										clientCharacterSet = systemVariableValue.SequenceEqual("utf8mb4"u8) ? CharacterSet.Utf8Mb4Binary :
-											systemVariableValue.SequenceEqual("utf8"u8) ? CharacterSet.Utf8Mb3Binary :
+											systemVariableValue.SequenceEqual("utf8"u8) ? CharacterSet.Utf8Binary :
 											CharacterSet.None;
 									}
 									else if (systemVariableName.SequenceEqual("character_set_connection"u8) && systemVariableValueLength != 0)
 									{
 										connectionCharacterSet = systemVariableValue.SequenceEqual("utf8mb4"u8) ? CharacterSet.Utf8Mb4Binary :
-											systemVariableValue.SequenceEqual("utf8"u8) ? CharacterSet.Utf8Mb3Binary :
+											systemVariableValue.SequenceEqual("utf8"u8) ? CharacterSet.Utf8Binary :
 											CharacterSet.None;
 									}
 									else if (systemVariableName.SequenceEqual("character_set_results"u8) && systemVariableValueLength != 0)
 									{
 										resultsCharacterSet = systemVariableValue.SequenceEqual("utf8mb4"u8) ? CharacterSet.Utf8Mb4Binary :
-											systemVariableValue.SequenceEqual("utf8"u8) ? CharacterSet.Utf8Mb3Binary :
+											systemVariableValue.SequenceEqual("utf8"u8) ? CharacterSet.Utf8Binary :
 											CharacterSet.None;
 									}
 									else if (systemVariableName.SequenceEqual("connection_id"u8))
@@ -157,7 +157,7 @@ internal sealed class OkPayload
 
 			// detect the connection character set as utf8mb4 (or utf8) if all three system variables are set to the same value
 			var characterSet = clientCharacterSet == CharacterSet.Utf8Mb4Binary && connectionCharacterSet == CharacterSet.Utf8Mb4Binary && resultsCharacterSet == CharacterSet.Utf8Mb4Binary ? CharacterSet.Utf8Mb4Binary :
-				clientCharacterSet == CharacterSet.Utf8Mb3Binary && connectionCharacterSet == CharacterSet.Utf8Mb3Binary && resultsCharacterSet == CharacterSet.Utf8Mb3Binary ? CharacterSet.Utf8Mb3Binary :
+				clientCharacterSet == CharacterSet.Utf8Binary && connectionCharacterSet == CharacterSet.Utf8Binary && resultsCharacterSet == CharacterSet.Utf8Binary ? CharacterSet.Utf8Binary :
 				CharacterSet.None;
 
 			if (affectedRowCount == 0 && lastInsertId == 0 && warningCount == 0 && statusInfo is null && newSchema is null && clientCharacterSet is CharacterSet.None && connectionId is null && redirectionUrl is null)
@@ -176,7 +176,7 @@ internal sealed class OkPayload
 		}
 	}
 
-	private OkPayload(ulong affectedRowCount, ulong lastInsertId, ServerStatus serverStatus, int warningCount, string? statusInfo, string? newSchema, CharacterSet newCharacterSet, int? connectionId, string? redirectionUrl)
+	private OkPayload(ulong affectedRowCount, ulong lastInsertId, ServerStatus serverStatus, int warningCount, byte[]? statusInfo, string? newSchema, CharacterSet newCharacterSet, int? connectionId, string? redirectionUrl)
 	{
 		AffectedRowCount = affectedRowCount;
 		LastInsertId = lastInsertId;
