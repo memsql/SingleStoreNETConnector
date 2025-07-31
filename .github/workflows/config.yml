@@ -1,9 +1,6 @@
 name: SingleStore .NET Connector
 
-on:
-  push:
-    branches:
-      - main
+on: [push]
 
 env:
   DOTNET_VERSION: 9.0.303
