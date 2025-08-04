@@ -73,8 +73,6 @@ internal sealed partial class SchemaProvider
 			await FillUserPrivilegesAsync(ioBehavior, dataTable, "UserPrivileges", restrictionValues, cancellationToken).ConfigureAwait(false);
 		else if (string.Equals(collectionName, "Views", StringComparison.OrdinalIgnoreCase))
 			await FillViewsAsync(ioBehavior, dataTable, "Views", restrictionValues, cancellationToken).ConfigureAwait(false);
-		else if (string.Equals(collectionName, "Foreign Keys", StringComparison.OrdinalIgnoreCase))
-			await FillForeignKeysAsync(ioBehavior, dataTable, "Foreign Keys", restrictionValues, cancellationToken).ConfigureAwait(false);
 		else if (string.Equals(collectionName, "Indexes", StringComparison.OrdinalIgnoreCase))
 			await FillIndexesAsync(ioBehavior, dataTable, "Indexes", restrictionValues, cancellationToken).ConfigureAwait(false);
 		else if (string.Equals(collectionName, "IndexColumns", StringComparison.OrdinalIgnoreCase))
@@ -126,7 +124,6 @@ internal sealed partial class SchemaProvider
 		dataTable.Rows.Add("Triggers", 0, 3);
 		dataTable.Rows.Add("UserPrivileges", 0, 0);
 		dataTable.Rows.Add("Views", 0, 3);
-		dataTable.Rows.Add("Foreign Keys", 4, 0);
 		dataTable.Rows.Add("Indexes", 4, 0);
 		dataTable.Rows.Add("IndexColumns", 5, 0);
 
@@ -633,10 +630,6 @@ internal sealed partial class SchemaProvider
 		dataTable.Rows.Add("Tables", "Schema", "TABLE_SCHEMA", 2);
 		dataTable.Rows.Add("Tables", "Table", "TABLE_NAME", 3);
 		dataTable.Rows.Add("Tables", "TableType", "TABLE_TYPE", 4);
-		dataTable.Rows.Add("Foreign Keys", "Catalog", "TABLE_CATALOG", 1);
-		dataTable.Rows.Add("Foreign Keys", "Schema", "TABLE_SCHEMA", 2);
-		dataTable.Rows.Add("Foreign Keys", "Table", "TABLE_NAME", 3);
-		dataTable.Rows.Add("Foreign Keys", "Constraint Name", "CONSTRAINT_NAME", 4);
 		dataTable.Rows.Add("Indexes", "Catalog", "TABLE_CATALOG", 1);
 		dataTable.Rows.Add("Indexes", "Schema", "TABLE_SCHEMA", 2);
 		dataTable.Rows.Add("Indexes", "Table", "TABLE_NAME", 3);
@@ -827,31 +820,6 @@ internal sealed partial class SchemaProvider
 		]);
 
 		await FillDataTableAsync(ioBehavior, dataTable, "VIEWS", null, cancellationToken).ConfigureAwait(false);
-	}
-
-	private async Task FillForeignKeysAsync(IOBehavior ioBehavior, DataTable dataTable, string tableName, string?[]? restrictionValues, CancellationToken cancellationToken)
-	{
-		if (restrictionValues is { Length: > 4 })
-			throw new ArgumentException("More than 4 restrictionValues are not supported for schema 'Foreign Keys'.", nameof(restrictionValues));
-
-		dataTable.TableName = tableName;
-		dataTable.Columns.AddRange(
-		[
-			new("CONSTRAINT_CATALOG", typeof(string)),
-			new("CONSTRAINT_SCHEMA", typeof(string)),
-			new("CONSTRAINT_NAME", typeof(string)),
-			new("TABLE_CATALOG", typeof(string)),
-			new("TABLE_SCHEMA", typeof(string)),
-			new("TABLE_NAME", typeof(string)),
-			new("MATCH_OPTION", typeof(string)),
-			new("UPDATE_RULE", typeof(string)),
-			new("DELETE_RULE", typeof(string)),
-			new("REFERENCED_TABLE_CATALOG", typeof(string)),
-			new("REFERENCED_TABLE_SCHEMA", typeof(string)),
-			new("REFERENCED_TABLE_NAME", typeof(string)),
-		]);
-
-		await DoFillForeignKeysAsync(ioBehavior, dataTable, restrictionValues, cancellationToken).ConfigureAwait(false);
 	}
 
 	private async Task FillIndexesAsync(IOBehavior ioBehavior, DataTable dataTable, string tableName, string?[]? restrictionValues, CancellationToken cancellationToken)

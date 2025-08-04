@@ -440,41 +440,6 @@ internal sealed partial class SchemaProvider(SingleStoreConnection connection)
 		close?.Invoke();
 	}
 
-	private Task DoFillForeignKeysAsync(IOBehavior ioBehavior, DataTable dataTable, string?[]? restrictionValues, CancellationToken cancellationToken) =>
-		FillDataTableAsync(ioBehavior, dataTable, command =>
-		{
-			command.CommandText = """
-				SELECT rc.constraint_catalog, rc.constraint_schema, rc.constraint_name,
-					kcu.table_catalog, kcu.table_schema,
-					rc.table_name, rc.match_option, rc.update_rule, rc.delete_rule,
-					NULL as referenced_table_catalog, kcu.referenced_table_schema, rc.referenced_table_name
-				FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
-					LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON
-					(
-						(kcu.constraint_catalog = rc.constraint_catalog OR (kcu.constraint_catalog IS NULL AND rc.constraint_catalog IS NULL)) AND
-						(kcu.constraint_schema = rc.constraint_schema OR (kcu.constraint_schema IS NULL AND rc.constraint_schema IS NULL)) AND
-						(kcu.constraint_name = rc.constraint_name OR (kcu.constraint_name IS NULL AND rc.constraint_name IS NULL))
-					)
-				WHERE kcu.ORDINAL_POSITION = 1
-				""";
-
-			if (restrictionValues is [_, { Length: > 0 } schema, ..])
-			{
-				command.CommandText += " AND rc.constraint_schema LIKE @schema";
-				command.Parameters.AddWithValue("@schema", schema);
-			}
-			if (restrictionValues is [_, _, { Length: > 0 } table, ..])
-			{
-				command.CommandText += " AND rc.table_name LIKE @table";
-				command.Parameters.AddWithValue("@table", table);
-			}
-			if (restrictionValues is [_, _, _, { Length: > 0 } constraint, ..])
-			{
-				command.CommandText += " AND rc.constraint_name LIKE @constraint";
-				command.Parameters.AddWithValue("@constraint", constraint);
-			}
-		}, cancellationToken);
-
 	private Task DoFillIndexesAsync(IOBehavior ioBehavior, DataTable dataTable, string?[]? restrictionValues, CancellationToken cancellationToken) =>
 		FillDataTableAsync(ioBehavior, dataTable, command =>
 		{

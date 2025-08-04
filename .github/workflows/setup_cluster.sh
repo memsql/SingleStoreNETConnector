@@ -56,6 +56,6 @@ fi
 
 echo
 echo "Granting root access from any host to support NativeAOT test connectivity"
-mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '${SQL_USER_PASSWORD}'; FLUSH"
+mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '${SQL_USER_PASSWORD}'; FLUSH PRIVILEGES;"
 
 echo "Done!"

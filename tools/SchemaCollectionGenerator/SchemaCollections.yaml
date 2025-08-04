@@ -738,44 +738,6 @@
   - name: COLLATION_CONNECTION
     type: string
 
-- name: Foreign Keys
-  description: information about foreign keys in the server's SQL syntax
-  custom: DoFillForeignKeysAsync
-  restrictions:
-    - name: Catalog
-      default: TABLE_CATALOG
-    - name: Schema
-      default: TABLE_SCHEMA
-    - name: Table
-      default: TABLE_NAME
-    - name: Constraint Name
-      default: CONSTRAINT_NAME
-  columns:
-    - name: CONSTRAINT_CATALOG
-      type: string
-    - name: CONSTRAINT_SCHEMA
-      type: string
-    - name: CONSTRAINT_NAME
-      type: string
-    - name: TABLE_CATALOG
-      type: string
-    - name: TABLE_SCHEMA
-      type: string
-    - name: TABLE_NAME
-      type: string
-    - name: MATCH_OPTION
-      type: string
-    - name: UPDATE_RULE
-      type: string
-    - name: DELETE_RULE
-      type: string
-    - name: REFERENCED_TABLE_CATALOG
-      type: string
-    - name: REFERENCED_TABLE_SCHEMA
-      type: string
-    - name: REFERENCED_TABLE_NAME
-      type: string
-
 - name: Indexes
   description: information about indexes in the server's SQL syntax
   custom: DoFillIndexesAsync

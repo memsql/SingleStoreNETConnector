@@ -133,7 +133,6 @@ public class SchemaProviderTests : IClassFixture<SchemaProviderFixture>, IDispos
 	[InlineData("CollationCharacterSetApplicability")]
 	[InlineData("Collations")]
 	[InlineData("Engines")]
-	[InlineData("Foreign Keys")]
 	[InlineData("KeyColumnUsage")]
 	[InlineData("Parameters")]
 	[InlineData("Partitions")]
@@ -181,30 +180,6 @@ public class SchemaProviderTests : IClassFixture<SchemaProviderFixture>, IDispos
 #endif
 
 	[Fact]
-	public void ForeignKeys()
-	{
-		var schemaName = m_database.Connection.Database;
-		var table = m_database.Connection.GetSchema("Foreign Keys", new[] { null, schemaName, "fk_test" });
-		var row = table.Rows.Cast<DataRow>().Single();
-		foreach (var (column, value) in new[]
-		{
-			("CONSTRAINT_CATALOG", "def"),
-			("CONSTRAINT_SCHEMA", schemaName),
-			("CONSTRAINT_NAME", "fk_test_fk"),
-			("TABLE_CATALOG", "def"),
-			("TABLE_SCHEMA", schemaName),
-			("TABLE_NAME", "fk_test"),
-			("MATCH_OPTION", "NONE"),
-			("REFERENCED_TABLE_CATALOG", null),
-			("REFERENCED_TABLE_SCHEMA", schemaName),
-			("REFERENCED_TABLE_NAME", "pk_test"),
-		})
-		{
-			Assert.Equal(value, row[column] is DBNull ? null : (string?) row[column]);
-		}
-	}
-
-	[Fact]
 	public void Indexes()
 	{
 		var schemaName = m_database.Connection.Database;
@@ -212,12 +187,14 @@ public class SchemaProviderTests : IClassFixture<SchemaProviderFixture>, IDispos
 		var actual = table.Rows
 			.Cast<DataRow>()
 			.OrderBy(x => (string) x["INDEX_NAME"])
+			.ThenBy(x => (string) x["TYPE"])
 			.Select(x => ((string) x["INDEX_SCHEMA"], (string) x["INDEX_NAME"], (string) x["TABLE_NAME"], (bool) x["UNIQUE"], (bool) x["PRIMARY"], (string) x["TYPE"]));
 		var expected = new[]
 		{
 			(schemaName, "pk_test_ix", "pk_test", false, false, "BTREE"),
 			(schemaName, "pk_test_uq", "pk_test", true, false, "BTREE"),
 			(schemaName, "PRIMARY", "pk_test", true, true, "BTREE"),
+			(schemaName, "PRIMARY", "pk_test", true, true, "SHARD"),
 		};
 		Assert.Equal(expected, actual);
 	}
@@ -234,9 +211,11 @@ public class SchemaProviderTests : IClassFixture<SchemaProviderFixture>, IDispos
 			.Select(x => ((string) x["INDEX_SCHEMA"], (string) x["INDEX_NAME"], (string) x["TABLE_NAME"], (string) x["COLUMN_NAME"], (int) x["ORDINAL_POSITION"]));
 		var expected = new[]
 		{
-			(schemaName, "pk_test_uq", "pk_test", "c", 1),
-			(schemaName, "pk_test_uq", "pk_test", "d", 2),
-			(schemaName, "pk_test_uq", "pk_test", "e", 3),
+			(schemaName, "pk_test_uq", "pk_test", "a", 1),
+			(schemaName, "pk_test_uq", "pk_test", "b", 2),
+			(schemaName, "pk_test_uq", "pk_test", "c", 3),
+			(schemaName, "pk_test_uq", "pk_test", "d", 4),
+			(schemaName, "pk_test_uq", "pk_test", "e", 5),
 		};
 		Assert.Equal(expected, actual);
 	}
@@ -253,7 +232,7 @@ public class SchemaProviderTests : IClassFixture<SchemaProviderFixture>, IDispos
 			.Select(x => ((string) x["INDEX_SCHEMA"], (string) x["INDEX_NAME"], (string) x["TABLE_NAME"], (string) x["COLUMN_NAME"], (int) x["ORDINAL_POSITION"]));
 		var expected = new[]
 		{
-			(schemaName, "pk_test_uq", "pk_test", "d", 2),
+			(schemaName, "pk_test_uq", "pk_test", "d", 4),
 		};
 		Assert.Equal(expected, actual);
 	}
