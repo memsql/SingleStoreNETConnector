@@ -53,4 +53,9 @@ if [[ ${CONTAINER_IP} != "${CURRENT_LEAF_IP}" ]]; then
     # add leaf with correct ip
     mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" --batch -N -e "add leaf root:'${SQL_USER_PASSWORD}'@'${CONTAINER_IP}':3307"
 fi
+
+echo
+echo "Granting root access from any host to support NativeAOT test connectivity"
+mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '${SQL_USER_PASSWORD}'; FLUSH
+
 echo "Done!"
