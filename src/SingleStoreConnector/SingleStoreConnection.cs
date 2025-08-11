@@ -12,7 +12,6 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Logging;
-using SingleStoreConnector.Plugins;
 using SingleStoreConnector.Protocol;
 using SingleStoreConnector.Protocol.Payloads;
 using SingleStoreConnector.Protocol.Serialization;
@@ -171,7 +170,7 @@ namespace SingleStoreConnector
 			// get the bytes for both payloads concatenated together (suitable for pipelining)
 			var startTransactionPayload = GetStartTransactionPayload(isolationLevel, isReadOnly, m_session.SupportsQueryAttributes);
 
-			if (GetInitializedConnectionSettings() is { UseCompression: false, Pipelining: not false })
+			if (GetInitializedConnectionSettings() is { Pipelining: not false })
 			{
 				// send the two packets together
 				await m_session.SendRawAsync(startTransactionPayload, ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -1069,7 +1068,6 @@ namespace SingleStoreConnector
 
 		internal SingleStoreTransaction? CurrentTransaction { get; set; }
 		internal SingleStoreConnectorLoggingConfiguration LoggingConfiguration { get; }
-		internal ZstandardPlugin? ZstandardPlugin { get; set; }
 		internal SingleStoreConnectionOpenedCallback? ConnectionOpenedCallback { get; set; }
 		internal bool AllowLoadLocalInfile => GetInitializedConnectionSettings().AllowLoadLocalInfile;
 		internal bool AllowUserVariables => GetInitializedConnectionSettings().AllowUserVariables;

@@ -2,7 +2,6 @@ using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Logging;
-using SingleStoreConnector.Plugins;
 
 namespace SingleStoreConnector;
 
@@ -115,7 +114,6 @@ public sealed class SingleStoreDataSourceBuilder
 			m_periodicPasswordProvider,
 			m_periodicPasswordProviderSuccessRefreshInterval,
 			m_periodicPasswordProviderFailureRefreshInterval,
-			ZstandardPlugin,
 			m_connectionOpenedCallback
 			);
 	}
@@ -124,8 +122,6 @@ public sealed class SingleStoreDataSourceBuilder
 	/// A <see cref="SingleStoreConnectionStringBuilder"/> that can be used to configure the connection string on this <see cref="SingleStoreDataSourceBuilder"/>.
 	/// </summary>
 	public SingleStoreConnectionStringBuilder ConnectionStringBuilder { get; }
-
-	internal ZstandardPlugin? ZstandardPlugin { get; set; }
 
 	private ILoggerFactory? m_loggerFactory;
 	private string? m_name;

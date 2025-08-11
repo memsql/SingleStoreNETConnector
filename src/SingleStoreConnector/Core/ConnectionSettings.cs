@@ -147,7 +147,6 @@ internal sealed class ConnectionSettings
 		ServerSPN = csb.ServerSPN;
 		TreatTinyAsBoolean = csb.TreatTinyAsBoolean;
 		UseAffectedRows = csb.UseAffectedRows;
-		UseCompression = csb.UseCompression;
 		UseXaTransactions = false;
 
 		static int ToSigned(uint value) => value >= int.MaxValue ? int.MaxValue : (int) value;
@@ -246,7 +245,6 @@ internal sealed class ConnectionSettings
 	public string ServerSPN { get; }
 	public bool TreatTinyAsBoolean { get; }
 	public bool UseAffectedRows { get; }
-	public bool UseCompression { get; }
 	public bool UseXaTransactions { get; }
 
 	public string ConnAttrsExtra { get; set; }
@@ -339,7 +337,6 @@ internal sealed class ConnectionSettings
 		ServerSPN = other.ServerSPN;
 		TreatTinyAsBoolean = other.TreatTinyAsBoolean;
 		UseAffectedRows = other.UseAffectedRows;
-		UseCompression = other.UseCompression;
 		UseXaTransactions = other.UseXaTransactions;
 	}
 

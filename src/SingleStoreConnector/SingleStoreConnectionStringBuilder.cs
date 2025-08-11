@@ -802,19 +802,6 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// Compress packets sent to and from the server.
-	/// </summary>
-	[Category("Other")]
-	[DefaultValue(false)]
-	[Description("Compress packets sent to and from the server.")]
-	[DisplayName("Use Compression")]
-	public bool UseCompression
-	{
-		get => SingleStoreConnectionStringOption.UseCompression.GetValue(this);
-		set => SingleStoreConnectionStringOption.UseCompression.SetValue(this, value);
-	}
-
-	/// <summary>
 	/// Use XA transactions to implement <see cref="System.Transactions.TransactionScope"/> distributed transactions.
 	/// </summary>
 	[Category("Other")]
@@ -985,7 +972,6 @@ internal abstract partial class SingleStoreConnectionStringOption
 	public static readonly SingleStoreConnectionStringReferenceOption<string> ServerSPN;
 	public static readonly SingleStoreConnectionStringValueOption<bool> TreatTinyAsBoolean;
 	public static readonly SingleStoreConnectionStringValueOption<bool> UseAffectedRows;
-	public static readonly SingleStoreConnectionStringValueOption<bool> UseCompression;
 	public static readonly SingleStoreConnectionStringValueOption<bool> UseXaTransactions;
 
 	public static SingleStoreConnectionStringOption? TryGetOptionForKey(string key) =>
@@ -1290,10 +1276,6 @@ internal abstract partial class SingleStoreConnectionStringOption
 
 		AddOption(options, UseAffectedRows = new(
 			keys: ["Use Affected Rows", "UseAffectedRows"],
-			defaultValue: false));
-
-		AddOption(options, UseCompression = new(
-			keys: ["Use Compression", "Compress", "UseCompression"],
 			defaultValue: false));
 
 		AddOption(options, UseXaTransactions = new(
