@@ -34,9 +34,9 @@ internal sealed class CachedProcedure
 			cmd.Parameters.AddWithValue("@component", component);
 
 			using var reader = await cmd.ExecuteReaderNoResetTimeoutAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
-			_ = reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			_ = await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			routineCount = reader.GetInt32(0);
-			_ = reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			_ = await reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			while (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
 			{
