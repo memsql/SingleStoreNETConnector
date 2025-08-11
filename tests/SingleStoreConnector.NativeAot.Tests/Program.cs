@@ -1,6 +1,7 @@
 using SingleStoreConnector;
 
-var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? "Server=localhost;Username=root;Password=pass";
+var sqlUserPassword = Environment.GetEnvironmentVariable("SQL_USER_PASSWORD") ?? "pass";
+var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? $"Server=localhost;Username=root;Password={sqlUserPassword}";
 
 await using var dataSource = new SingleStoreDataSourceBuilder(connectionString).Build();
 
