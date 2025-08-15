@@ -1,7 +1,7 @@
 {
     "Data": {
-      "ConnectionString": "server=SINGLESTORE_HOST;user id=SQL_USER_NAME;password=SQL_USER_PASSWORD;port=3306;database=singlestoretest;sslmode=None",
-      "UnsupportedFeatures": "CachingSha2Password,Ed25519,QueryAttributes,Tls11,Tls13,UuidToBin,UnixDomainSocket,Sha256Password,GlobalLog, CancelSleepSuccessfully",
+      "ConnectionString": "server=SINGLESTORE_HOST;user id=SQL_USER_NAME;password=SQL_USER_PASSWORD;port=3306;database=singlestoretest;sslmode=Required",
+      "UnsupportedFeatures": "CachingSha2Password,Ed25519,QueryAttributes,Tls11,Tls13,UuidToBin,UnixDomainSocket,Sha256Password,GlobalLog,Redirection,CancelSleepSuccessfully",
       "ManagedService": true
     }
 }
