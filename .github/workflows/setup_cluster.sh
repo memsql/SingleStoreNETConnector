@@ -62,6 +62,7 @@ docker exec ${CONTAINER_NAME} sdb-admin update-config --yes --all --key ssl_key 
 
 echo "Restarting cluster"
 docker restart ${CONTAINER_NAME}
+singlestore-wait-start
 
 echo
 echo "Granting root access from any host to support NativeAOT test connectivity"
