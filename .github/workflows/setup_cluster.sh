@@ -74,12 +74,14 @@ EOF
 
 echo
 echo "Creating users for SSL tests"
-mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" <<'EOF'
-CREATE USER 'ssltest' IDENTIFIED BY 'test' REQUIRE SSL;
-GRANT ALL PRIVILEGES ON *.* TO 'ssltest';
 
-CREATE USER 'clientx509' IDENTIFIED BY 'whatever' REQUIRE X509;
-GRANT ALL PRIVILEGES ON *.* TO 'clientx509';
+mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" <<'EOF'
+CREATE USER 'mysqltest'@'%' IDENTIFIED BY 'test';
+GRANT ALL ON *.* TO mysqltest;
+CREATE USER 'no_password'@'localhost';
+CREATE USER 'no_password'@'172.17.0.1';
+CREATE USER 'ssltest'@'%' IDENTIFIED BY 'test' REQUIRE SSL;
+GRANT ALL PRIVILEGES ON *.* TO 'ssltest'@'%';
 EOF
 
 echo "Done!"
