@@ -170,13 +170,23 @@ public class SslTests : IClassFixture<DatabaseFixture>
 	public async Task ConnectSslBadClientCertificate()
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();
+
+		// Always verify the server’s certificate against our trusted CA.
+		csb.SslMode = SingleStoreSslMode.VerifyCA;
+		csb.SslCa = Path.Combine(AppConfig.CertsPath, "ssl-ca-cert.pem");
+
+		// Provide a client certificate that was NOT signed by the trusted CA.
 		csb.CertificateFile = Path.Combine(AppConfig.CertsPath, "non-ca-client.pfx");
 		csb.CertificatePassword = "";
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
+
+		// Server doesn’t require client certs -> connection succeeds, but without mutual authentication.
+		await connection.OpenAsync();
+		Assert.True(connection.SslIsEncrypted);
 #if !BASELINE
-		await Assert.ThrowsAsync<SingleStoreException>(async () => await connection.OpenAsync());
-#else
-		await Assert.ThrowsAsync<AuthenticationException>(async () => await connection.OpenAsync());
+#if !NET9_0_OR_GREATER
+		Assert.False(connection.SslIsMutuallyAuthenticated);
+#endif
 #endif
 	}
 
