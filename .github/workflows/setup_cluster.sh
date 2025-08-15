@@ -56,9 +56,9 @@ if [[ ${CONTAINER_IP} != "${CURRENT_LEAF_IP}" ]]; then
 fi
 
 echo "Setting up SSL"
-docker exec ${CONTAINER_NAME} sdb-admin update-config --all --key ssl_ca --value /test-ssl/ssl-ca-cert.pem
-docker exec ${CONTAINER_NAME} sdb-admin update-config --all --key ssl_cert --value /test-ssl/ssl-server-cert.pem
-docker exec ${CONTAINER_NAME} sdb-admin update-config --all --key ssl_key --value /test-ssl/ssl-server-key.pem
+docker exec ${CONTAINER_NAME} sdb-admin update-config --yes --all --key ssl_ca --value /test-ssl/ssl-ca-cert.pem
+docker exec ${CONTAINER_NAME} sdb-admin update-config --yes --all --key ssl_cert --value /test-ssl/ssl-server-cert.pem
+docker exec ${CONTAINER_NAME} sdb-admin update-config --yes --all --key ssl_key --value /test-ssl/ssl-server-key.pem
 
 echo "Restarting cluster"
 docker restart ${CONTAINER_NAME}

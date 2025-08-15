@@ -64,7 +64,7 @@ jobs:
 
       - name: Copy config file for SideBySide tests
         run: |
-          cp ./.github/workflows/SideBySide/config.json tests/SideBySide/config.json
+          cp ./.github/workflows/SideBySide/config-ssl.json tests/SideBySide/config.json
           sed -i "s|SINGLESTORE_HOST|127.0.0.1|g" tests/SideBySide/config.json
           sed -i "s|SQL_USER_PASSWORD|${SQL_USER_PASSWORD}|g" tests/SideBySide/config.json
           sed -i "s|SQL_USER_NAME|root|g" tests/SideBySide/config.json
