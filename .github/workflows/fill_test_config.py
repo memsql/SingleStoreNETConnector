@@ -15,7 +15,7 @@ if __name__ == "__main__":
         hostname = f.read()
     password = os.getenv("SQL_USER_PASSWORD")
 
-    with open("./.github/workflows/SideBySide/config-ssl.json", "r") as f_in:
+    with open("./.github/workflows/SideBySide/config.json", "r") as f_in:
         config_content = f_in.read()
 
     config_content = config_content.replace("SINGLESTORE_HOST", hostname, 1)

@@ -14,6 +14,10 @@ public SingleStoreDataSourceBuilder UseName(string? name)
 
 This builder, so that method calls can be chained.
 
+## Remarks
+
+The connection pool name is used to set the `program_name` connection attribute (which is visible to some diagnostic tools) and the `pool.name` tag supplied with [connection pool metrics](https://mysqlconnector.net/diagnostics/metrics/).
+
 ## See Also
 
 * class [SingleStoreDataSourceBuilder](../SingleStoreDataSourceBuilder.md)

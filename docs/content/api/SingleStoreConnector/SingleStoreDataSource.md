@@ -1,6 +1,6 @@
 # SingleStoreDataSource class
 
-[`SingleStoreDataSource`](./SingleStoreDataSource.md) implements a SingleStore data source which can be used to obtain open connections, and against which commands can be executed directly.
+[`SingleStoreDataSource`](./SingleStoreDataSource.md) implements a SingleStore data source which can be used to obtain open connections
 
 ```csharp
 public sealed class SingleStoreDataSource : DbDataSource

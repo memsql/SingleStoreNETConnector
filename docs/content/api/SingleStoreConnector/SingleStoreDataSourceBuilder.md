@@ -14,6 +14,7 @@ public sealed class SingleStoreDataSourceBuilder
 | [ConnectionStringBuilder](SingleStoreDataSourceBuilder/ConnectionStringBuilder.md) { get; } | A [`SingleStoreConnectionStringBuilder`](./SingleStoreConnectionStringBuilder.md) that can be used to configure the connection string on this [`SingleStoreDataSourceBuilder`](./SingleStoreDataSourceBuilder.md). |
 | [Build](SingleStoreDataSourceBuilder/Build.md)() | Builds a [`SingleStoreDataSource`](./SingleStoreDataSource.md) which is ready for use. |
 | [UseClientCertificatesCallback](SingleStoreDataSourceBuilder/UseClientCertificatesCallback.md)(…) | Sets the callback used to provide client certificates for connecting to a server. |
+| [UseConnectionOpenedCallback](SingleStoreDataSourceBuilder/UseConnectionOpenedCallback.md)(…) | Adds a callback that is invoked when a new [`SingleStoreConnection`](./SingleStoreConnection.md) is opened. |
 | [UseLoggerFactory](SingleStoreDataSourceBuilder/UseLoggerFactory.md)(…) | Sets the ILoggerFactory that will be used for logging. |
 | [UseName](SingleStoreDataSourceBuilder/UseName.md)(…) | Sets the name of the [`SingleStoreDataSource`](./SingleStoreDataSource.md) that will be created. |
 | [UsePeriodicPasswordProvider](SingleStoreDataSourceBuilder/UsePeriodicPasswordProvider.md)(…) | Configures a periodic password provider, which is automatically called by the data source at some regular interval. This is the recommended way to fetch a rotating access token. |

@@ -9,6 +9,7 @@ public sealed class SingleStoreDbColumn : DbColumn
 | name | description |
 | --- | --- |
 | [ProviderType](SingleStoreDbColumn/ProviderType.md) { get; } |  |
+| [TableName](SingleStoreDbColumn/TableName.md) { get; } | Gets the name of the table that the column belongs to. This will be the alias if the table is aliased in the query. |
 
 ## See Also
 

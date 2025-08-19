@@ -4,6 +4,7 @@
 
 | public type | description |
 | --- | --- |
+| struct [ConnectionInfo](./SingleStoreConnector/ConnectionInfo.md) |  |
 | class [SingleStoreAttribute](./SingleStoreConnector/SingleStoreAttribute.md) | [`SingleStoreAttribute`](./SingleStoreConnector/SingleStoreAttribute.md) represents an attribute that can be sent with a SingleStore query. |
 | class [SingleStoreAttributeCollection](./SingleStoreConnector/SingleStoreAttributeCollection.md) | [`SingleStoreAttributeCollection`](./SingleStoreConnector/SingleStoreAttributeCollection.md) represents a collection of query attributes that can be added to a [`SingleStoreCommand`](./SingleStoreConnector/SingleStoreCommand.md). |
 | class [SingleStoreBatch](./SingleStoreConnector/SingleStoreBatch.md) | [`SingleStoreBatch`](./SingleStoreConnector/SingleStoreBatch.md) implements the new [ADO.NET batching API](https://github.com/dotnet/runtime/issues/28633). It is currently experimental and may change in the future. |
@@ -19,13 +20,16 @@
 | class [SingleStoreCommand](./SingleStoreConnector/SingleStoreCommand.md) | [`SingleStoreCommand`](./SingleStoreConnector/SingleStoreCommand.md) represents a SQL statement or stored procedure name to execute against a SingleStore database. |
 | class [SingleStoreCommandBuilder](./SingleStoreConnector/SingleStoreCommandBuilder.md) |  |
 | class [SingleStoreConnection](./SingleStoreConnector/SingleStoreConnection.md) | [`SingleStoreConnection`](./SingleStoreConnector/SingleStoreConnection.md) represents a connection to a SingleStore database. |
+| delegate [SingleStoreConnectionOpenedCallback](./SingleStoreConnector/SingleStoreConnectionOpenedCallback.md) | A callback that is invoked when a new [`SingleStoreConnection`](./SingleStoreConnector/SingleStoreConnection.md) is opened. |
+| [Flags] enum [SingleStoreConnectionOpenedConditions](./SingleStoreConnector/SingleStoreConnectionOpenedConditions.md) | Bitflags giving the conditions under which a connection was opened. |
+| class [SingleStoreConnectionOpenedContext](./SingleStoreConnector/SingleStoreConnectionOpenedContext.md) | Contains information passed to [`SingleStoreConnectionOpenedCallback`](./SingleStoreConnector/SingleStoreConnectionOpenedCallback.md) when a new [`SingleStoreConnection`](./SingleStoreConnector/SingleStoreConnection.md) is opened. |
 | enum [SingleStoreConnectionProtocol](./SingleStoreConnector/SingleStoreConnectionProtocol.md) | Specifies the type of connection to make to the server. |
 | class [SingleStoreConnectionStringBuilder](./SingleStoreConnector/SingleStoreConnectionStringBuilder.md) | [`SingleStoreConnectionStringBuilder`](./SingleStoreConnector/SingleStoreConnectionStringBuilder.md) allows you to construct a SingleStore connection string by setting properties on the builder then reading the ConnectionString property. |
 | class [SingleStoreConnectorFactory](./SingleStoreConnector/SingleStoreConnectorFactory.md) | An implementation of DbProviderFactory that creates SingleStoreConnector objects. |
 | class [SingleStoreConversionException](./SingleStoreConnector/SingleStoreConversionException.md) | [`SingleStoreConversionException`](./SingleStoreConnector/SingleStoreConversionException.md) is thrown when a SingleStore value can't be converted to another type. |
 | class [SingleStoreDataAdapter](./SingleStoreConnector/SingleStoreDataAdapter.md) |  |
 | class [SingleStoreDataReader](./SingleStoreConnector/SingleStoreDataReader.md) |  |
-| class [SingleStoreDataSource](./SingleStoreConnector/SingleStoreDataSource.md) | [`SingleStoreDataSource`](./SingleStoreConnector/SingleStoreDataSource.md) implements a SingleStore data source which can be used to obtain open connections, and against which commands can be executed directly. |
+| class [SingleStoreDataSource](./SingleStoreConnector/SingleStoreDataSource.md) | [`SingleStoreDataSource`](./SingleStoreConnector/SingleStoreDataSource.md) implements a SingleStore data source which can be used to obtain open connections |
 | class [SingleStoreDataSourceBuilder](./SingleStoreConnector/SingleStoreDataSourceBuilder.md) | [`SingleStoreDataSourceBuilder`](./SingleStoreConnector/SingleStoreDataSourceBuilder.md) provides an API for configuring and creating a [`SingleStoreDataSource`](./SingleStoreConnector/SingleStoreDataSource.md), from which [`SingleStoreConnection`](./SingleStoreConnector/SingleStoreConnection.md) objects can be obtained. |
 | struct [SingleStoreDateTime](./SingleStoreConnector/SingleStoreDateTime.md) | Represents a SingleStore date/time value. This type can be used to store `DATETIME` values such as `0000-00-00` that can be stored in SingleStore (when [`AllowZeroDateTime`](./SingleStoreConnector/SingleStoreConnectionStringBuilder/AllowZeroDateTime.md) is true) but can't be stored in a DateTime value. |
 | enum [SingleStoreDateTimeKind](./SingleStoreConnector/SingleStoreDateTimeKind.md) | The DateTimeKind used when reading DateTime from the database. |
@@ -63,6 +67,7 @@
 | --- | --- |
 | static class [AuthenticationPlugins](./SingleStoreConnector.Authentication/AuthenticationPlugins.md) | A registry of known authentication plugins. |
 | interface [IAuthenticationPlugin](./SingleStoreConnector.Authentication/IAuthenticationPlugin.md) | The primary interface implemented by an authentication plugin. |
+| interface [IAuthenticationPlugin2](./SingleStoreConnector.Authentication/IAuthenticationPlugin2.md) | [`IAuthenticationPlugin2`](./SingleStoreConnector.Authentication/IAuthenticationPlugin2.md) is an extension to [`IAuthenticationPlugin`](./SingleStoreConnector.Authentication/IAuthenticationPlugin.md) that returns a hash of the client's password. |
 
 ## SingleStoreConnector.Logging namespace
 

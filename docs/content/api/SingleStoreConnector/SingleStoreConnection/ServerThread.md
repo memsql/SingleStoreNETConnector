@@ -1,13 +1,14 @@
 # SingleStoreConnection.ServerThread property
 
-The connection ID from SingleStore Server.
+The connection ID and aggregator ID from SingleStore Server.
 
 ```csharp
-public int ServerThread { get; }
+public ConnectionInfo ServerThread { get; }
 ```
 
 ## See Also
 
+* struct [ConnectionInfo](../ConnectionInfo.md)
 * class [SingleStoreConnection](../SingleStoreConnection.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 
