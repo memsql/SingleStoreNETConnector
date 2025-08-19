@@ -390,8 +390,7 @@ internal sealed class ConnectionPool : IConnectionPoolMetadata, IDisposable
 			lock (m_sessions)
 			{
 				// check if the desired minimum number of sessions have been created
-				if (ConnectionSettings.MaximumPoolSize - m_sessionSemaphore.CurrentCount + m_sessions.Count >=
-				    ConnectionSettings.MinimumPoolSize)
+				if (ConnectionSettings.MaximumPoolSize - m_sessionSemaphore.CurrentCount + m_sessions.Count >= ConnectionSettings.MinimumPoolSize)
 					return;
 			}
 

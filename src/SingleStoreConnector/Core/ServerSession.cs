@@ -444,6 +444,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 			MySqlCompatVersion = new(initialHandshake.ServerVersion);
 			ConnectionId = initialHandshake.ConnectionId;
 			AuthPluginData = initialHandshake.AuthPluginData;
+			m_useCompression = cs.UseCompression && (ServerCapabilities & ProtocolCapabilities.Compress) != 0;
 			CancellationTimeout = cs.CancellationTimeout;
 			UserID = cs.UserID;
 
@@ -466,7 +467,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 			// disable pipelining for SingleStore
 			m_supportsPipelining = false;
 
-			Log.SessionMadeConnection(m_logger, Id, MySqlCompatVersion.OriginalString, ConnectionId,  m_supportsConnectionAttributes, SupportsDeprecateEof, SupportsCachedPreparedMetadata, serverSupportsSsl, SupportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
+			Log.SessionMadeConnection(m_logger, Id, MySqlCompatVersion.OriginalString, ConnectionId,  m_useCompression, m_supportsConnectionAttributes, SupportsDeprecateEof, SupportsCachedPreparedMetadata, serverSupportsSsl, SupportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
 
 			if (cs.SslMode != SingleStoreSslMode.None && (cs.SslMode != SingleStoreSslMode.Preferred || serverSupportsSsl))
 			{
@@ -483,7 +484,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 				cs.ConnectionAttributes = CreateConnectionAttributes(cs.ApplicationName, cs.ConnAttrsExtra);
 
 			var password = GetPassword(cs, connection);
-			using (var handshakeResponsePayload = HandshakeResponse41Payload.Create(initialHandshake, cs, password, m_characterSet, m_supportsConnectionAttributes ? cs.ConnectionAttributes : null))
+			using (var handshakeResponsePayload = HandshakeResponse41Payload.Create(initialHandshake, cs, password, m_useCompression, m_characterSet, m_supportsConnectionAttributes ? cs.ConnectionAttributes : null))
 				await SendReplyAsync(handshakeResponsePayload, ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
@@ -534,6 +535,9 @@ internal sealed partial class ServerSession : IServerCapabilities
 			}
 
 			var redirectionUrl = ok.RedirectionUrl;
+
+			if (m_useCompression)
+				m_payloadHandler = new CompressedPayloadHandler(m_payloadHandler.ByteHandler);
 
 			// set 'collation_connection' to the server default
 			await SendAsync(m_setNamesPayload, ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -1602,7 +1606,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 
 		var checkCertificateRevocation = cs.SslMode == SingleStoreSslMode.VerifyFull;
 
-		using (var initSsl = HandshakeResponse41Payload.CreateWithSsl(serverCapabilities, cs, m_characterSet))
+		using (var initSsl = HandshakeResponse41Payload.CreateWithSsl(serverCapabilities, cs, m_useCompression, m_characterSet))
 			await SendReplyAsync(initSsl, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 		var clientAuthenticationOptions = new SslClientAuthenticationOptions
@@ -2143,6 +2147,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 	private SslStream? m_sslStream;
 	private X509Certificate2? m_clientCertificate;
 	private IPayloadHandler? m_payloadHandler;
+	private bool m_useCompression;
 	private bool m_isSecureConnection;
 	private bool m_supportsConnectionAttributes;
 	private bool m_supportsPipelining;

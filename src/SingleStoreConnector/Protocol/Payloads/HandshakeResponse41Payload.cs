@@ -5,7 +5,9 @@ namespace SingleStoreConnector.Protocol.Payloads;
 
 internal static class HandshakeResponse41Payload
 {
-	private static ByteBufferWriter CreateCapabilitiesPayload(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, CharacterSet characterSet, ProtocolCapabilities additionalCapabilities = 0)
+	private static ByteBufferWriter CreateCapabilitiesPayload(ProtocolCapabilities serverCapabilities,
+		ConnectionSettings cs, bool useCompression, CharacterSet characterSet,
+		ProtocolCapabilities additionalCapabilities = 0)
 	{
 		var writer = new ByteBufferWriter();
 
@@ -22,6 +24,7 @@ internal static class HandshakeResponse41Payload
 			(cs.AllowLoadLocalInfile ? ProtocolCapabilities.LocalFiles : 0) |
 			(string.IsNullOrWhiteSpace(cs.Database) ? 0 : ProtocolCapabilities.ConnectWithDatabase) |
 			(cs.UseAffectedRows ? 0 : ProtocolCapabilities.FoundRows) |
+			(useCompression ? ProtocolCapabilities.Compress : ProtocolCapabilities.None) |
 			(serverCapabilities & ProtocolCapabilities.ConnectionAttributes) |
 			(serverCapabilities & ProtocolCapabilities.SessionTrack) |
 			(serverCapabilities & ProtocolCapabilities.DeprecateEof) |
@@ -50,13 +53,13 @@ internal static class HandshakeResponse41Payload
 		return writer;
 	}
 
-	public static PayloadData CreateWithSsl(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, CharacterSet characterSet) =>
-		CreateCapabilitiesPayload(serverCapabilities, cs, characterSet, ProtocolCapabilities.Ssl).ToPayloadData();
+	public static PayloadData CreateWithSsl(ProtocolCapabilities serverCapabilities, ConnectionSettings cs, bool useCompression, CharacterSet characterSet) =>
+		CreateCapabilitiesPayload(serverCapabilities, cs, useCompression, characterSet, ProtocolCapabilities.Ssl).ToPayloadData();
 
-	public static PayloadData Create(InitialHandshakePayload handshake, ConnectionSettings cs, string password, CharacterSet characterSet, byte[]? connectionAttributes)
+	public static PayloadData Create(InitialHandshakePayload handshake, ConnectionSettings cs, string password, bool useCompression, CharacterSet characterSet, byte[]? connectionAttributes)
 	{
 		// TODO: verify server capabilities
-		var writer = CreateCapabilitiesPayload(handshake.ProtocolCapabilities, cs, characterSet);
+		var writer = CreateCapabilitiesPayload(handshake.ProtocolCapabilities, cs, useCompression, characterSet);
 		writer.WriteNullTerminatedString(cs.UserID);
 		var authenticationResponse = AuthenticationUtility.CreateAuthenticationResponse(handshake.AuthPluginData, password);
 		writer.Write((byte) authenticationResponse.Length);
