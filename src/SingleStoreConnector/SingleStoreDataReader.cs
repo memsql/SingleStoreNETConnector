@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using SingleStoreConnector.Core;
 using SingleStoreConnector.Logging;
@@ -180,9 +181,9 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		get
 		{
 			VerifyNotDisposed();
-			if (m_resultSet is null)
-				throw new InvalidOperationException("There is no current result set.");
-			return m_resultSet.ContainsCommandParameters ? 0 : m_resultSet.FieldCount;
+			return m_resultSet is null ? throw new InvalidOperationException("There is no current result set.") :
+				m_resultSet.ContainsCommandParameters ? 0 :
+				m_resultSet.FieldCount;
 		}
 	}
 
@@ -195,9 +196,8 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		get
 		{
 			VerifyNotDisposed();
-			if (m_resultSet is null)
-				throw new InvalidOperationException("There is no current result set.");
-			return !m_resultSet.ContainsCommandParameters && m_resultSet.HasRows;
+			return m_resultSet is null ? throw new InvalidOperationException("There is no current result set.") :
+				!m_resultSet.ContainsCommandParameters && m_resultSet.HasRows;
 		}
 	}
 
@@ -247,6 +247,10 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	public override string GetDataTypeName(int ordinal) => GetResultSet().GetDataTypeName(ordinal);
 
 	public Type GetFieldType(string name) => GetFieldType(GetOrdinal(name));
+
+#if NET6_0_OR_GREATER
+    [UnconditionalSuppressMessage("ILLink", "IL2093", Justification = "This method is provided to implement the DbDataReader API. We do not want to retain all public methods of Types just used as sentinel values for field mapping.")]
+#endif
 	public override Type GetFieldType(int ordinal) => GetResultSet().GetFieldType(ordinal);
 
 	public override object GetValue(int ordinal) => GetResultSet().GetCurrentRow().GetValue(ordinal);
@@ -495,7 +499,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 			// if the command list has multiple commands, keep reading until a result set is found
 			while (m_resultSet.State == ResultSetState.NoMoreData && commandListPosition.CommandIndex < commandListPosition.CommandCount)
 			{
-				await NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+				_ = await NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			}
 		}
 		catch (Exception ex)
@@ -515,8 +519,11 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 		if (!m_resultSet.HasResultSet || m_resultSet.ContainsCommandParameters)
 			return null;
 
-		var schemaTable = new DataTable("SchemaTable") { Locale = CultureInfo.InvariantCulture };
-		schemaTable.MinimumCapacity = m_resultSet.ColumnDefinitions.Length;
+		var schemaTable = new DataTable("SchemaTable")
+		{
+			Locale = CultureInfo.InvariantCulture,
+			MinimumCapacity = m_resultSet.ColumnDefinitions.Length,
+		};
 
 		var columnName = new DataColumn(SchemaTableColumn.ColumnName, typeof(string));
 		var ordinal = new DataColumn(SchemaTableColumn.ColumnOrdinal, typeof(int));
@@ -657,7 +664,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	// execution. These values will be stored in the parameters of the associated command.
 	private static async Task ReadOutParametersAsync(ISingleStoreCommand command, ResultSet resultSet, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		await resultSet.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+		_ = await resultSet.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 		var row = resultSet.GetCurrentRow();
 		if (row.GetString(0) != SingleCommandPayloadCreator.OutParameterSentinelColumnName)
@@ -694,9 +701,9 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	private ResultSet GetResultSet()
 	{
 		VerifyNotDisposed();
-		if (m_resultSet is null || m_resultSet.ContainsCommandParameters)
-			throw new InvalidOperationException("There is no current result set.");
-		return m_resultSet;
+		return m_resultSet is null || m_resultSet.ContainsCommandParameters ?
+			throw new InvalidOperationException("There is no current result set.") :
+			m_resultSet;
 	}
 
 	private readonly ResultSet m_resultSet;

@@ -65,7 +65,7 @@ public sealed class SingleStoreConnectorFactory : DbProviderFactory
 #if NET6_0_OR_GREATER
 	public override DbBatch CreateBatch() => new SingleStoreBatch();
 #else
-	public SingleStoreBatch CreateBatch() => new SingleStoreBatch();
+	public SingleStoreBatch CreateBatch() => new();
 #endif
 
 	/// <summary>
@@ -74,7 +74,7 @@ public sealed class SingleStoreConnectorFactory : DbProviderFactory
 #if NET6_0_OR_GREATER
 	public override DbBatchCommand CreateBatchCommand() => new SingleStoreBatchCommand();
 #else
-	public SingleStoreBatchCommand CreateBatchCommand() => new SingleStoreBatchCommand();
+	public SingleStoreBatchCommand CreateBatchCommand() => new();
 #endif
 
 	/// <summary>

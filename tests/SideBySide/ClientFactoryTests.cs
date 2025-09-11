@@ -51,7 +51,7 @@ public class ClientFactoryTests
 #else
 		var providerInvariantName = "SingleStoreConnector";
 #endif
-#if !NET462 && !NET472
+#if !NETFRAMEWORK
 		DbProviderFactories.RegisterFactory(providerInvariantName, SingleStoreConnectorFactory.Instance);
 #endif
 		var factory = DbProviderFactories.GetFactory(providerInvariantName);

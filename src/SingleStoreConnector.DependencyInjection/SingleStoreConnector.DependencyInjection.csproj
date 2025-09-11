@@ -1,16 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;net7.0</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnablePackageValidation>false</EnablePackageValidation>
     <Title>SingleStoreConnector Dependency Injection Helpers</Title>
     <Description>Provides extension methods for integrating SingleStoreConnector with .NET dependency injection.</Description>
     <Copyright>Copyright 2022 Bradley Grainger</Copyright>
+    <Copyright>Copyright 2022-2025 SingleStore Inc.</Copyright>
     <Authors>Bradley Grainger</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>mysqlconnector;dependency injection;iservicecollection</PackageTags>
+    <PackageTags>singlestoreconnector;dependency injection;iservicecollection</PackageTags>
+    <IsAotCompatible Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))">true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

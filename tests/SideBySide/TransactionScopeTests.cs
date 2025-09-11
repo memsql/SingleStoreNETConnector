@@ -847,6 +847,38 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 			Assert.Throws<NotSupportedException>(() => conn2.Open());
 		}
 	}
+
+	[Fact]
+	public void ConnectionOpenedCallbackAutoEnlistInTransaction()
+	{
+		var connectionOpenedCallbackCount = 0;
+		var connectionOpenedConditions = SingleStoreConnectionOpenedConditions.None;
+		using var dataSource = new SingleStoreDataSourceBuilder(AppConfig.ConnectionString)
+			.UseConnectionOpenedCallback((ctx, token) =>
+			{
+				connectionOpenedCallbackCount++;
+				connectionOpenedConditions = ctx.Conditions;
+				return default;
+			})
+			.Build();
+
+		using (var transactionScope = new TransactionScope())
+		{
+			using (var conn = dataSource.OpenConnection())
+			{
+				Assert.Equal(1, connectionOpenedCallbackCount);
+				Assert.Equal(SingleStoreConnectionOpenedConditions.New, connectionOpenedConditions);
+			}
+
+			using (var conn = dataSource.OpenConnection())
+			{
+				Assert.Equal(2, connectionOpenedCallbackCount);
+				Assert.Equal(SingleStoreConnectionOpenedConditions.None, connectionOpenedConditions);
+			}
+
+			transactionScope.Complete();
+		}
+	}
 #endif
 
 	DatabaseFixture m_database;

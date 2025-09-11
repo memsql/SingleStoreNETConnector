@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup Condition=" '$(Configuration)' != 'Baseline' ">
-    <TargetFrameworks>net462;net472;net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net462;net481;net6.0;net8.0;net9.0</TargetFrameworks>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Baseline' ">
-    <TargetFrameworks>net8.0</TargetFrameworks>
+    <TargetFrameworks>net9.0</TargetFrameworks>
     <DefineConstants>BASELINE</DefineConstants>
     <NoWarn>$(NoWarn);MSB3246</NoWarn>
   </PropertyGroup>
@@ -41,6 +41,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
+    <PackageReference Include="System.Text.Json" />
     <Using Include="System" />
     <Using Include="System.Data" />
     <Using Include="System.Data.Common" />
@@ -61,7 +62,7 @@
     <Using Include="MySql.Data.MySqlClient" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net472' ">
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net462' OR '$(TargetFramework)' == 'net481' ">
     <Reference Include="System" />
     <Reference Include="System.Transactions" />
     <Reference Include="Microsoft.CSharp" />

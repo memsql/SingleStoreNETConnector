@@ -19,6 +19,7 @@ fi
 if [[ "${EXISTS}" -eq 0 ]]; then
     docker run -i --init \
         --name ${CONTAINER_NAME} \
+        -v ${PWD}/.ci/server/certs:/test-ssl \
         -e LICENSE_KEY=${LICENSE_KEY} \
         -e ROOT_PASSWORD=${SQL_USER_PASSWORD} \
         -p 3306:3306 -p 3307:3307 \
@@ -53,4 +54,34 @@ if [[ ${CONTAINER_IP} != "${CURRENT_LEAF_IP}" ]]; then
     # add leaf with correct ip
     mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" --batch -N -e "add leaf root:'${SQL_USER_PASSWORD}'@'${CONTAINER_IP}':3307"
 fi
+
+echo "Setting up SSL"
+docker exec ${CONTAINER_NAME} memsqlctl update-config --yes --all --key ssl_ca --value /test-ssl/ssl-ca-cert.pem
+docker exec ${CONTAINER_NAME} memsqlctl update-config --yes --all --key ssl_cert --value /test-ssl/ssl-server-cert.pem
+docker exec ${CONTAINER_NAME} memsqlctl update-config --yes --all --key ssl_key --value /test-ssl/ssl-server-key.pem
+
+echo "Restarting cluster"
+docker restart ${CONTAINER_NAME}
+singlestore-wait-start
+
+echo
+echo "Granting root access from any host to support NativeAOT test connectivity"
+mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" <<'EOF'
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY '${SQL_USER_PASSWORD}';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+EOF
+
+echo
+echo "Creating users for SSL tests"
+
+mysql -u root -h 127.0.0.1 -P 3306 -p"${SQL_USER_PASSWORD}" <<'EOF'
+CREATE USER 'mysqltest'@'%' IDENTIFIED BY 'test';
+GRANT ALL ON *.* TO mysqltest;
+CREATE USER 'no_password'@'localhost';
+CREATE USER 'no_password'@'172.17.0.1';
+CREATE USER 'ssltest'@'%' IDENTIFIED BY 'test' REQUIRE SSL;
+GRANT ALL PRIVILEGES ON *.* TO 'ssltest'@'%';
+EOF
+
 echo "Done!"

@@ -4,13 +4,17 @@ namespace SingleStoreConnector.Tests.Metrics;
 
 public class ConnectionsUsageTests : MetricsTestsBase
 {
-    [Fact(Skip = MetricsSkip)]
-	public void NamedDataSource()
-    {
-		PoolName = "metrics-test";
-		using var dataSource = new SingleStoreDataSourceBuilder(CreateConnectionStringBuilder().ConnectionString)
-			.UseName(PoolName)
-			.Build();
+	[Theory(Skip = MetricsSkip)]
+	[InlineData("DataSource|true||")]
+	[InlineData("DataSource|true||app-name")]
+	[InlineData("DataSource|true|pool-name|")]
+	[InlineData("DataSource|true|pool-name|app-name")]
+	[InlineData("Plain|true|")]
+	[InlineData("Plain|true|app-name")]
+	public void ConnectionsWithPoolsHaveMetrics(string connectionCreatorSpec)
+	{
+		using var connectionCreator = CreateConnectionCreator(connectionCreatorSpec, CreateConnectionStringBuilder());
+		PoolName = connectionCreator.PoolName;
 
 		// no connections at beginning of test
 		AssertMeasurement("db.client.connections.usage", 0);
@@ -19,7 +23,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		Assert.Equal(0, Server.ActiveConnections);
 
 		// opening a connection creates a 'used' connection
-		using (var connection = dataSource.OpenConnection())
+		using (var connection = connectionCreator.OpenConnection())
 		{
 			AssertMeasurement("db.client.connections.usage", 1);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
@@ -34,7 +38,7 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		Assert.Equal(1, Server.ActiveConnections);
 
 		// reopening the connection transitions it back to 'used'
-		using (var connection = dataSource.OpenConnection())
+		using (var connection = connectionCreator.OpenConnection())
 		{
 			AssertMeasurement("db.client.connections.usage", 1);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
@@ -43,8 +47,8 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		Assert.Equal(1, Server.ActiveConnections);
 
 		// opening a second connection creates a net new 'used' connection
-		using (var connection = dataSource.OpenConnection())
-		using (var connection2 = dataSource.OpenConnection())
+		using (var connection = connectionCreator.OpenConnection())
+		using (var connection2 = connectionCreator.OpenConnection())
 		{
 			AssertMeasurement("db.client.connections.usage", 2);
 			AssertMeasurement("db.client.connections.usage|idle", 0);
@@ -56,6 +60,47 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		AssertMeasurement("db.client.connections.usage|idle", 2);
 		AssertMeasurement("db.client.connections.usage|used", 0);
 		Assert.Equal(2, Server.ActiveConnections);
+	}
+
+	[Theory(Skip = MetricsSkip)]
+	[InlineData("DataSource|false||")]
+	[InlineData("DataSource|false||app-name")]
+	[InlineData("DataSource|false|pool-name|")]
+	[InlineData("DataSource|false|pool-name|app-name")]
+	[InlineData("Plain|false|")]
+	[InlineData("Plain|false|app-name")]
+	public void ConnectionsWithoutPoolsHaveNoMetrics(string connectionCreatorSpec)
+	{
+		using var connectionCreator = CreateConnectionCreator(connectionCreatorSpec, CreateConnectionStringBuilder());
+		PoolName = connectionCreator.PoolName;
+
+		// no connections at beginning of test
+		AssertMeasurement("db.client.connections.usage", 0);
+		AssertMeasurement("db.client.connections.usage|idle", 0);
+		AssertMeasurement("db.client.connections.usage|used", 0);
+		Assert.Equal(0, Server.ActiveConnections);
+
+		// opening a connection doesn't change connection counts
+		using (var connection = connectionCreator.OpenConnection())
+		{
+			AssertMeasurement("db.client.connections.usage", 0);
+			AssertMeasurement("db.client.connections.usage|idle", 0);
+			AssertMeasurement("db.client.connections.usage|used", 0);
+			Assert.Equal(1, Server.ActiveConnections);
+		}
+
+		// closing it doesn't create an idle connection but closes it immediately
+		AssertMeasurement("db.client.connections.usage", 0);
+		AssertMeasurement("db.client.connections.usage|idle", 0);
+		AssertMeasurement("db.client.connections.usage|used", 0);
+
+		// disposing the connection sends a COM_QUIT packet and immediately returns; give the in-proc server a chance to process it
+		for (var retry = 0; retry < 20; retry++)
+		{
+			if (Server.ActiveConnections != 0)
+				Thread.Sleep(1);
+		}
+		Assert.Equal(0, Server.ActiveConnections);
 	}
 
 	[Fact(Skip = MetricsSkip)]
@@ -89,121 +134,6 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		AssertMeasurement("db.client.connections.usage|idle", 3);
 		AssertMeasurement("db.client.connections.usage|used", 0);
 		Assert.Equal(3, Server.ActiveConnections);
-	}
-
-	[Fact(Skip = MetricsSkip)]
-	public void UnnamedDataSource()
-	{
-		var csb = CreateConnectionStringBuilder();
-
-		// NOTE: pool "name" is connection string (without password)
-		PoolName = csb.GetConnectionString(includePassword: false);
-
-		using var dataSource = new SingleStoreDataSourceBuilder(csb.ConnectionString)
-			.Build();
-
-		// no connections at beginning of test
-		AssertMeasurement("db.client.connections.usage", 0);
-		AssertMeasurement("db.client.connections.usage|idle", 0);
-		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(0, Server.ActiveConnections);
-
-		// opening a connection creates a 'used' connection
-		using (var connection = dataSource.OpenConnection())
-		{
-			AssertMeasurement("db.client.connections.usage", 1);
-			AssertMeasurement("db.client.connections.usage|idle", 0);
-			AssertMeasurement("db.client.connections.usage|used", 1);
-			Assert.Equal(1, Server.ActiveConnections);
-		}
-
-		// closing it creates an 'idle' connection
-		AssertMeasurement("db.client.connections.usage", 1);
-		AssertMeasurement("db.client.connections.usage|idle", 1);
-		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(1, Server.ActiveConnections);
-
-		// reopening the connection transitions it back to 'used'
-		using (var connection = dataSource.OpenConnection())
-		{
-			AssertMeasurement("db.client.connections.usage", 1);
-			AssertMeasurement("db.client.connections.usage|idle", 0);
-			AssertMeasurement("db.client.connections.usage|used", 1);
-		}
-		Assert.Equal(1, Server.ActiveConnections);
-
-		// opening a second connection creates a net new 'used' connection
-		using (var connection = dataSource.OpenConnection())
-		using (var connection2 = dataSource.OpenConnection())
-		{
-			AssertMeasurement("db.client.connections.usage", 2);
-			AssertMeasurement("db.client.connections.usage|idle", 0);
-			AssertMeasurement("db.client.connections.usage|used", 2);
-			Assert.Equal(2, Server.ActiveConnections);
-		}
-
-		AssertMeasurement("db.client.connections.usage", 2);
-		AssertMeasurement("db.client.connections.usage|idle", 2);
-		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(2, Server.ActiveConnections);
-	}
-
-	[Fact(Skip = MetricsSkip)]
-	public void NoDataSource()
-	{
-		var csb = CreateConnectionStringBuilder();
-
-		// NOTE: pool "name" is connection string (without password)
-		PoolName = csb.GetConnectionString(includePassword: false);
-
-		// no connections at beginning of test
-		AssertMeasurement("db.client.connections.usage", 0);
-		AssertMeasurement("db.client.connections.usage|idle", 0);
-		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(0, Server.ActiveConnections);
-
-		// opening a connection creates a 'used' connection
-		using (var connection = new SingleStoreConnection(csb.ConnectionString))
-		{
-			connection.Open();
-			AssertMeasurement("db.client.connections.usage", 1);
-			AssertMeasurement("db.client.connections.usage|idle", 0);
-			AssertMeasurement("db.client.connections.usage|used", 1);
-			Assert.Equal(1, Server.ActiveConnections);
-		}
-
-		// closing it creates an 'idle' connection
-		AssertMeasurement("db.client.connections.usage", 1);
-		AssertMeasurement("db.client.connections.usage|idle", 1);
-		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(1, Server.ActiveConnections);
-
-		// reopening the connection transitions it back to 'used'
-		using (var connection = new SingleStoreConnection(csb.ConnectionString))
-		{
-			connection.Open();
-			AssertMeasurement("db.client.connections.usage", 1);
-			AssertMeasurement("db.client.connections.usage|idle", 0);
-			AssertMeasurement("db.client.connections.usage|used", 1);
-		}
-		Assert.Equal(1, Server.ActiveConnections);
-
-		// opening a second connection creates a net new 'used' connection
-		using (var connection = new SingleStoreConnection(csb.ConnectionString))
-		using (var connection2 = new SingleStoreConnection(csb.ConnectionString))
-		{
-			connection.Open();
-			connection2.Open();
-			AssertMeasurement("db.client.connections.usage", 2);
-			AssertMeasurement("db.client.connections.usage|idle", 0);
-			AssertMeasurement("db.client.connections.usage|used", 2);
-			Assert.Equal(2, Server.ActiveConnections);
-		}
-
-		AssertMeasurement("db.client.connections.usage", 2);
-		AssertMeasurement("db.client.connections.usage|idle", 2);
-		AssertMeasurement("db.client.connections.usage|used", 0);
-		Assert.Equal(2, Server.ActiveConnections);
 	}
 
 	[Fact(Skip = MetricsSkip)]
@@ -241,5 +171,16 @@ public class ConnectionsUsageTests : MetricsTestsBase
 		await openTask;
 
 		AssertMeasurement("db.client.connections.pending_requests", 0);
+	}
+
+	private IConnectionCreator CreateConnectionCreator(string spec, SingleStoreConnectionStringBuilder connectionStringBuilder)
+	{
+		var parts = spec.Split('|');
+		return parts[0] switch
+		{
+			"DataSource" => new DataSourceConnectionCreator(bool.Parse(parts[1]), parts[2] == "" ? null : parts[2], parts[3] == "" ? null : parts[3], connectionStringBuilder),
+			"Plain" => new PlainConnectionCreator(bool.Parse(parts[1]), parts[2] == "" ? null : parts[2], connectionStringBuilder),
+			_ => throw new NotSupportedException(),
+		};
 	}
 }

@@ -19,5 +19,5 @@ public class SingleStoreParameterCollectionTests
 	[Fact]
 	public void RemoveAtEnd() => Assert.Throws<ArgumentOutOfRangeException>(() => m_collection.RemoveAt(0));
 
-	SingleStoreParameterCollection m_collection;
+	readonly SingleStoreParameterCollection m_collection;
 }

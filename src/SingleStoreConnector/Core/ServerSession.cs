@@ -1,7 +1,6 @@
 using System.Buffers.Text;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.IO.Pipes;
 using System.Net;
@@ -24,24 +23,19 @@ namespace SingleStoreConnector.Core;
 
 #pragma warning disable CA1001 // Types that own disposable fields should be disposable
 
-internal sealed partial class ServerSession
+internal sealed partial class ServerSession : IServerCapabilities
 {
-	public ServerSession(ILogger logger)
-		: this(logger, null, 0, Interlocked.Increment(ref s_lastId))
-	{
-	}
-
-	public ServerSession(ILogger logger, ConnectionPool? pool, int poolGeneration, int id)
+	public ServerSession(ILogger logger, IConnectionPoolMetadata pool)
 	{
 		m_logger = logger;
 		m_lock = new();
 		m_payloadCache = new();
-		Id = (pool?.Id ?? 0) + "." + id;
+		Id = pool.Id + "." + pool.GetNewSessionId();
 		MySqlCompatVersion = ServerVersion.Empty;
 		S2ServerVersion = ServerVersion.Empty;
-		CreatedTicks = unchecked((uint) Environment.TickCount);
-		Pool = pool;
-		PoolGeneration = poolGeneration;
+		CreatedTimestamp = Stopwatch.GetTimestamp();
+		Pool = pool.ConnectionPool;
+		PoolGeneration = pool.Generation;
 		HostName = "";
 		m_activityTags = [];
 		DataReader = new();
@@ -61,34 +55,36 @@ internal sealed partial class ServerSession
 	public int CancellationTimeout { get; private set; }
 	public int ConnectionId { get; set; }
 	public byte[]? AuthPluginData { get; set; }
-	public uint CreatedTicks { get; }
+	public long CreatedTimestamp { get; }
 	public ConnectionPool? Pool { get; }
 	public int PoolGeneration { get; }
-	public uint LastLeasedTicks { get; set; }
-	public uint LastReturnedTicks { get; private set; }
+	public long LastLeasedTimestamp { get; set; }
+	public long LastReturnedTimestamp { get; private set; }
 	public string? DatabaseOverride { get; set; }
 	public string HostName { get; private set; }
 	public IPEndPoint? IPEndPoint => m_tcpClient?.Client.RemoteEndPoint as IPEndPoint;
 	public string? UserID { get; private set; }
 	public WeakReference<SingleStoreConnection>? OwningConnection { get; set; }
-	public bool SupportsDeprecateEof => m_supportsDeprecateEof;
+	public bool SupportsDeprecateEof { get; private set; }
 	public bool SupportsCachedPreparedMetadata { get; private set; }
 	public bool SupportsQueryAttributes { get; private set; }
-	public bool SupportsSessionTrack => m_supportsSessionTrack;
+	public bool SupportsSessionTrack { get; private set; }
 	public bool ProcAccessDenied { get; set; }
 	public ICollection<KeyValuePair<string, object?>> ActivityTags => m_activityTags;
 	public SingleStoreDataReader DataReader { get; set; }
+	public SingleStoreConnectionOpenedConditions Conditions { get; private set; }
 
 	public ProtocolCapabilities ServerCapabilities { get; private set; }
 
 	public ValueTask ReturnToPoolAsync(IOBehavior ioBehavior, SingleStoreConnection? owningConnection)
 	{
 		Log.ReturningToPool(m_logger, Id, Pool?.Id ?? 0);
-		LastReturnedTicks = unchecked((uint) Environment.TickCount);
+		Conditions = SingleStoreConnectionOpenedConditions.None;
+		LastReturnedTimestamp = Stopwatch.GetTimestamp();
 		if (Pool is null)
 			return default;
-		MetricsReporter.RecordUseTime(Pool, unchecked(LastReturnedTicks - LastLeasedTicks));
-		LastLeasedTicks = 0;
+		MetricsReporter.RecordUseTime(Pool, Utility.GetElapsedSeconds(LastLeasedTimestamp, LastReturnedTimestamp));
+		LastLeasedTimestamp = 0;
 		return Pool.ReturnAsync(ioBehavior, this);
 	}
 
@@ -137,7 +133,7 @@ internal sealed partial class ServerSession
 			// a unique identifier of the command itself). As a mitigation, we set the CommandTimeout to a low value to avoid
 			// blocking the other thread for an extended duration.
 			Log.CancelingCommand(m_logger, killCommand.Connection!.Session.Id, commandToCancel.CommandId, killCommand.CommandText);
-			killCommand.ExecuteNonQuery();
+			_ = killCommand.ExecuteNonQuery();
 		}
 	}
 
@@ -170,7 +166,7 @@ internal sealed partial class ServerSession
 
 			var parameterCount = cachedProcedure.Parameters.Count;
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-			commandToPrepare = string.Create(commandText.Length + 7 + parameterCount * 2 + (parameterCount == 0 ? 1 : 0), (commandText, parameterCount), static (buffer, state) =>
+			commandToPrepare = string.Create(commandText.Length + 7 + (parameterCount * 2) + (parameterCount == 0 ? 1 : 0), (commandText, parameterCount), static (buffer, state) =>
 			{
 				buffer[0] = 'C';
 				buffer[1] = 'A';
@@ -197,7 +193,7 @@ internal sealed partial class ServerSession
 				buffer[1] = ';';
 			});
 #else
-			var callStatement = new StringBuilder("CALL ", commandText.Length + 8 + parameterCount * 2);
+			var callStatement = new StringBuilder("CALL ", commandText.Length + 8 + (parameterCount * 2));
 			callStatement.Append(commandText);
 			callStatement.Append('(');
 			for (int i = 0; i < parameterCount; i++)
@@ -205,7 +201,7 @@ internal sealed partial class ServerSession
 			if (parameterCount == 0)
 				callStatement.Append(')');
 			else
-				callStatement[callStatement.Length - 1] = ')';
+				callStatement[^1] = ')';
 			callStatement.Append(';');
 			commandToPrepare = callStatement.ToString();
 #endif
@@ -295,7 +291,7 @@ internal sealed partial class ServerSession
 			if (m_state is State.Querying or State.CancelingQuery)
 			{
 				CannotExecuteNewCommandInState(m_logger, Id, m_state);
-				throw new InvalidOperationException("This SingleStoreConnection is already in use. See https://fl.vu/mysql-conn-reuse");
+				throw new InvalidOperationException("This SingleStoreConnection is already in use. See https://mysqlconnector.net/conn-reuse");
 			}
 
 			VerifyState(State.Connected);
@@ -378,10 +374,8 @@ internal sealed partial class ServerSession
 			m_state = State.Closed;
 	}
 
-	public async Task<string?> ConnectAsync(ConnectionSettings cs, SingleStoreConnection connection, int startTickCount, ILoadBalancer? loadBalancer, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<string?> ConnectAsync(ConnectionSettings cs, SingleStoreConnection connection, long startingTimestamp, ILoadBalancer? loadBalancer, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		string? statusInfo = null;
-
 		try
 		{
 			lock (m_lock)
@@ -401,133 +395,90 @@ internal sealed partial class ServerSession
 					m_activityTags.Add(ActivitySourceHelper.DatabaseNameTagName, cs.Database);
 				if (activity is { IsAllDataRequested: true })
 				{
-					activity.SetTag(ActivitySourceHelper.DatabaseSystemTagName, ActivitySourceHelper.DatabaseSystemValue);
-					activity.SetTag(ActivitySourceHelper.DatabaseConnectionStringTagName, connectionString);
-					activity.SetTag(ActivitySourceHelper.DatabaseUserTagName, cs.UserID);
+					activity.SetTag(ActivitySourceHelper.DatabaseSystemTagName, ActivitySourceHelper.DatabaseSystemValue)
+							.SetTag(ActivitySourceHelper.DatabaseConnectionStringTagName, connectionString)
+							.SetTag(ActivitySourceHelper.DatabaseUserTagName, cs.UserID);
 					if (cs.Database.Length != 0)
 						activity.SetTag(ActivitySourceHelper.DatabaseNameTagName, cs.Database);
 				}
 			}
 
-			// TLS negotiation should automatically fall back to the best version supported by client and server. However,
-			// Windows Schannel clients will fail to connect to a yaSSL-based MySQL Server if TLS 1.2 is requested and
-			// have to use only TLS 1.1: https://github.com/mysql-net/MySqlConnector/pull/101
-			// In order to use the best protocol possible (i.e., not always default to TLS 1.1), we try the OS-default protocol
-			// (which is SslProtocols.None; see https://docs.microsoft.com/en-us/dotnet/framework/network-programming/tls),
-			// then fall back to SslProtocols.Tls11 if that fails and it's possible that the cause is a yaSSL server.
-			bool shouldRetrySsl;
-			var shouldUpdatePoolSslProtocols = false;
-			var sslProtocols = Pool?.SslProtocols ?? cs.TlsVersions;
-			PayloadData payload;
-			InitialHandshakePayload initialHandshake;
-			do
+			Conditions = SingleStoreConnectionOpenedConditions.New;
+			var connected = cs.ConnectionProtocol switch
 			{
-				var isTls11or10Supported = (sslProtocols & (SslProtocols.Tls | SslProtocols.Tls11)) != SslProtocols.None;
-				var isTls12Supported = (sslProtocols & SslProtocols.Tls12) == SslProtocols.Tls12;
-				shouldRetrySsl = (sslProtocols == SslProtocols.None || (isTls12Supported && isTls11or10Supported)) && Utility.IsWindows();
+				SingleStoreConnectionProtocol.Sockets => await OpenTcpSocketAsync(cs, loadBalancer ?? throw new ArgumentNullException(nameof(loadBalancer)), activity, ioBehavior, cancellationToken).ConfigureAwait(false),
+				SingleStoreConnectionProtocol.UnixSocket => await OpenUnixSocketAsync(cs, activity, ioBehavior, cancellationToken).ConfigureAwait(false),
+				SingleStoreConnectionProtocol.NamedPipe => await OpenNamedPipeAsync(cs, startingTimestamp, activity, ioBehavior, cancellationToken).ConfigureAwait(false),
+				_ => false,
+			};
+			if (!connected)
+			{
+				lock (m_lock)
+					m_state = State.Failed;
+				Log.ConnectingFailed(m_logger, Id);
+				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Unable to connect to any of the specified SingleStore hosts.");
+			}
 
-				var connected = false;
-				if (cs.ConnectionProtocol == SingleStoreConnectionProtocol.Sockets)
-					connected = await OpenTcpSocketAsync(cs, loadBalancer ?? throw new ArgumentNullException(nameof(loadBalancer)), activity, ioBehavior, cancellationToken).ConfigureAwait(false);
-				else if (cs.ConnectionProtocol == SingleStoreConnectionProtocol.UnixSocket)
-					connected = await OpenUnixSocketAsync(cs, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
-				else if (cs.ConnectionProtocol == SingleStoreConnectionProtocol.NamedPipe)
-					connected = await OpenNamedPipeAsync(cs, startTickCount, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
-				if (!connected)
+			var byteHandler = m_socket is null ? new StreamByteHandler(m_stream!) : (IByteHandler) new SocketByteHandler(m_socket);
+			if (cs.ConnectionTimeout != 0)
+				byteHandler.RemainingTimeout = Math.Max(1, cs.ConnectionTimeoutMilliseconds - Utility.GetElapsedMilliseconds(startingTimestamp));
+			m_payloadHandler = new StandardPayloadHandler(byteHandler);
+
+			var payload = await ReceiveAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			var initialHandshake = InitialHandshakePayload.Create(payload.Span);
+
+			// Explicitly disabling these capabilities to prevent inconsistencies, as SingleStore may use these flags for different purposes.
+			ServerCapabilities = initialHandshake.ProtocolCapabilities & ~(ProtocolCapabilities.MariaDbCacheMetadata | ProtocolCapabilities.QueryAttributes);
+
+			// if PluginAuth is supported, then use the specified auth plugin; else, fall back to protocol capabilities to determine the auth type to use
+			m_currentAuthenticationMethod = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.PluginAuth) != 0 ? initialHandshake.AuthPluginName! :
+				(initialHandshake.ProtocolCapabilities & ProtocolCapabilities.SecureConnection) == 0 ? "mysql_old_password" :
+				"mysql_native_password";
+			Log.ServerSentAuthPluginName(m_logger, Id, m_currentAuthenticationMethod);
+			if (m_currentAuthenticationMethod is not "mysql_native_password" and not "sha256_password" and not "caching_sha2_password")
+			{
+				Log.UnsupportedAuthenticationMethod(m_logger, Id, m_currentAuthenticationMethod);
+				throw new NotSupportedException($"Authentication method '{initialHandshake.AuthPluginName}' is not supported.");
+			}
+
+			MySqlCompatVersion = new(initialHandshake.ServerVersion);
+			ConnectionId = initialHandshake.ConnectionId;
+			AuthPluginData = initialHandshake.AuthPluginData;
+			m_useCompression = cs.UseCompression && (ServerCapabilities & ProtocolCapabilities.Compress) != 0;
+			CancellationTimeout = cs.CancellationTimeout;
+			UserID = cs.UserID;
+
+			// set activity tags
+			{
+				var connectionId = ConnectionId.ToString(CultureInfo.InvariantCulture);
+				m_activityTags[ActivitySourceHelper.DatabaseConnectionIdTagName] = connectionId;
+				if (activity is { IsAllDataRequested: true })
+					activity.SetTag(ActivitySourceHelper.DatabaseConnectionIdTagName, connectionId);
+			}
+
+			m_supportsConnectionAttributes = (ServerCapabilities & ProtocolCapabilities.ConnectionAttributes) != 0;
+			SupportsDeprecateEof = (ServerCapabilities & ProtocolCapabilities.DeprecateEof) != 0;
+			SupportsQueryAttributes = (ServerCapabilities & ProtocolCapabilities.QueryAttributes) != 0;
+			SupportsSessionTrack = (ServerCapabilities & ProtocolCapabilities.SessionTrack) != 0;
+			var serverSupportsSsl = (ServerCapabilities & ProtocolCapabilities.Ssl) != 0;
+			m_characterSet = CharacterSet.Utf8Mb4GeneralCaseInsensitive;
+			m_setNamesPayload = SupportsQueryAttributes ? s_setNamesUtf8mb4WithAttributesPayload : s_setNamesUtf8mb4NoAttributesPayload;
+
+			// disable pipelining for SingleStore
+			m_supportsPipelining = false;
+
+			Log.SessionMadeConnection(m_logger, Id, MySqlCompatVersion.OriginalString, ConnectionId,  m_useCompression, m_supportsConnectionAttributes, SupportsDeprecateEof, SupportsCachedPreparedMetadata, serverSupportsSsl, SupportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
+
+			if (cs.SslMode != SingleStoreSslMode.None && (cs.SslMode != SingleStoreSslMode.Preferred || serverSupportsSsl))
+			{
+				if (!serverSupportsSsl)
 				{
-					lock (m_lock)
-						m_state = State.Failed;
-					Log.ConnectingFailed(m_logger, Id);
-					throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Unable to connect to any of the specified SingleStore hosts.");
+					Log.ServerDoesNotSupportSsl(m_logger, Id);
+					throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Server does not support SSL");
 				}
 
-				var byteHandler = m_socket is null ? new StreamByteHandler(m_stream!) : (IByteHandler) new SocketByteHandler(m_socket);
-				if (cs.ConnectionTimeout != 0)
-					byteHandler.RemainingTimeout = Math.Max(1, cs.ConnectionTimeoutMilliseconds - unchecked(Environment.TickCount - startTickCount));
-				m_payloadHandler = new StandardPayloadHandler(byteHandler);
-
-				payload = await ReceiveAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-				initialHandshake = InitialHandshakePayload.Create(payload.Span);
-
-				// Explicitly disabling these capabilities to prevent inconsistencies, as SingleStore may use these flags for different purposes.
-				ServerCapabilities = initialHandshake.ProtocolCapabilities & ~(ProtocolCapabilities.MariaDbCacheMetadata | ProtocolCapabilities.QueryAttributes);
-
-				// if PluginAuth is supported, then use the specified auth plugin; else, fall back to protocol capabilities to determine the auth type to use
-				string authPluginName;
-				if ((ServerCapabilities & ProtocolCapabilities.PluginAuth) != 0)
-					authPluginName = initialHandshake.AuthPluginName!;
-				else
-					authPluginName = (ServerCapabilities & ProtocolCapabilities.SecureConnection) == 0 ? "mysql_old_password" : "mysql_native_password";
-				Log.ServerSentAuthPluginName(m_logger, Id, authPluginName);
-				if (authPluginName != "mysql_native_password" && authPluginName != "sha256_password" && authPluginName != "caching_sha2_password")
-				{
-					Log.UnsupportedAuthenticationMethod(m_logger, Id, authPluginName);
-					throw new NotSupportedException($"Authentication method '{initialHandshake.AuthPluginName}' is not supported.");
-				}
-
-				MySqlCompatVersion = new(initialHandshake.ServerVersion);
-				ConnectionId = initialHandshake.ConnectionId;
-				AuthPluginData = initialHandshake.AuthPluginData;
-				m_useCompression = cs.UseCompression && (ServerCapabilities & ProtocolCapabilities.Compress) != 0;
-				CancellationTimeout = cs.CancellationTimeout;
-				UserID = cs.UserID;
-
-				// set activity tags
-				{
-					var connectionId = ConnectionId.ToString(CultureInfo.InvariantCulture);
-					m_activityTags[ActivitySourceHelper.DatabaseConnectionIdTagName] = connectionId;
-					if (activity is { IsAllDataRequested: true })
-						activity.SetTag(ActivitySourceHelper.DatabaseConnectionIdTagName, connectionId);
-				}
-
-				m_supportsConnectionAttributes = (ServerCapabilities & ProtocolCapabilities.ConnectionAttributes) != 0;
-				m_supportsDeprecateEof = (ServerCapabilities & ProtocolCapabilities.DeprecateEof) != 0;
-				SupportsQueryAttributes = (ServerCapabilities & ProtocolCapabilities.QueryAttributes) != 0;
-				m_supportsSessionTrack = (ServerCapabilities & ProtocolCapabilities.SessionTrack) != 0;
-				var serverSupportsSsl = (ServerCapabilities & ProtocolCapabilities.Ssl) != 0;
-				m_characterSet = S2ServerVersion.Version >= S2Versions.SupportsUtf8Mb4 ? CharacterSet.Utf8Mb4GeneralCaseInsensitive : CharacterSet.Utf8GeneralCaseInsensitive;
-				m_setNamesPayload = S2ServerVersion.Version >= S2Versions.SupportsUtf8Mb4 ?
-					(SupportsQueryAttributes ? s_setNamesUtf8mb4WithAttributesPayload : s_setNamesUtf8mb4NoAttributesPayload) :
-					(SupportsQueryAttributes ? s_setNamesUtf8WithAttributesPayload : s_setNamesUtf8NoAttributesPayload);
-
-				// disable pipelining for SingleStore
-				m_supportsPipelining = false;
-
-				Log.SessionMadeConnection(m_logger, Id, MySqlCompatVersion.OriginalString, ConnectionId, m_useCompression, m_supportsConnectionAttributes, m_supportsDeprecateEof, SupportsCachedPreparedMetadata, serverSupportsSsl, m_supportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
-
-				if (cs.SslMode != SingleStoreSslMode.None && (cs.SslMode != SingleStoreSslMode.Preferred || serverSupportsSsl))
-				{
-					if (!serverSupportsSsl)
-					{
-						Log.ServerDoesNotSupportSsl(m_logger, Id);
-						throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Server does not support SSL");
-					}
-
-					try
-					{
-						await InitSslAsync(ServerCapabilities, cs, connection, sslProtocols, ioBehavior, cancellationToken).ConfigureAwait(false);
-						shouldRetrySsl = false;
-						if (shouldUpdatePoolSslProtocols && Pool is not null)
-							Pool.SslProtocols = sslProtocols;
-					}
-					catch (ArgumentException ex) when (ex.ParamName == "sslProtocolType" && sslProtocols == SslProtocols.None)
-					{
-						Log.SessionDoesNotSupportSslProtocolsNone(m_logger, ex, Id);
-						sslProtocols = SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12;
-					}
-					catch (Exception ex) when (shouldRetrySsl && ((ex is SingleStoreException && ex.InnerException is AuthenticationException or IOException) || ex is AuthenticationException or IOException))
-					{
-						// negotiating TLS 1.2 with a yaSSL-based server throws an exception on Windows, see comment at top of method
-						Log.FailedNegotiatingTls(m_logger, ex, Id);
-						sslProtocols = sslProtocols == SslProtocols.None ? SslProtocols.Tls | SslProtocols.Tls11 : (SslProtocols.Tls | SslProtocols.Tls11) & sslProtocols;
-						shouldUpdatePoolSslProtocols = true;
-					}
-				}
-				else
-				{
-					shouldRetrySsl = false;
-				}
-			} while (shouldRetrySsl);
+				await InitSslAsync(initialHandshake.ProtocolCapabilities, cs, connection, cs.TlsVersions, ioBehavior, cancellationToken).ConfigureAwait(false);
+			}
 
 			if (m_supportsConnectionAttributes && cs.ConnectionAttributes is null)
 				cs.ConnectionAttributes = CreateConnectionAttributes(cs.ApplicationName, cs.ConnAttrsExtra);
@@ -542,9 +493,48 @@ internal sealed partial class ServerSession
 			{
 				payload = await SwitchAuthenticationAsync(cs, password, payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 			}
+			var ok = OkPayload.Create(payload.Span, this);
 
-			var ok = OkPayload.Create(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
-			statusInfo = ok.StatusInfo;
+			if (m_sslPolicyErrors != SslPolicyErrors.None)
+			{
+				// SSL would normally have thrown error, but this was suppressed in ValidateRemoteCertificate; now we need to verify the server certificate
+				// pass only if :
+				// * connection method is MitM-proof (e.g. unix socket)
+				// * auth plugin is MitM-proof and check SHA2(user's hashed password, scramble, certificate fingerprint)
+				// see https://mariadb.org/mission-impossible-zero-configuration-ssl/
+				var ignoreCertificateError = false;
+
+				if (cs.ConnectionProtocol == SingleStoreConnectionProtocol.UnixSocket)
+				{
+					Log.CertificateErrorUnixSocket(m_logger, Id, m_sslPolicyErrors);
+					ignoreCertificateError = true;
+				}
+				else if (string.IsNullOrEmpty(password))
+				{
+					// there is no shared secret that can be used to validate the certificate
+					Log.CertificateErrorNoPassword(m_logger, Id, m_sslPolicyErrors);
+				}
+				else if (ValidateFingerprint(ok.StatusInfo, initialHandshake.AuthPluginData.AsSpan(0, 20), password))
+				{
+					Log.CertificateErrorValidThumbprint(m_logger, Id, m_sslPolicyErrors);
+					ignoreCertificateError = true;
+				}
+
+				if (!ignoreCertificateError)
+				{
+					ShutdownSocket();
+					HostName = "";
+					lock (m_lock)
+						m_state = State.Failed;
+
+					// throw a SingleStoreException with an AuthenticationException InnerException to mimic what would have happened if ValidateRemoteCertificate returned false
+					var innerException = new AuthenticationException($"The remote certificate was rejected due to the following error: {m_sslPolicyErrors}");
+					Log.CouldNotInitializeTlsConnection(m_logger, innerException, Id);
+					throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "SSL Authentication Error", innerException);
+				}
+			}
+
+			var redirectionUrl = ok.RedirectionUrl;
 
 			if (m_useCompression)
 				m_payloadHandler = new CompressedPayloadHandler(m_payloadHandler.ByteHandler);
@@ -552,11 +542,12 @@ internal sealed partial class ServerSession
 			// set 'collation_connection' to the server default
 			await SendAsync(m_setNamesPayload, ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+			OkPayload.Verify(payload.Span, this);
 
 			await GetRealServerDetailsAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 
 			m_payloadHandler.ByteHandler.RemainingTimeout = Constants.InfiniteTimeout;
+			return redirectionUrl;
 		}
 		catch (ArgumentException ex)
 		{
@@ -568,8 +559,139 @@ internal sealed partial class ServerSession
 			Log.CouldNotConnectToServer(m_logger, ex, Id);
 			throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Couldn't connect to server", ex);
 		}
+	}
 
-		return statusInfo;
+	/// <summary>
+	/// Validate SSL validation hash (from OK packet).
+	/// </summary>
+	/// <param name="validationHash">The validation hash received from the server.</param>
+	/// <param name="challenge">The auth plugin data from the initial handshake.</param>
+	/// <param name="password">The user's password.</param>
+	/// <returns><c>true</c> if the validation hash matches the locally-computed value; otherwise, <c>false</c>.</returns>
+	private bool ValidateFingerprint(byte[]? validationHash, ReadOnlySpan<byte> challenge, string password)
+	{
+		// expect 0x01 followed by 64 hex characters giving a SHA2 hash
+		if (validationHash?.Length != 65 || validationHash[0] != 1)
+			return false;
+
+		byte[]? passwordHashResult = null;
+		switch (m_currentAuthenticationMethod)
+		{
+			case "mysql_native_password":
+				passwordHashResult = AuthenticationUtility.HashPassword([], password, onlyHashPassword: true);
+				break;
+
+			case "client_ed25519":
+				AuthenticationPlugins.TryGetPlugin(m_currentAuthenticationMethod, out var ed25519Plugin);
+				if (ed25519Plugin is IAuthenticationPlugin2 plugin2)
+					passwordHashResult = plugin2.CreatePasswordHash(password, challenge);
+				break;
+		}
+		if (passwordHashResult is null)
+			return false;
+
+		Span<byte> combined = stackalloc byte[32 + challenge.Length + passwordHashResult.Length];
+		passwordHashResult.CopyTo(combined);
+		challenge.CopyTo(combined[passwordHashResult.Length..]);
+		m_remoteCertificateSha2Thumbprint!.CopyTo(combined[(passwordHashResult.Length + challenge.Length)..]);
+
+		Span<byte> hashBytes = stackalloc byte[32];
+#if NET5_0_OR_GREATER
+		SHA256.TryHashData(combined, hashBytes, out _);
+#else
+		using var sha256 = SHA256.Create();
+		sha256.TryComputeHash(combined, hashBytes, out _);
+#endif
+
+		Span<byte> serverHash = combined[0..32];
+		return TryConvertFromHexString(validationHash.AsSpan(1), serverHash) && serverHash.SequenceEqual(hashBytes);
+
+		static bool TryConvertFromHexString(ReadOnlySpan<byte> hexChars, Span<byte> data)
+		{
+			ReadOnlySpan<byte> hexDigits = "0123456789ABCDEFabcdef"u8;
+			for (var i = 0; i < hexChars.Length; i += 2)
+			{
+				var high = hexDigits.IndexOf(hexChars[i]);
+				var low = hexDigits.IndexOf(hexChars[i + 1]);
+				if (high == -1 || low == -1)
+					return false;
+				if (high > 15)
+					high -= 6;
+				if (low > 15)
+					low -= 6;
+				data[i / 2] = (byte) ((high << 4) | low);
+			}
+			return true;
+		}
+	}
+
+	public static async ValueTask<ServerSession> ConnectAndRedirectAsync(ILogger connectionLogger, ILogger poolLogger, IConnectionPoolMetadata pool, ConnectionSettings cs, ILoadBalancer? loadBalancer, SingleStoreConnection connection, Action<ILogger, int, string, Exception?>? logMessage, long startingTimestamp, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	{
+		var session = new ServerSession(connectionLogger, pool);
+		if (logMessage is not null && poolLogger.IsEnabled(LogLevel.Debug))
+			logMessage(poolLogger, pool.Id, session.Id, null);
+
+		string? redirectionUrl;
+		try
+		{
+			redirectionUrl = await session.ConnectAsync(cs, connection, startingTimestamp, loadBalancer, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
+		}
+		catch (Exception)
+		{
+			await session.DisposeAsync(ioBehavior, default).ConfigureAwait(false);
+			throw;
+		}
+
+		Exception? redirectionException = null;
+		if (redirectionUrl is not null)
+		{
+			Log.HasServerRedirectionHeader(connectionLogger, session.Id, redirectionUrl);
+			if (cs.ServerRedirectionMode == SingleStoreServerRedirectionMode.Disabled)
+			{
+				Log.ServerRedirectionIsDisabled(connectionLogger, session.Id);
+				return session;
+			}
+
+			if (Utility.TryParseRedirectionHeader(redirectionUrl, cs.UserID, out var host, out var port, out var user))
+			{
+				if (host != cs.HostNames![0] || port != cs.Port || user != cs.UserID)
+				{
+					var redirectedSettings = cs.CloneWith(host, port, user);
+					Log.OpeningNewConnection(connectionLogger, session.Id, host, port, user);
+					var redirectedSession = new ServerSession(connectionLogger, pool);
+					try
+					{
+						await redirectedSession.ConnectAsync(redirectedSettings, connection, startingTimestamp, loadBalancer, activity, ioBehavior, cancellationToken).ConfigureAwait(false);
+						Log.ClosingSessionToUseRedirectedSession(connectionLogger, session.Id, redirectedSession.Id);
+						await session.DisposeAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+						return redirectedSession;
+					}
+					catch (Exception ex)
+					{
+						redirectionException = ex;
+						Log.FailedToConnectRedirectedSession(connectionLogger, ex, session.Id, redirectedSession.Id);
+						try
+						{
+							await redirectedSession.DisposeAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+						}
+						catch (Exception)
+						{
+						}
+					}
+				}
+				else
+				{
+					Log.SessionAlreadyConnectedToServer(connectionLogger, session.Id);
+				}
+			}
+		}
+
+		if (cs.ServerRedirectionMode == SingleStoreServerRedirectionMode.Required)
+		{
+			Log.RequiresServerRedirection(connectionLogger, session.Id);
+			throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Server does not support redirection", redirectionException);
+		}
+		return session;
 	}
 
 	public async Task ResetConnectionAsync(IOBehavior ioBehavior, string targetDatabase = "", CancellationToken cancellationToken = default)
@@ -580,20 +702,21 @@ internal sealed partial class ServerSession
 		Log.ResettingConnection(m_logger, Id);
 		await SendAsync(ResetConnectionPayload.Instance, ioBehavior, cancellationToken).ConfigureAwait(false);
 		var payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-		OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+		OkPayload.Verify(payload.Span, this);
 
 		if (targetDatabase.Length > 0)
 		{
 			var useDb = $"USE {targetDatabase}";
 			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, Encoding.ASCII.GetBytes(useDb)), ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+			OkPayload.Verify(payload.Span, this);
 		}
 	}
 
 	public async Task<bool> TryResetConnectionAsync(ConnectionSettings cs, SingleStoreConnection connection, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		VerifyState(State.Connected);
+		Conditions |= SingleStoreConnectionOpenedConditions.Reset;
 
 		try
 		{
@@ -609,7 +732,7 @@ internal sealed partial class ServerSession
 			}
 			else
 			{
-				// optimistically hash the password with the challenge from the initial handshake (supported by MariaDB; doesn't appear to be supported by MySQL)
+				// optimistically hash the password with the challenge from the initial handshake (supported by MariaDB; doesn't appear to be supported by SingleStore)
 				if (DatabaseOverride is null)
 				{
 					Log.SendingChangeUserRequest(m_logger, Id, S2ServerVersion.OriginalString);
@@ -629,13 +752,13 @@ internal sealed partial class ServerSession
 					Log.OptimisticReauthenticationFailed(m_logger, Id);
 					payload = await SwitchAuthenticationAsync(cs, password, payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 				}
-				OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+				OkPayload.Verify(payload.Span, this);
 			}
 
 			// set 'collation_connection' to the server default
 			await SendAsync(m_setNamesPayload, ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+			OkPayload.Verify(payload.Span, this);
 
 			return true;
 		}
@@ -660,6 +783,7 @@ internal sealed partial class ServerSession
 			Log.IgnoringFailureInTryResetConnectionAsync(m_logger, ex, Id, "InvalidOperationException");
 		}
 
+		Conditions &= ~SingleStoreConnectionOpenedConditions.Reset;
 		return false;
 	}
 
@@ -668,6 +792,7 @@ internal sealed partial class ServerSession
 		// if the server didn't support the hashed password; rehash with the new challenge
 		var switchRequest = AuthenticationMethodSwitchRequestPayload.Create(payload.Span);
 		Log.SwitchingToAuthenticationMethod(m_logger, Id, switchRequest.Name);
+		m_currentAuthenticationMethod = switchRequest.Name;
 		switch (switchRequest.Name)
 		{
 			case "mysql_native_password":
@@ -685,8 +810,7 @@ internal sealed partial class ServerSession
 				}
 
 				// send the password as a NULL-terminated UTF-8 string
-				var passwordBytes = Encoding.UTF8.GetBytes(password);
-				Array.Resize(ref passwordBytes, passwordBytes.Length + 1);
+				var passwordBytes = AuthenticationUtility.GetNullTerminatedPasswordBytes(password);
 				payload = new(passwordBytes);
 				await SendReplyAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 				return await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -697,8 +821,8 @@ internal sealed partial class ServerSession
 				await SendReplyAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 				payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
-				// OK payload can be sent immediately (e.g., if password is empty( (short-circuiting the )
-				if (OkPayload.IsOk(payload.Span, SupportsDeprecateEof))
+				// OK payload can be sent immediately (e.g., if password is empty) bypassing even the fast authentication path
+				if (OkPayload.IsOk(payload.Span, this))
 					return payload;
 
 				var cachingSha2ServerResponsePayload = CachingSha2ServerResponsePayload.Create(payload.Span);
@@ -741,8 +865,7 @@ internal sealed partial class ServerSession
 	private async Task<PayloadData> SendClearPasswordAsync(string password, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		// add NUL terminator to password
-		var passwordBytes = Encoding.UTF8.GetBytes(password);
-		Array.Resize(ref passwordBytes, passwordBytes.Length + 1);
+		var passwordBytes = AuthenticationUtility.GetNullTerminatedPasswordBytes(password);
 
 		// send plaintext password
 		var payload = new PayloadData(passwordBytes);
@@ -785,8 +908,7 @@ internal sealed partial class ServerSession
 #endif
 
 		// add NUL terminator to password
-		var passwordBytes = Encoding.UTF8.GetBytes(password);
-		Array.Resize(ref passwordBytes, passwordBytes.Length + 1);
+		var passwordBytes = AuthenticationUtility.GetNullTerminatedPasswordBytes(password);
 
 		// XOR the password bytes with the challenge
 		AuthPluginData = Utility.TrimZeroByte(switchRequestData);
@@ -820,7 +942,7 @@ internal sealed partial class ServerSession
 		{
 			// request the RSA public key
 			var payloadContent = switchRequestName == "caching_sha2_password" ? (byte) 0x02 : (byte) 0x01;
-			await SendReplyAsync(new PayloadData([ payloadContent ]), ioBehavior, cancellationToken).ConfigureAwait(false);
+			await SendReplyAsync(new PayloadData([payloadContent]), ioBehavior, cancellationToken).ConfigureAwait(false);
 			var payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			var publicKeyPayload = AuthenticationMoreDataPayload.Create(payload.Span);
 			return Encoding.ASCII.GetString(publicKeyPayload.Data);
@@ -840,7 +962,7 @@ internal sealed partial class ServerSession
 			Log.PingingServer(m_logger, Id);
 			await SendAsync(PingPayload.Instance, ioBehavior, cancellationToken).ConfigureAwait(false);
 			var payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+			OkPayload.Verify(payload.Span, this);
 			Log.SuccessfullyPingedServer(m_logger, logInfo ? LogLevel.Information : LogLevel.Trace, Id);
 			return true;
 		}
@@ -898,10 +1020,13 @@ internal sealed partial class ServerSession
 		}
 
 		var payload = new PayloadData(bytes);
-		if (payload.HeaderByte == ErrorPayload.Signature)
-			throw CreateExceptionForErrorPayload(payload.Span);
+		return payload.HeaderByte == ErrorPayload.Signature ? throw CreateExceptionForErrorPayload(payload.Span) : payload;
+	}
 
-		return payload;
+	public ValueTask<PayloadData> ReceiveReplyAsync(int expectedSequenceNumber, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	{
+		m_payloadHandler!.SetNextSequenceNumber(expectedSequenceNumber);
+		return ReceiveReplyAsync(ioBehavior, cancellationToken);
 	}
 
 	// Continues a conversation with the server by sending a reply to a packet received with 'Receive' or 'ReceiveReply'.
@@ -924,6 +1049,27 @@ internal sealed partial class ServerSession
 		}
 	}
 
+	// Sends raw bytes over the wire without formatting them into a payload. The caller is expected to set the packet header(s) correctly.
+	public async ValueTask SendRawAsync(ReadOnlyMemory<byte> data, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	{
+		if (CreateExceptionForInvalidState() is { } exception)
+		{
+			Log.FailedInSendReplyAsync(m_logger, exception, Id);
+			throw exception;
+		}
+
+		try
+		{
+			// send both packets at once
+			await m_payloadHandler!.ByteHandler.WriteBytesAsync(data, ioBehavior).ConfigureAwait(false);
+		}
+		catch (Exception ex)
+		{
+			SetFailed(ex);
+			throw;
+		}
+	}
+
 	public static void ThrowIfStatementContainsDelimiter(SingleStoreException exception, ISingleStoreCommand command)
 	{
 		// check if the command used "DELIMITER"
@@ -932,19 +1078,20 @@ internal sealed partial class ServerSession
 			var parser = new DelimiterSqlParser(command);
 			parser.Parse(command.CommandText);
 			if (parser.HasDelimiter)
-				throw new SingleStoreException(SingleStoreErrorCode.DelimiterNotSupported, "'DELIMITER' should not be used with SingleStoreConnector. See https://fl.vu/mysql-delimiter", exception);
+				throw new SingleStoreException(SingleStoreErrorCode.DelimiterNotSupported, "'DELIMITER' should not be used with SingleStoreConnector. See https://mysqlconnector.net/delimiter", exception);
 		}
 	}
 
-	private Exception? CreateExceptionForInvalidState()
+	private InvalidOperationException? CreateExceptionForInvalidState()
 	{
 		lock (m_lock)
 		{
-			if (m_state == State.Closed)
-				return new ObjectDisposedException(nameof(ServerSession));
-			if (m_state != State.Connected && m_state != State.Querying && m_state != State.CancelingQuery && m_state != State.ClearingPendingCancellation && m_state != State.Closing)
-				return new InvalidOperationException("ServerSession is not connected.");
-			return null;
+			return m_state switch
+			{
+				State.Closed => new ObjectDisposedException(nameof(ServerSession)),
+				State.Connected or State.Querying or State.CancelingQuery or State.ClearingPendingCancellation or State.Closing => null,
+				_ => new InvalidOperationException("ServerSession is not connected."),
+			};
 		}
 	}
 
@@ -971,13 +1118,20 @@ internal sealed partial class ServerSession
 			IPAddress[] ipAddresses;
 			try
 			{
-				ipAddresses = ioBehavior == IOBehavior.Asynchronous
+				if (cs.IPAddress is { } ipAddress)
+				{
+					ipAddresses = [ipAddress];
+				}
+				else
+				{
+					ipAddresses = ioBehavior == IOBehavior.Asynchronous
 #if NET6_0_OR_GREATER
-					? await Dns.GetHostAddressesAsync(hostName, cancellationToken).ConfigureAwait(false)
+						? await Dns.GetHostAddressesAsync(hostName, cancellationToken).ConfigureAwait(false)
 #else
-					? await Dns.GetHostAddressesAsync(hostName).ConfigureAwait(false)
+						? await Dns.GetHostAddressesAsync(hostName).ConfigureAwait(false)
 #endif
-					: Dns.GetHostAddresses(hostName);
+						: Dns.GetHostAddresses(hostName);
+				}
 			}
 			catch (SocketException ex)
 			{
@@ -1118,8 +1272,8 @@ internal sealed partial class ServerSession
 			m_activityTags.Add(ActivitySourceHelper.NetPeerNameTagName, cs.UnixSocket);
 			if (activity is { IsAllDataRequested: true })
 			{
-				activity.SetTag(ActivitySourceHelper.NetTransportTagName, ActivitySourceHelper.NetTransportUnixValue);
-				activity.SetTag(ActivitySourceHelper.NetPeerNameTagName, cs.UnixSocket);
+				activity.SetTag(ActivitySourceHelper.NetTransportTagName, ActivitySourceHelper.NetTransportUnixValue)
+						.SetTag(ActivitySourceHelper.NetPeerNameTagName, cs.UnixSocket);
 			}
 		}
 
@@ -1127,7 +1281,7 @@ internal sealed partial class ServerSession
 		var unixEp = new UnixDomainSocketEndPoint(cs.UnixSocket!);
 		try
 		{
-			using (cancellationToken.Register(() => socket.Dispose()))
+			using (cancellationToken.Register(socket.Dispose))
 			{
 				try
 				{
@@ -1165,7 +1319,7 @@ internal sealed partial class ServerSession
 		return false;
 	}
 
-	private async Task<bool> OpenNamedPipeAsync(ConnectionSettings cs, int startTickCount, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<bool> OpenNamedPipeAsync(ConnectionSettings cs, long startingTimestamp, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		Log.ConnectingToNamedPipe(m_logger, Id, cs.PipeName, cs.HostNames![0]);
 
@@ -1183,7 +1337,7 @@ internal sealed partial class ServerSession
 		}
 
 		var namedPipeStream = new NamedPipeClientStream(cs.HostNames![0], cs.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
-		var timeout = Math.Max(1, cs.ConnectionTimeoutMilliseconds - unchecked(Environment.TickCount - startTickCount));
+		var timeout = Math.Max(1, cs.ConnectionTimeoutMilliseconds - Utility.GetElapsedMilliseconds(startingTimestamp));
 		try
 		{
 			using (cancellationToken.Register(namedPipeStream.Dispose))
@@ -1270,7 +1424,11 @@ internal sealed partial class ServerSession
 		{
 			try
 			{
+#if NET9_0_OR_GREATER
+				var certificate = X509CertificateLoader.LoadPkcs12FromFile(cs.CertificateFile, cs.CertificatePassword, X509KeyStorageFlags.MachineKeySet);
+#else
 				var certificate = new X509Certificate2(cs.CertificateFile, cs.CertificatePassword, X509KeyStorageFlags.MachineKeySet);
+#endif
 				if (!certificate.HasPrivateKey)
 				{
 					certificate.Dispose();
@@ -1342,7 +1500,9 @@ internal sealed partial class ServerSession
 					{
 						// load the certificate at this index; note that 'new X509Certificate' stops at the end of the first certificate it loads
 						Log.LoadingCaCertificate(m_logger, Id, index);
-#if NET5_0_OR_GREATER
+#if NET9_0_OR_GREATER
+						var caCertificate = X509CertificateLoader.LoadCertificate(certificateBytes.AsSpan(index, (nextIndex == -1 ? certificateBytes.Length : nextIndex) - index));
+#elif NET5_0_OR_GREATER
 						var caCertificate = new X509Certificate2(certificateBytes.AsSpan(index, (nextIndex == -1 ? certificateBytes.Length : nextIndex) - index), default(ReadOnlySpan<char>), X509KeyStorageFlags.MachineKeySet);
 #else
 						var caCertificate = new X509Certificate2(Utility.ArraySlice(certificateBytes, index, (nextIndex == -1 ? certificateBytes.Length : nextIndex) - index), default(string), X509KeyStorageFlags.MachineKeySet);
@@ -1371,22 +1531,53 @@ internal sealed partial class ServerSession
 
 		bool ValidateRemoteCertificate(object rcbSender, X509Certificate? rcbCertificate, X509Chain? rcbChain, SslPolicyErrors rcbPolicyErrors)
 		{
+			// if no CA verification is required, then we trust any remote certificate
 			if (cs.SslMode is SingleStoreSslMode.Preferred or SingleStoreSslMode.Required)
 				return true;
 
+			// if there are errors, then try to build a path to a root certificate from the certificates presented by the remote host
 			if ((rcbPolicyErrors & SslPolicyErrors.RemoteCertificateChainErrors) != 0 &&
-				rcbCertificate is not null &&
-				caCertificateChain is not null &&
-				caCertificateChain.Build((X509Certificate2) rcbCertificate) &&
-				caCertificateChain.ChainStatus.Length > 0)
+			    rcbChain is not null &&
+			    caCertificateChain is not null &&
+			    caCertificateChain.Build(rcbChain.ChainElements[^1].Certificate) &&
+			    caCertificateChain.ChainStatus.Length > 0)
 			{
-				var chainStatus = caCertificateChain.ChainStatus[0].Status & ~X509ChainStatusFlags.UntrustedRoot;
-				if (chainStatus == X509ChainStatusFlags.NoError)
-					rcbPolicyErrors &= ~SslPolicyErrors.RemoteCertificateChainErrors;
+				// if the only error is an Untrusted Root Certificate, then check all provided SSL CA certificates to see if one is the root
+				if (caCertificateChain.ChainStatus[0].Status == X509ChainStatusFlags.UntrustedRoot)
+				{
+					var rootCertificate = caCertificateChain.ChainElements[^1].Certificate;
+					foreach (var sslCaCertificate in caCertificateChain.ChainPolicy.ExtraStore)
+					{
+#if NET7_0_OR_GREATER
+						if (rootCertificate.RawDataMemory.Span.SequenceEqual(sslCaCertificate.RawDataMemory.Span))
+#else
+						if (rootCertificate.RawData.AsSpan().SequenceEqual(sslCaCertificate.RawData))
+#endif
+						{
+							rcbPolicyErrors &= ~SslPolicyErrors.RemoteCertificateChainErrors;
+							break;
+						}
+					}
+				}
 			}
 
 			if (cs.SslMode == SingleStoreSslMode.VerifyCA)
 				rcbPolicyErrors &= ~SslPolicyErrors.RemoteCertificateNameMismatch;
+
+			if (rcbCertificate is X509Certificate2 cert2)
+			{
+				// saving sha256 thumbprint and SSL errors until thumbprint validation
+#if NET7_0_OR_GREATER
+				m_remoteCertificateSha2Thumbprint = SHA256.HashData(cert2.RawDataMemory.Span);
+#elif NET5_0_OR_GREATER
+				m_remoteCertificateSha2Thumbprint = SHA256.HashData(cert2.RawData);
+#else
+				using var sha256 = SHA256.Create();
+				m_remoteCertificateSha2Thumbprint = sha256.ComputeHash(cert2.RawData);
+#endif
+				m_sslPolicyErrors = rcbPolicyErrors;
+				return true;
+			}
 
 			return rcbPolicyErrors == SslPolicyErrors.None;
 		}
@@ -1461,11 +1652,22 @@ internal sealed partial class ServerSession
 			m_payloadHandler!.ByteHandler = sslByteHandler;
 			m_isSecureConnection = true;
 			m_sslStream = sslStream;
+			if (m_sslPolicyErrors != SslPolicyErrors.None)
+			{
 #if NETCOREAPP3_0_OR_GREATER
-			Log.ConnectedTlsBasic(m_logger, Id, sslStream.SslProtocol, sslStream.NegotiatedCipherSuite);
+				Log.ConnectedTlsBasicPreliminary(m_logger, Id, m_sslPolicyErrors, sslStream.SslProtocol, sslStream.NegotiatedCipherSuite);
 #else
-			Log.ConnectedTlsDetailed(m_logger, Id, sslStream.SslProtocol, sslStream.CipherAlgorithm, sslStream.HashAlgorithm, sslStream.KeyExchangeAlgorithm, sslStream.KeyExchangeStrength);
+				Log.ConnectedTlsDetailedPreliminary(m_logger, Id, m_sslPolicyErrors, sslStream.SslProtocol, sslStream.CipherAlgorithm, sslStream.HashAlgorithm, sslStream.KeyExchangeAlgorithm, sslStream.KeyExchangeStrength);
 #endif
+			}
+			else
+			{
+#if NETCOREAPP3_0_OR_GREATER
+				Log.ConnectedTlsBasic(m_logger, Id, sslStream.SslProtocol, sslStream.NegotiatedCipherSuite);
+#else
+				Log.ConnectedTlsDetailed(m_logger, Id, sslStream.SslProtocol, sslStream.CipherAlgorithm, sslStream.HashAlgorithm, sslStream.KeyExchangeAlgorithm, sslStream.KeyExchangeStrength);
+#endif
+			}
 		}
 		catch (Exception ex)
 		{
@@ -1500,7 +1702,11 @@ internal sealed partial class ServerSession
 				// Schannel has a bug where ephemeral keys can't be loaded: https://github.com/dotnet/runtime/issues/23749#issuecomment-485947319
 				// The workaround is to export the key (which may make it "Perphemeral"): https://github.com/dotnet/runtime/issues/23749#issuecomment-739895373
 				var oldCertificate = m_clientCertificate;
+#if NET9_0_OR_GREATER
+				m_clientCertificate = X509CertificateLoader.LoadPkcs12(m_clientCertificate.Export(X509ContentType.Pkcs12, default(string?)), null);
+#else
 				m_clientCertificate = new X509Certificate2(m_clientCertificate.Export(X509ContentType.Pkcs12));
+#endif
 				oldCertificate.Dispose();
 			}
 			return [m_clientCertificate];
@@ -1614,18 +1820,18 @@ internal sealed partial class ServerSession
 			await SendAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// column count: 4
-			await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			_ = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// CONNECTION_ID(), VERSION(), @@memsql_version and @@aggregator_id columns
-			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-			await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+			_ = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+			_ = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+			_ = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
+			_ = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 
 			if (!SupportsDeprecateEof)
 			{
 				payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-				EofPayload.Create(payload.Span);
+				_ = EofPayload.Create(payload.Span);
 			}
 
 			// first (and only) row
@@ -1655,8 +1861,8 @@ internal sealed partial class ServerSession
 
 			// OK/EOF payload
 			payload = await ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-			if (OkPayload.IsOk(payload.Span, SupportsDeprecateEof))
-				OkPayload.Verify(payload.Span, SupportsDeprecateEof, SupportsSessionTrack);
+			if (OkPayload.IsOk(payload.Span, this))
+				OkPayload.Verify(payload.Span, this);
 			else
 				EofPayload.Create(payload.Span);
 
@@ -1765,7 +1971,7 @@ internal sealed partial class ServerSession
 
 	internal SslProtocols SslProtocol => m_sslStream?.SslProtocol ?? SslProtocols.None;
 
-	private byte[] CreateConnectionAttributes(string programName, string connAttrsExtra)
+	private byte[] CreateConnectionAttributes(string? programName, string connAttrsExtra)
 	{
 		Log.CreatingConnectionAttributes(m_logger, Id);
 		var attributesWriter = new ByteBufferWriter();
@@ -1803,7 +2009,7 @@ internal sealed partial class ServerSession
 #endif
 		attributesWriter.WriteLengthEncodedString("_pid");
 		attributesWriter.WriteLengthEncodedString(processId.ToString(CultureInfo.InvariantCulture));
-		if (programName.Length != 0)
+		if (!string.IsNullOrEmpty(programName))
 		{
 			attributesWriter.WriteLengthEncodedString("program_name");
 			attributesWriter.WriteLengthEncodedString(programName!);
@@ -1925,13 +2131,10 @@ internal sealed partial class ServerSession
 	[LoggerMessage(EventIds.ExpectedSessionState6, LogLevel.Error, "Session {SessionId} should have state {ExpectedState1} or {ExpectedState2} or {ExpectedState3} or {ExpectedState4} or {ExpectedState5} or {ExpectedState6} but was {SessionState}")]
 	private static partial void ExpectedSessionState6(ILogger logger, string sessionId, State expectedState1, State expectedState2, State expectedState3, State expectedState4, State expectedState5, State expectedState6, State sessionState);
 
-	private static readonly PayloadData s_setNamesUtf8NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8;"u8);
 	private static readonly PayloadData s_setNamesUtf8mb4NoAttributesPayload = QueryPayload.Create(false, "SET NAMES utf8mb4;"u8);
-	private static readonly PayloadData s_setNamesUtf8WithAttributesPayload = QueryPayload.Create(true, "SET NAMES utf8;"u8);
 	private static readonly PayloadData s_setNamesUtf8mb4WithAttributesPayload = QueryPayload.Create(true, "SET NAMES utf8mb4;"u8);
 	private static readonly PayloadData s_selectConnectionIdVersionNoAttributesPayload = QueryPayload.Create(false, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version, @@aggregator_id;"u8);
 	private static readonly PayloadData s_selectConnectionIdVersionWithAttributesPayload = QueryPayload.Create(true, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version, @@aggregator_id;"u8);
-	private static int s_lastId;
 
 	private readonly ILogger m_logger;
 	private readonly object m_lock;
@@ -1947,10 +2150,11 @@ internal sealed partial class ServerSession
 	private bool m_useCompression;
 	private bool m_isSecureConnection;
 	private bool m_supportsConnectionAttributes;
-	private bool m_supportsDeprecateEof;
-	private bool m_supportsSessionTrack;
 	private bool m_supportsPipelining;
 	private CharacterSet m_characterSet;
 	private PayloadData m_setNamesPayload;
 	private Dictionary<string, PreparedStatements>? m_preparedStatements;
+	private string? m_currentAuthenticationMethod;
+	private byte[]? m_remoteCertificateSha2Thumbprint;
+	private SslPolicyErrors m_sslPolicyErrors;
 }

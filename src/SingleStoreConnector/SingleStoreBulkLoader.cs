@@ -176,8 +176,7 @@ public sealed class SingleStoreBulkLoader
 			{
 				// replace the file name with a sentinel so that we know (when processing the result set) that it's not spoofed by the server
 				var newFileName = GenerateSourceFileName();
-				lock (s_lock)
-					s_sources.Add(newFileName, CreateFileStream(FileName!));
+				AddSource(newFileName, CreateFileStream(FileName!));
 				FileName = newFileName;
 			}
 		}
@@ -187,8 +186,7 @@ public sealed class SingleStoreBulkLoader
 				throw new InvalidOperationException("Local must be true to use SourceStream, SourceDataTable, or SourceDataReader.");
 
 			FileName = GenerateSourceFileName();
-			lock (s_lock)
-				s_sources.Add(FileName, Source!);
+			AddSource(FileName, Source!);
 		}
 
 		var closeConnection = false;
@@ -202,7 +200,7 @@ public sealed class SingleStoreBulkLoader
 		try
 		{
 			if (Local && !Connection.AllowLoadLocalInfile)
-				throw new NotSupportedException("To use SingleStoreBulkLoader.Local=true, set AllowLoadLocalInfile=true in the connection string. See https://fl.vu/mysql-load-data");
+				throw new NotSupportedException("To use SingleStoreBulkLoader.Local=true, set AllowLoadLocalInfile=true in the connection string. See https://mysqlconnector.net/load-data");
 
 			using var cmd = new SingleStoreCommand(CreateSql(), Connection, Connection.CurrentTransaction)
 			{
@@ -220,6 +218,12 @@ public sealed class SingleStoreBulkLoader
 
 			if (closeConnection)
 				Connection.Close();
+		}
+
+		static void AddSource(string name, object source)
+		{
+			lock (s_lock)
+				s_sources.Add(name, source);
 		}
 	}
 
@@ -298,7 +302,7 @@ public sealed class SingleStoreBulkLoader
 		lock (s_lock)
 		{
 			var source = s_sources[sourceKey];
-			s_sources.Remove(sourceKey);
+			_ = s_sources.Remove(sourceKey);
 			return source;
 		}
 	}
@@ -308,10 +312,7 @@ public sealed class SingleStoreBulkLoader
 		lock (s_lock)
 		{
 			if (s_sources.TryGetValue(sourceKey, out source))
-			{
-				s_sources.Remove(sourceKey);
-				return true;
-			}
+				return s_sources.Remove(sourceKey);
 		}
 
 		return false;
@@ -319,6 +320,10 @@ public sealed class SingleStoreBulkLoader
 
 	private static string GenerateSourceFileName() => SourcePrefix + Guid.NewGuid().ToString("N");
 
+#if NET9_0_OR_GREATER
+	private static readonly Lock s_lock = new();
+#else
 	private static readonly object s_lock = new();
+#endif
 	private static readonly Dictionary<string, object> s_sources = [];
 }

@@ -17,7 +17,7 @@ public sealed class NoOpLogger : ISingleStoreConnectorLogger
 
 ## Remarks
 
-This is the default logging implementation unless [`Provider`](./SingleStoreConnectorLogManager/Provider.md) is set.
+This is the default logging implementation unless Provider is set.
 
 ## See Also
 

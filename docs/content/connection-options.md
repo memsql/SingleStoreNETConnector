@@ -1,5 +1,5 @@
 ---
-lastmod: 2025-01-16
+lastmod: 2025-07-22
 date: 2016-10-16
 title: Connection Options
 customtitle: SingleStore Connection String Options for .NET/C#
@@ -229,7 +229,7 @@ Connection pooling is enabled by default. These options are used to configure it
     <td>The minimum number of connections to leave in the pool if ConnectionIdleTimeout is reached.</td>
   </tr>
   <tr id="MaximumPoolSize">
-    <td>Maximum Pool Size, Max Pool Size, MaximumPoolsize, maxpoolsize</td>
+    <td>Maximum Pool Size, Max Pool Size, MaximumPoolSize, maxpoolsize</td>
     <td>100</td>
     <td>The maximum number of connections allowed in the pool.</td>
   </tr>
@@ -286,8 +286,12 @@ These are the other options that SingleStoreConnector supports. They are set to 
   <tr id="ApplicationName">
     <td>Application Name, ApplicationName</td>
     <td>null</td>
-    <td>Sets the <c>program_name</c> connection attribute passed to SingleStore Server. This value may be displayed by diagnostic tools,
-    e.g., as the “Program” column in “Client Connections” in SingleStore Workbench.</td>
+    <td><p>Sets the <c>program_name</c> connection attribute passed to SingleStore Server. This value may be displayed by diagnostic tools.
+    It also sets the connection pool name reported by the <code>pool.name</code> tag associated with connection pool metrics.</p>
+    <p>This connection string option is deprecated and is provided for backwards compatibility. Newer applications should
+    use <code>SingleStoreDataSourceBuilder.UseName</code> instead.
+    </p></td>
+    </td>
   </tr>
   <tr id="AutoEnlist">
     <td>Auto Enlist, AutoEnlist</td>
@@ -508,6 +512,11 @@ from your connection string when migrating from Connector/NET to SingleStoreConn
     <td>Logging</td>
     <td>false</td>
     <td>Use SingleStoreConnector logging (which is more flexible) instead.</td>
+  </tr>
+  <tr id="OldGetStringBehavior">
+    <td>OldGetStringBehavior</td>
+    <td>false</td>
+    <td>This option is temporary in Connector/NET and unsupported in SingleStoreConnector.</td>
   </tr>
   <tr id="OldSyntax">
     <td>OldSyntax, Old Syntax, UseOldSyntax, Use Old Syntax</td>

@@ -39,7 +39,7 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 				var firstByte = payload.HeaderByte;
 				if (firstByte == OkPayload.Signature)
 				{
-					var ok = OkPayload.Create(payload.Span, Session.SupportsDeprecateEof, Session.SupportsSessionTrack);
+					var ok = OkPayload.Create(payload.Span, Session);
 
 					// if we've read a result set header then this is a SELECT statement, so we shouldn't overwrite RecordsAffected
 					// (which should be -1 for SELECT) unless the server reports a non-zero count
@@ -63,11 +63,11 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 					try
 					{
 						if (!Connection.AllowLoadLocalInfile)
-							throw new NotSupportedException("To use LOAD DATA LOCAL INFILE, set AllowLoadLocalInfile=true in the connection string. See https://fl.vu/mysql-load-data");
+							throw new NotSupportedException("To use LOAD DATA LOCAL INFILE, set AllowLoadLocalInfile=true in the connection string. See https://docs.singlestore.com/cloud/reference/sql-reference/data-manipulation-language-dml/load-data/");
 						var localInfile = LocalInfilePayload.Create(payload.Span);
 						var hasSourcePrefix = localInfile.FileName.StartsWith(SingleStoreBulkLoader.SourcePrefix, StringComparison.Ordinal);
 						if (!IsHostVerified(Connection) && !hasSourcePrefix)
-							throw new NotSupportedException("Use SourceStream or SslMode >= VerifyCA for LOAD DATA LOCAL INFILE. See https://fl.vu/mysql-load-data");
+							throw new NotSupportedException("Use SourceStream or SslMode >= VerifyCA for LOAD DATA LOCAL INFILE. See https://docs.singlestore.com/cloud/reference/sql-reference/data-manipulation-language-dml/load-data/");
 
 						var source = hasSourcePrefix ?
 							SingleStoreBulkLoader.GetAndRemoveSource(localInfile.FileName) :
@@ -160,7 +160,7 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 					if (!Session.SupportsDeprecateEof)
 					{
 						payload = await Session.ReceiveReplyAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
-						EofPayload.Create(payload.Span);
+						_ = EofPayload.Create(payload.Span);
 					}
 
 					if (ColumnDefinitions.Length == (Command?.OutParameters?.Count + 1) && ColumnDefinitions[0].Name == SingleCommandPayloadCreator.OutParameterSentinelColumnName)
@@ -183,16 +183,13 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 		}
 	}
 
-	private static bool IsHostVerified(SingleStoreConnection connection)
-	{
-		return connection.SslMode == SingleStoreSslMode.VerifyCA
-			|| connection.SslMode == SingleStoreSslMode.VerifyFull;
-	}
+	private static bool IsHostVerified(SingleStoreConnection connection) =>
+		connection.SslMode is SingleStoreSslMode.VerifyCA or SingleStoreSslMode.VerifyFull;
 
 	public async Task ReadEntireAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		while (State is ResultSetState.ReadingRows or ResultSetState.ReadResultSetHeader)
-			await ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			_ = await ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 	}
 
 	public bool Read()
@@ -256,9 +253,9 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 
 		if (payload.HeaderByte == EofPayload.Signature)
 		{
-			if (Session.SupportsDeprecateEof && OkPayload.IsOk(payload.Span, Session.SupportsDeprecateEof))
+			if (Session.SupportsDeprecateEof && OkPayload.IsOk(payload.Span, Session))
 			{
-				var ok = OkPayload.Create(payload.Span, Session.SupportsDeprecateEof, Session.SupportsSessionTrack);
+				var ok = OkPayload.Create(payload.Span, Session);
 				BufferState = (ok.ServerStatus & ServerStatus.MoreResultsExist) == 0 ? ResultSetState.NoMoreData : ResultSetState.HasMoreData;
 				return null;
 			}

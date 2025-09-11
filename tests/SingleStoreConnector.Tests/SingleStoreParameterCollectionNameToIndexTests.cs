@@ -4,12 +4,12 @@ public class SingleStoreParameterCollectionNameToIndexTests
 {
 	public SingleStoreParameterCollectionNameToIndexTests()
 	{
-		m_collection = new SingleStoreParameterCollection
-		{
+		m_collection =
+		[
 			new SingleStoreParameter { ParameterName = "A", Value = 1 },
 			new SingleStoreParameter { ParameterName = "B", Value = 2 },
 			new SingleStoreParameter { ParameterName = "C", Value = 3 },
-		};
+		];
 	}
 
 	[Fact]
@@ -124,5 +124,5 @@ public class SingleStoreParameterCollectionNameToIndexTests
 		Assert.Equal(1, m_collection.NormalizedIndexOf("D"));
 	}
 
-	SingleStoreParameterCollection m_collection;
+	readonly SingleStoreParameterCollection m_collection;
 }

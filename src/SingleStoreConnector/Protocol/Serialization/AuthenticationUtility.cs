@@ -1,7 +1,11 @@
+#if NET5_0_OR_GREATER
 using System.Runtime.CompilerServices;
+#endif
 using System.Security.Cryptography;
 using System.Text;
+#if !NETCOREAPP2_1_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
 using SingleStoreConnector.Utilities;
+#endif
 
 namespace SingleStoreConnector.Protocol.Serialization;
 
@@ -9,26 +13,39 @@ namespace SingleStoreConnector.Protocol.Serialization;
 
 internal static class AuthenticationUtility
 {
+	/// <summary>
+	/// Returns the UTF-8 bytes for <paramref name="password"/>, followed by a null byte.
+	/// </summary>
+	public static byte[] GetNullTerminatedPasswordBytes(string password)
+	{
+		var passwordByteCount = Encoding.UTF8.GetByteCount(password);
+		var passwordBytes = new byte[passwordByteCount + 1];
+		Encoding.UTF8.GetBytes(password.AsSpan(), passwordBytes);
+		return passwordBytes;
+	}
+
 	public static byte[] CreateAuthenticationResponse(ReadOnlySpan<byte> challenge, string password) =>
-		string.IsNullOrEmpty(password) ? [] : HashPassword(challenge, password);
+		string.IsNullOrEmpty(password) ? [] : HashPassword(challenge, password, onlyHashPassword: false);
 
 	/// <summary>
 	/// Hashes a password with the "Secure Password Authentication" method.
 	/// </summary>
 	/// <param name="challenge">The 20-byte random challenge (from the "auth-plugin-data" in the initial handshake).</param>
 	/// <param name="password">The password to hash.</param>
+	/// <param name="onlyHashPassword">If true, <paramref name="challenge"/> is ignored and only the twice-hashed password
+	/// is returned, instead of performing the full "secure password authentication" algorithm that XORs the hashed password against
+	/// a hash derived from the challenge.</param>
 	/// <returns>A 20-byte password hash.</returns>
 	/// <remarks>See <a href="https://dev.mysql.com/doc/internals/en/secure-password-authentication.html">Secure Password Authentication</a>.</remarks>
 #if NET5_0_OR_GREATER
 	[SkipLocalsInit]
 #endif
-	public static byte[] HashPassword(ReadOnlySpan<byte> challenge, string password)
+	public static byte[] HashPassword(ReadOnlySpan<byte> challenge, string password, bool onlyHashPassword)
 	{
 #if !NET5_0_OR_GREATER
 		using var sha1 = SHA1.Create();
 #endif
 		Span<byte> combined = stackalloc byte[40];
-		challenge.CopyTo(combined);
 
 		var passwordByteCount = Encoding.UTF8.GetByteCount(password);
 		Span<byte> passwordBytes = stackalloc byte[passwordByteCount];
@@ -39,9 +56,12 @@ internal static class AuthenticationUtility
 		SHA1.TryHashData(hashedPassword, combined[20..], out _);
 #else
 		sha1.TryComputeHash(passwordBytes, hashedPassword, out _);
-		sha1.TryComputeHash(hashedPassword, combined.Slice(20), out _);
+		sha1.TryComputeHash(hashedPassword, combined[20..], out _);
 #endif
+		if (onlyHashPassword)
+			return combined[20..].ToArray();
 
+		challenge[..20].CopyTo(combined);
 		Span<byte> xorBytes = stackalloc byte[20];
 #if NET5_0_OR_GREATER
 		SHA1.TryHashData(combined, xorBytes, out _);

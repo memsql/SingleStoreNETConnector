@@ -6,12 +6,6 @@ Controls logging for SingleStoreConnector.
 public static class SingleStoreConnectorLogManager
 ```
 
-## Public Members
-
-| name | description |
-| --- | --- |
-| static [Provider](SingleStoreConnectorLogManager/Provider.md) { set; } | Allows the [`ISingleStoreConnectorLoggerProvider`](./ISingleStoreConnectorLoggerProvider.md) to be set for this library. [`Provider`](./SingleStoreConnectorLogManager/Provider.md) can be set once, and must be set before any other library methods are used. |
-
 ## See Also
 
 * namespace [SingleStoreConnector.Logging](../SingleStoreConnector.md)

@@ -36,6 +36,9 @@ public sealed class SingleStoreDataSourceBuilder
 	/// </summary>
 	/// <param name="name">The data source name.</param>
 	/// <returns>This builder, so that method calls can be chained.</returns>
+	/// <remarks>The connection pool name is used to set the <c>program_name</c> connection attribute
+	/// (which is visible to some diagnostic tools) and the <c>pool.name</c> tag supplied with
+	/// <a href="https://mysqlconnector.net/diagnostics/metrics/">connection pool metrics</a>.</remarks>
 	public SingleStoreDataSourceBuilder UseName(string? name)
 	{
 		m_name = name;
@@ -86,6 +89,17 @@ public sealed class SingleStoreDataSourceBuilder
 	}
 
 	/// <summary>
+	/// Adds a callback that is invoked when a new <see cref="SingleStoreConnection"/> is opened.
+	/// </summary>
+	/// <param name="callback">The callback to invoke.</param>
+	/// <returns>This builder, so that method calls can be chained.</returns>
+	public SingleStoreDataSourceBuilder UseConnectionOpenedCallback(SingleStoreConnectionOpenedCallback callback)
+	{
+		m_connectionOpenedCallback += callback;
+		return this;
+	}
+
+	/// <summary>
 	/// Builds a <see cref="SingleStoreDataSource"/> which is ready for use.
 	/// </summary>
 	/// <returns>A new <see cref="SingleStoreDataSource"/> with the settings configured through this <see cref="SingleStoreDataSourceBuilder"/>.</returns>
@@ -99,7 +113,8 @@ public sealed class SingleStoreDataSourceBuilder
 			m_remoteCertificateValidationCallback,
 			m_periodicPasswordProvider,
 			m_periodicPasswordProviderSuccessRefreshInterval,
-			m_periodicPasswordProviderFailureRefreshInterval
+			m_periodicPasswordProviderFailureRefreshInterval,
+			m_connectionOpenedCallback
 			);
 	}
 
@@ -115,4 +130,5 @@ public sealed class SingleStoreDataSourceBuilder
 	private Func<SingleStoreProvidePasswordContext, CancellationToken, ValueTask<string>>? m_periodicPasswordProvider;
 	private TimeSpan m_periodicPasswordProviderSuccessRefreshInterval;
 	private TimeSpan m_periodicPasswordProviderFailureRefreshInterval;
+	private SingleStoreConnectionOpenedCallback? m_connectionOpenedCallback;
 }

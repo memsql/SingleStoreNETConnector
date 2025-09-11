@@ -33,8 +33,6 @@ internal static class EventIds
 	public const int AutoDetectedAurora57 = 2103;
 	public const int SessionMadeConnection = 2104;
 	public const int ServerDoesNotSupportSsl = 2105;
-	public const int SessionDoesNotSupportSslProtocolsNone = 2106;
-	public const int FailedNegotiatingTls = 2107;
 	public const int CouldNotConnectToServer = 2108;
 	public const int SendingPipelinedResetConnectionRequest = 2109;
 	public const int SendingResetConnectionRequest = 2110;
@@ -83,10 +81,15 @@ internal static class EventIds
 	public const int CreatingConnectionAttributes = 2153;
 	public const int ObtainingPasswordViaProvidePasswordCallback = 2154;
 	public const int FailedToObtainPassword = 2155;
-	public const int ChangingOnlyConnectionId = 2156;
-	public const int ChangingServerVersion = 2157;
-	public const int SettingS2ServerVersion = 2158;
-	public const int SettingAggregatorId = 2159;
+	public const int ConnectedTlsBasicPreliminary = 2156;
+	public const int ConnectedTlsDetailedPreliminary = 2157;
+	public const int CertificateErrorUnixSocket = 2158;
+	public const int CertificateErrorNoPassword = 2159;
+	public const int CertificateErrorValidThumbprint = 2160;
+	public const int ChangingOnlyConnectionId = 2161;
+	public const int ChangingServerVersion = 2162;
+	public const int SettingS2ServerVersion = 2163;
+	public const int SettingAggregatorId = 2164;
 
 	// Command execution events, 2200-2299
 	public const int CannotExecuteNewCommandInState = 2200;
@@ -138,6 +141,14 @@ internal static class EventIds
 	public const int BulkCopyFailed = 2507;
 	public const int ColumnMappingAlreadyHasExpression = 2508;
 	public const int SettingExpressionToMapColumn = 2509;
+
+	// Transaction events, 2700-2799
+	public const int StartingTransaction = 2700;
+	public const int StartedTransaction = 2701;
+	public const int CommittingTransaction = 2702;
+	public const int CommittedTransaction = 2703;
+	public const int RollingBackTransaction = 2704;
+	public const int RolledBackTransaction = 2705;
 
 	// Connection pool events, 3000-3099
 	public const int WaitingForAvailableSession = 3000;

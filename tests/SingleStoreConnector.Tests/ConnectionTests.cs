@@ -180,8 +180,10 @@ public class ConnectionTests : IDisposable
 	public void ConnectionTimeout()
 	{
 		m_server.ConnectDelay = TimeSpan.FromSeconds(10);
-		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString);
-		csb.ConnectionTimeout = 4;
+		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString)
+		{
+			ConnectionTimeout = 4,
+		};
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		var stopwatch = Stopwatch.StartNew();
 		try
@@ -199,8 +201,10 @@ public class ConnectionTests : IDisposable
 	/*[Fact]
 	public void ResetConnectionTimeout()
 	{
-		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString);
-		csb.ConnectionTimeout = 4;
+		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString)
+		{
+			ConnectionTimeout = 4,
+		};
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		connection.Open();
 		connection.Close();
@@ -228,6 +232,49 @@ public class ConnectionTests : IDisposable
 		Assert.Equal(float.NegativeInfinity, reader.GetValue(0));
 		Assert.Equal(double.NegativeInfinity, reader.GetValue(1));
 		Assert.False(reader.Read());
+	}
+
+	[Fact]
+	public void ReplaceActiveReader()
+	{
+		var connection = new SingleStoreConnection(m_csb.ConnectionString);
+		connection.Open();
+		using (var command = connection.CreateCommand())
+		{
+			command.CommandText = "select disconnect";
+			command.CommandTimeout = 600;
+			var reader = command.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(1, reader.GetInt32(0));
+		}
+
+		try
+		{
+			connection.Close();
+		}
+		catch (SingleStoreEndOfStreamException)
+		{
+		}
+
+		connection.Open();
+		using (var command = connection.CreateCommand())
+		{
+			command.CommandText = "SELECT 1;";
+			var reader = command.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(1, reader.GetInt32(0));
+		}
+		connection.Close();
+
+		connection.Open();
+		using (var command = connection.CreateCommand())
+		{
+			command.CommandText = "SELECT 2;";
+			var reader = command.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(2, reader.GetInt32(0));
+		}
+		connection.Close();
 	}
 
 	private static async Task WaitForConditionAsync<T>(T expected, Func<T> getValue)

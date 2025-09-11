@@ -400,7 +400,7 @@ public class CancellationTests : IDisposable
 
 	public static IEnumerable<object[]> GetSyncMethodSteps()
 	{
-		for (var step = 1; step <=  12; step++)
+		for (var step = 1; step <= 12; step++)
 		{
 			for (var method = 0; method < s_executeMethods.Length; method++)
 			{
@@ -420,8 +420,8 @@ public class CancellationTests : IDisposable
 		}
 	}
 
-	private static readonly Func<SingleStoreCommand, int>[] s_executeMethods = new Func<SingleStoreCommand, int>[] { ExecuteScalar, ExecuteNonQuery, ExecuteReader };
-	private static readonly Func<SingleStoreCommand, CancellationToken, Task<int>>[] s_executeAsyncMethods = new Func<SingleStoreCommand, CancellationToken, Task<int>>[] { ExecuteScalarAsync, ExecuteNonQueryAsync, ExecuteReaderAsync };
+	private static readonly Func<SingleStoreCommand, int>[] s_executeMethods = [ExecuteScalar, ExecuteNonQuery, ExecuteReader];
+	private static readonly Func<SingleStoreCommand, CancellationToken, Task<int>>[] s_executeAsyncMethods = [ExecuteScalarAsync, ExecuteNonQueryAsync, ExecuteReaderAsync];
 
 	private static int ExecuteScalar(SingleStoreCommand command) => (int) command.ExecuteScalar();
 	private static async Task<int> ExecuteScalarAsync(SingleStoreCommand command, CancellationToken token) => (int) await command.ExecuteScalarAsync(token);

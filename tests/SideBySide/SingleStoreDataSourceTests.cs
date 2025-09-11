@@ -27,6 +27,17 @@ public class SingleStoreDataSourceTests : IClassFixture<DatabaseFixture>
 	}
 
 	[Fact]
+	public void DoubleDispose()
+	{
+		using var dbSource = new SingleStoreDataSource(AppConfig.ConnectionString);
+		using (var connection = dbSource.OpenConnection())
+		{
+			Assert.Equal(ConnectionState.Open, connection.State);
+		}
+		dbSource.Dispose();
+	}
+
+	[Fact]
 	public async Task OpenConnectionAsync()
 	{
 		using var dbSource = new SingleStoreDataSource(AppConfig.ConnectionString);
@@ -137,7 +148,7 @@ public class SingleStoreDataSourceTests : IClassFixture<DatabaseFixture>
 
 		using var dataSource = builder.Build();
 		using var connection = dataSource.CreateConnection();
-		if (expectedSuccess)
+		if (expectedSuccess || AppConfig.SupportedFeatures.HasFlag(ServerFeatures.TlsFingerprintValidation))
 			await connection.OpenAsync();
 		else
 			await Assert.ThrowsAsync<SingleStoreException>(connection.OpenAsync);

@@ -652,28 +652,6 @@
   - name: IS_GRANTABLE
     type: string
 
-- name: TableSpaces
-  table: TABLESPACES
-  columns:
-  - name: TABLESPACE_NAME
-    type: string
-  - name: ENGINE
-    type: string
-  - name: TABLESPACE_TYPE
-    type: string
-  - name: LOGFILE_GROUP_NAME
-    type: string
-  - name: EXTENT_SIZE
-    type: long
-  - name: AUTOEXTEND_SIZE
-    type: long
-  - name: MAXIMUM_SIZE
-    type: long
-  - name: NODEGROUP_ID
-    type: long
-  - name: TABLESPACE_COMMENT
-    type: string
-
 - name: Triggers
   table: TRIGGERS
   identifierPartCount: 3
@@ -759,3 +737,63 @@
     type: string
   - name: COLLATION_CONNECTION
     type: string
+
+- name: Indexes
+  description: information about indexes in the server's SQL syntax
+  custom: DoFillIndexesAsync
+  restrictions:
+    - name: Catalog
+      default: TABLE_CATALOG
+    - name: Schema
+      default: TABLE_SCHEMA
+    - name: Table
+      default: TABLE_NAME
+    - name: Name
+      default: INDEX_NAME
+  columns:
+    - name: INDEX_CATALOG
+      type: string
+    - name: INDEX_SCHEMA # same as TABLE_SCHEMA, see https://mariadb.com/kb/en/information-schema-statistics-table/
+      type: string
+    - name: INDEX_NAME
+      type: string
+    - name: TABLE_NAME
+      type: string
+    - name: UNIQUE
+      type: bool
+    - name: PRIMARY
+      type: bool
+    - name: TYPE
+      type: string
+    - name: COMMENT
+      type: string
+
+- name: IndexColumns
+  description: information about indexes in the server's SQL syntax
+  custom: DoFillIndexColumnsAsync
+  restrictions:
+    - name: Catalog
+      default: TABLE_CATALOG
+    - name: Schema
+      default: TABLE_SCHEMA
+    - name: Table
+      default: TABLE_NAME
+    - name: Name
+      default: INDEX_NAME
+    - name: Column
+      default: COLUMN_NAME
+  columns:
+    - name: INDEX_CATALOG
+      type: string
+    - name: INDEX_SCHEMA # same as TABLE_SCHEMA, see https://mariadb.com/kb/en/information-schema-statistics-table/
+      type: string
+    - name: INDEX_NAME
+      type: string
+    - name: TABLE_NAME
+      type: string
+    - name: COLUMN_NAME
+      type: string
+    - name: ORDINAL_POSITION
+      type: int
+    - name: SORT_ORDER
+      type: string

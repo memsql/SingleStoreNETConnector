@@ -83,7 +83,7 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 
 	protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
 	{
-		if (!(adapter is SingleStoreDataAdapter mySqlDataAdapter))
+		if (adapter is not SingleStoreDataAdapter mySqlDataAdapter)
 			throw new ArgumentException("adapter needs to be a SingleStoreDataAdapter", nameof(adapter));
 
 		if (adapter == DataAdapter)

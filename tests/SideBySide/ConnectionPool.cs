@@ -285,5 +285,5 @@ public class ConnectionPool : IClassFixture<DatabaseFixture>
 	}
 
 	private static HashSet<ConnectionInfo> GetConnectionIds(IEnumerable<SingleStoreConnection> connections)
-		=> new HashSet<ConnectionInfo>(connections.Select(x => x.ServerThread));
+		=> new(connections.Select(x => x.ServerThread));
 }

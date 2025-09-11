@@ -1,8 +1,9 @@
+#nullable enable
 namespace SideBySide;
 
-public class SchemaProviderTests : IClassFixture<DatabaseFixture>, IDisposable
+public class SchemaProviderTests : IClassFixture<SchemaProviderFixture>, IDisposable
 {
-	public SchemaProviderTests(DatabaseFixture database)
+	public SchemaProviderTests(SchemaProviderFixture database)
 	{
 		m_database = database;
 		m_database.Connection.Open();
@@ -118,6 +119,8 @@ public class SchemaProviderTests : IClassFixture<DatabaseFixture>, IDisposable
 	[InlineData("DATABASES", "Databases")]
 	[InlineData("DataTypes")]
 	[InlineData("datatypes", "DataTypes")]
+	[InlineData("Indexes")]
+	[InlineData("IndexColumns")]
 	// only in 8.0 - [InlineData("KeyWords")]
 	[InlineData("MetaDataCollections")]
 	[InlineData("Procedures")]
@@ -140,10 +143,9 @@ public class SchemaProviderTests : IClassFixture<DatabaseFixture>, IDisposable
 	[InlineData("SchemaPrivileges")]
 	[InlineData("TableConstraints")]
 	[InlineData("TablePrivileges")]
-	[InlineData("TableSpaces")]
 	[InlineData("UserPrivileges")]
 #endif
-	public void GetSchema(string schemaName, string expectedSchemaName = null)
+	public void GetSchema(string schemaName, string? expectedSchemaName = null)
 	{
 		var table = m_database.Connection.GetSchema(schemaName);
 		Assert.NotNull(table);
@@ -176,6 +178,64 @@ public class SchemaProviderTests : IClassFixture<DatabaseFixture>, IDisposable
 		Assert.Contains("binary", table.Rows.Cast<DataRow>().Select(x => (string) x[0]));
 	}
 #endif
+
+	[Fact]
+	public void Indexes()
+	{
+		var schemaName = m_database.Connection.Database;
+		var table = m_database.Connection.GetSchema("Indexes", new[] { null, schemaName, "pk_test" });
+		var actual = table.Rows
+			.Cast<DataRow>()
+			.OrderBy(x => (string) x["INDEX_NAME"])
+			.ThenBy(x => (string) x["TYPE"])
+			.Select(x => ((string) x["INDEX_SCHEMA"], (string) x["INDEX_NAME"], (string) x["TABLE_NAME"], (bool) x["UNIQUE"], (bool) x["PRIMARY"], (string) x["TYPE"]));
+		var expected = new[]
+		{
+			(schemaName, "pk_test_ix", "pk_test", false, false, "BTREE"),
+			(schemaName, "pk_test_uq", "pk_test", true, false, "BTREE"),
+			(schemaName, "PRIMARY", "pk_test", true, true, "BTREE"),
+			(schemaName, "PRIMARY", "pk_test", true, true, "SHARD"),
+		};
+		Assert.Equal(expected, actual);
+	}
+
+	[Fact]
+	public void IndexColumns()
+	{
+		var schemaName = m_database.Connection.Database;
+		var table = m_database.Connection.GetSchema("IndexColumns", new[] { null, schemaName, "pk_test", "pk_test_uq" });
+		var actual = table.Rows
+			.Cast<DataRow>()
+			.OrderBy(x => (string) x["INDEX_NAME"])
+			.ThenBy(x => (int) x["ORDINAL_POSITION"])
+			.Select(x => ((string) x["INDEX_SCHEMA"], (string) x["INDEX_NAME"], (string) x["TABLE_NAME"], (string) x["COLUMN_NAME"], (int) x["ORDINAL_POSITION"]));
+		var expected = new[]
+		{
+			(schemaName, "pk_test_uq", "pk_test", "a", 1),
+			(schemaName, "pk_test_uq", "pk_test", "b", 2),
+			(schemaName, "pk_test_uq", "pk_test", "c", 3),
+			(schemaName, "pk_test_uq", "pk_test", "d", 4),
+			(schemaName, "pk_test_uq", "pk_test", "e", 5),
+		};
+		Assert.Equal(expected, actual);
+	}
+
+	[Fact]
+	public void IndexColumnsWithColumnName()
+	{
+		var schemaName = m_database.Connection.Database;
+		var table = m_database.Connection.GetSchema("IndexColumns", new[] { null, schemaName, "pk_test", "pk_test_uq", "d" });
+		var actual = table.Rows
+			.Cast<DataRow>()
+			.OrderBy(x => (string) x["INDEX_NAME"])
+			.ThenBy(x => (int) x["ORDINAL_POSITION"])
+			.Select(x => ((string) x["INDEX_SCHEMA"], (string) x["INDEX_NAME"], (string) x["TABLE_NAME"], (string) x["COLUMN_NAME"], (int) x["ORDINAL_POSITION"]));
+		var expected = new[]
+		{
+			(schemaName, "pk_test_uq", "pk_test", "d", 4),
+		};
+		Assert.Equal(expected, actual);
+	}
 
 	readonly DatabaseFixture m_database;
 }

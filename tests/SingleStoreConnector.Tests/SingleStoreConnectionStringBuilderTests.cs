@@ -88,7 +88,6 @@ public class SingleStoreConnectionStringBuilderTests
 #endif
 		Assert.Equal(SingleStoreSslMode.Preferred, csb.SslMode);
 		Assert.True(csb.TreatTinyAsBoolean);
-		Assert.False(csb.UseCompression);
 		Assert.Equal("", csb.UserID);
 		Assert.False(csb.UseAffectedRows);
 #if !BASELINE
@@ -231,7 +230,6 @@ public class SingleStoreConnectionStringBuilderTests
 		Assert.Equal("TLS 1.2, TLS 1.3", csb.TlsVersion);
 #endif
 		Assert.True(csb.UseAffectedRows);
-		Assert.True(csb.UseCompression);
 		Assert.Equal("username", csb.UserID);
 
 #if !BASELINE
@@ -446,7 +444,7 @@ public class SingleStoreConnectionStringBuilderTests
 	{
 		var csb = new SingleStoreConnectionStringBuilder { TlsVersion = input };
 #if !BASELINE
-		string[] normalizedVersions = new[] { "TLS 1.0", "TLS 1.1", "TLS 1.2", "TLS 1.3" };
+		string[] normalizedVersions = ["TLS 1.0", "TLS 1.1", "TLS 1.2", "TLS 1.3"];
 #else
 		string[] normalizedVersions = new[] { "Tls", "Tls11", "Tls12", "Tls13" };
 #endif

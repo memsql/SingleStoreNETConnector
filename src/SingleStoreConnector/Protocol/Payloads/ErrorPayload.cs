@@ -11,7 +11,7 @@ internal readonly struct ErrorPayload
 	public string State { get; }
 	public string Message { get; }
 
-	public SingleStoreException ToException() => new SingleStoreException((SingleStoreErrorCode) ErrorCode, State, Message);
+	public SingleStoreException ToException() => new((SingleStoreErrorCode) ErrorCode, State, Message);
 
 	public static ErrorPayload Create(ReadOnlySpan<byte> span)
 	{

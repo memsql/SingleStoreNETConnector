@@ -2,6 +2,47 @@
 
 ## Release Notes
 
+### 1.3.0
+
+All the changes introduced with MySqlConnector (2.3.1 - 2.4.0):
+
+* Support .NET 9
+
+* **Possibly Breaking** Use seconds as the units for duration metrics; change type to double
+
+* **Possibly Breaking** Mark `SingleStoreConnectorLogManager.Provider` as [Obsolete]: #1397.
+
+* **Possibly Breaking** Remove end-of-life .NET 7 target framework.
+  - Users who wish to use `DbDataSource` need to target .NET 8.0 or later.
+
+* **Possibly Breaking** Update dependencies:
+  - Microsoft.Extensions.Logging.Abstractions from 7.0.1 to 8.0.2.
+  - System.Diagnostics.DiagnosticSource from 7.0.2 to 8.0.1.
+
+* Allow empty schemaRestrictions array to be passed to GetSchema
+
+* Add `Indexes`, `Index Columns` schemas
+
+* Fix exception when server doesn't send expected metadata
+
+* Remove TLS version fallback code
+
+* Fix hang when disposing `SingleStoreDataSource` twice on .NET Framework
+
+* Fix `NullReferenceException` in `SingleStoreDataReader.ActivateResultSet` and `SingleStoreDataReader.DisposeAsync`
+
+* Fix rare `NullReferenceException` in `ServerSession `during cancellation
+
+* Support trimming and native AOT
+
+* Add `SingleStoreDataSourceBuilder.UseConnectionOpenedCallback`
+
+* Add `SingleStoreDbColumn.TableName`
+
+* Remove `TABLESPACES` schema
+
+* Fix "Can't replace active reader"
+
 ### 1.2.0
 
 Basically all the changes introduced with MySqlConnector 2.3.0:

@@ -12,6 +12,7 @@ public static class SingleStoreConnectorLogManager
 	/// be set once, and must be set before any other library methods are used.
 	/// </summary>
 #pragma warning disable CA1044 // Properties should not be write only
+	[Obsolete("Use UseLoggerFactory or AddSingleStoreDataSource instead.")]
 	public static ISingleStoreConnectorLoggerProvider Provider
 	{
 		set
