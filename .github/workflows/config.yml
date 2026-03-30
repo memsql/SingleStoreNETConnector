@@ -52,6 +52,7 @@ jobs:
   test-ubuntu:
     name: ${{ matrix.name }}
     runs-on: ubuntu-22.04
+    needs: build-matrix
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
@@ -136,7 +137,6 @@ jobs:
           cd tests/SideBySide
           dotnet test -f ${{ env.TARGET_FRAMEWORK }} -c Release --no-build
           cd ../../
-
 
   test-windows:
     runs-on: windows-latest
