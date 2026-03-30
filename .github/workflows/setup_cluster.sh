@@ -22,6 +22,7 @@ fi
 if [[ "${EXISTS}" -eq 0 ]]; then
     docker run -d \
         --name ${CONTAINER_NAME} \
+        -v ${PWD}/.ci/server/certs:/test-ssl \
         -e SINGLESTORE_LICENSE=${LICENSE_KEY} \
         -e ROOT_PASSWORD=${SQL_USER_PASSWORD} \
         -e SINGLESTORE_VERSION=${VERSION} \
