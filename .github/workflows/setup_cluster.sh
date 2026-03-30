@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -eu
 
-DEFAULT_IMAGE_NAME="memsql/cluster-in-a-box:centos-7.3.9-a7abc2ebd4-3.2.8-1.11.4"
-IMAGE_NAME="${SINGLESTORE_IMAGE:-$DEFAULT_IMAGE_NAME}"
+IMAGE_NAME="ghcr.io/singlestore-labs/singlestoredb-dev:latest"
+
+DEFAULT_SINGLESTORE_VERSION="8.9"
+VERSION="${SINGLESTORE_VERSION:-$DEFAULT_SINGLESTORE_VERSION}"
+
 CONTAINER_NAME="singlestore-integration"
 
 EXISTS=$(docker inspect ${CONTAINER_NAME} >/dev/null 2>&1 && echo 1 || echo 0)
@@ -17,11 +20,12 @@ if [[ "${EXISTS}" -eq 1 ]]; then
 fi
 
 if [[ "${EXISTS}" -eq 0 ]]; then
-    docker run -i --init \
+    docker run -d \
         --name ${CONTAINER_NAME} \
         -v ${PWD}/.ci/server/certs:/test-ssl \
-        -e LICENSE_KEY=${LICENSE_KEY} \
+        -e SINGLESTORE_LICENSE=${LICENSE_KEY} \
         -e ROOT_PASSWORD=${SQL_USER_PASSWORD} \
+        -e SINGLESTORE_VERSION=${VERSION} \
         -p 3306:3306 -p 3307:3307 \
         ${IMAGE_NAME}
 fi
