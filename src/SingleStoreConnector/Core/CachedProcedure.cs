@@ -47,7 +47,8 @@ internal sealed class CachedProcedure
 					!reader.IsDBNull(2) ? reader.GetString(2) : "",
 					dataType,
 					unsigned,
-					length
+					length,
+					connection.GuidFormat
 				));
 			}
 		}
@@ -88,6 +89,10 @@ internal sealed class CachedProcedure
 			if (!alignParam.HasSetDbType)
 				alignParam.SingleStoreDbType = cachedParam.SingleStoreDbType;
 
+			// for a GUID column, pass along the length so the out parameter can be cast to the right size
+			if (alignParam.SingleStoreDbType == SingleStoreDbType.Guid && cachedParam.Direction is ParameterDirection.Output or ParameterDirection.InputOutput)
+				alignParam.Size = cachedParam.Length;
+
 			// cached parameters are ordered by ordinal position
 			alignedParams.Add(alignParam);
 		}
@@ -95,7 +100,7 @@ internal sealed class CachedProcedure
 		return alignedParams;
 	}
 
-	internal static List<CachedParameter> ParseParameters(string parametersSql)
+	internal static List<CachedParameter> ParseParameters(string parametersSql, SingleStoreGuidFormat guidFormat)
 	{
 		// strip comments
 		parametersSql = s_cStyleComments.Replace(parametersSql, "");
@@ -140,7 +145,7 @@ internal sealed class CachedProcedure
 			var name = parts.Groups[1].Success ? parts.Groups[1].Value.Replace("``", "`") : parts.Groups[2].Value;
 
 			var dataType = ParseDataType(parts.Groups[3].Value, out var unsigned, out var length);
-			cachedParameters.Add(CreateCachedParameter(i + 1, direction, name, dataType, unsigned, length, originalString));
+			cachedParameters.Add(CreateCachedParameter(i + 1, direction, name, dataType, unsigned, length, guidFormat, originalString));
 		}
 
 		return cachedParameters;
@@ -178,11 +183,11 @@ internal sealed class CachedProcedure
 		return type ?? list[0];
 	}
 
-	private static CachedParameter CreateCachedParameter(int ordinal, string? direction, string name, string dataType, bool unsigned, int length, string originalSql)
+	private static CachedParameter CreateCachedParameter(int ordinal, string? direction, string name, string dataType, bool unsigned, int length, SingleStoreGuidFormat guidFormat, string originalSql)
 	{
 		try
 		{
-			return new CachedParameter(ordinal, direction, name, dataType, unsigned, length);
+			return new CachedParameter(ordinal, direction, name, dataType, unsigned, length, guidFormat);
 		}
 		catch (NullReferenceException ex)
 		{
@@ -215,7 +220,7 @@ internal sealed class CachedProcedure
 	private static readonly Regex s_singleLineComments = new(@"(^|\s)--.*?$", RegexOptions.Multiline);
 	private static readonly Regex s_multipleSpaces = new(@"\s+");
 	private static readonly Regex s_numericTypes = new(@"(DECIMAL|DEC|FIXED|NUMERIC|FLOAT|DOUBLE PRECISION|DOUBLE|REAL)\s*\([0-9]+(,\s*[0-9]+)\)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
-	private static readonly Regex s_enumOrSet =  new(@"(ENUM|SET)\s*\([^)]+\)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+	private static readonly Regex s_enumOrSet = new(@"(ENUM|SET)\s*\([^)]+\)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 	private static readonly Regex s_parameterName = new(@"^(?:`((?:[\u0001-\u005F\u0061-\uFFFF]+|``)+)`|([A-Za-z0-9$_\u0080-\uFFFF]+)) (.*)$");
 	private static readonly Regex s_characterSet = new(" (CHARSET|CHARACTER SET) [A-Za-z0-9_]+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 	private static readonly Regex s_collate = new(" (COLLATE) [A-Za-z0-9_]+", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);

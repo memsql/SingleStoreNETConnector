@@ -2,7 +2,7 @@ namespace SingleStoreConnector.Core;
 
 internal sealed class CachedParameter
 {
-	public CachedParameter(int ordinalPosition, string? mode, string name, string dataType, bool unsigned, int length)
+	public CachedParameter(int ordinalPosition, string? mode, string name, string dataType, bool unsigned, int length, SingleStoreGuidFormat guidFormat)
 	{
 		Position = ordinalPosition;
 		if (Position == 0)
@@ -14,7 +14,7 @@ internal sealed class CachedParameter
 		else if (string.Equals(mode, "out", StringComparison.OrdinalIgnoreCase))
 			Direction = ParameterDirection.Output;
 		Name = name;
-		SingleStoreDbType = TypeMapper.Instance.GetSingleStoreDbType(dataType, unsigned, length);
+		SingleStoreDbType = TypeMapper.Instance.GetSingleStoreDbType(dataType, unsigned, length, guidFormat);
 		Length = length;
 	}
 
