@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup Condition=" '$(Configuration)' != 'Baseline' ">
-    <TargetFrameworks>net462;net481;net6.0;net8.0;net9.0</TargetFrameworks>
+    <TargetFrameworks>net462;net481;net6.0;net8.0;net10.0</TargetFrameworks>
     <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Baseline' ">
-    <TargetFrameworks>net9.0</TargetFrameworks>
+    <TargetFrameworks>net10.0</TargetFrameworks>
     <DefineConstants>BASELINE</DefineConstants>
     <NoWarn>$(NoWarn);MSB3246</NoWarn>
   </PropertyGroup>
@@ -17,15 +17,15 @@
     <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
     <AssemblyOriginatorKeyFile>..\..\SingleStoreConnector.snk</AssemblyOriginatorKeyFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     <PreserveCompilationContext>true</PreserveCompilationContext>
     <AssemblyName>SideBySide</AssemblyName>
     <PackageId>SideBySide</PackageId>
     <ServerGarbageCollection>true</ServerGarbageCollection>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
     <ThreadPoolMinThreads>64</ThreadPoolMinThreads>
-    <LangVersion>11.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>$(NoWarn);xUnit1030</NoWarn>
+    <NoWarn>$(NoWarn);SA0001;SA1021;SA1133;xUnit1030</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -41,7 +41,6 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
-    <PackageReference Include="System.Text.Json" />
     <Using Include="System" />
     <Using Include="System.Data" />
     <Using Include="System.Data.Common" />
