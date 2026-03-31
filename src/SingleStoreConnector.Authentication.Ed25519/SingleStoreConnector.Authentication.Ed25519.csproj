@@ -22,10 +22,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'netstandard2.1' ">
-    <Compile Remove="Chaos.NaCl\CryptoBytes.cs" />
-  </ItemGroup>
-
   <ItemGroup>
     <None Include="docs\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
