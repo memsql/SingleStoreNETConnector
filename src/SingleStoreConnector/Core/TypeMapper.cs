@@ -55,6 +55,10 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("DOUBLE", typeDouble, SingleStoreDbType.Double));
 		AddColumnTypeMetadata(new("FLOAT", typeFloat, SingleStoreDbType.Float));
 
+		// vector
+		var typeFloatReadOnlyMemory = AddDbTypeMapping(new(typeof(ReadOnlyMemory<float>), [DbType.Object]));
+		AddColumnTypeMetadata(new("VECTOR", typeFloatReadOnlyMemory, SingleStoreDbType.Vector, binary: true, simpleDataTypeName: "VECTOR", createFormat: "VECTOR({0})"));
+
 		// string
 		var typeFixedString = AddDbTypeMapping(new(typeof(string), [DbType.StringFixedLength, DbType.AnsiStringFixedLength], convert: Convert.ToString!));
 		var typeString = AddDbTypeMapping(new(typeof(string), [DbType.String, DbType.AnsiString, DbType.Xml], convert: Convert.ToString!));
@@ -110,6 +114,9 @@ internal sealed class TypeMapper
 #endif
 		var typeGuid = AddDbTypeMapping(new(typeof(Guid), [DbType.Guid], convert: convertGuid));
 		AddColumnTypeMetadata(new("CHAR", typeGuid, SingleStoreDbType.Guid, length: 36, simpleDataTypeName: "CHAR(36)", createFormat: "CHAR(36)"));
+		AddColumnTypeMetadata(new("CHAR", typeGuid, SingleStoreDbType.Guid, length: 32, guidFormat: SingleStoreGuidFormat.Char32));
+		AddColumnTypeMetadata(new("CHAR", typeGuid, SingleStoreDbType.Guid, length: 36, guidFormat: SingleStoreGuidFormat.Char36));
+		AddColumnTypeMetadata(new("BINARY", typeGuid, SingleStoreDbType.Guid, binary: true, length: 16, guidFormat: SingleStoreGuidFormat.Binary16));
 
 		// null
 		var typeNull = AddDbTypeMapping(new(typeof(object), [DbType.Object]));
@@ -176,15 +183,20 @@ internal sealed class TypeMapper
 
 	public DbTypeMapping? GetDbTypeMapping(string columnTypeName, bool unsigned = false, int length = 0)
 	{
-		return GetColumnTypeMetadata(columnTypeName, unsigned, length)?.DbTypeMapping;
+		return GetColumnTypeMetadata(columnTypeName, unsigned, length, SingleStoreGuidFormat.Default)?.DbTypeMapping;
 	}
 
-	public SingleStoreDbType GetSingleStoreDbType(string typeName, bool unsigned, int length) => GetColumnTypeMetadata(typeName, unsigned, length)!.SingleStoreDbType;
+	public SingleStoreDbType GetSingleStoreDbType(string typeName, bool unsigned, int length, SingleStoreGuidFormat guidFormat) =>
+		GetColumnTypeMetadata(typeName, unsigned, length, guidFormat)!.SingleStoreDbType;
 
-	private ColumnTypeMetadata? GetColumnTypeMetadata(string columnTypeName, bool unsigned, int length)
+	private ColumnTypeMetadata? GetColumnTypeMetadata(string columnTypeName, bool unsigned, int length, SingleStoreGuidFormat guidFormat)
 	{
-		if (!m_columnTypeMetadataLookup.TryGetValue(ColumnTypeMetadata.CreateLookupKey(columnTypeName, unsigned, length), out var columnTypeMetadata) && length != 0)
-			m_columnTypeMetadataLookup.TryGetValue(ColumnTypeMetadata.CreateLookupKey(columnTypeName, unsigned, 0), out columnTypeMetadata);
+		if (m_columnTypeMetadataLookup.TryGetValue(ColumnTypeMetadata.CreateLookupKey(columnTypeName, unsigned, length, guidFormat), out var columnTypeMetadata))
+			return columnTypeMetadata;
+		if (guidFormat != SingleStoreGuidFormat.Default && m_columnTypeMetadataLookup.TryGetValue(ColumnTypeMetadata.CreateLookupKey(columnTypeName, unsigned, length, SingleStoreGuidFormat.Default), out columnTypeMetadata))
+			return columnTypeMetadata;
+		if (length != 0)
+			m_columnTypeMetadataLookup.TryGetValue(ColumnTypeMetadata.CreateLookupKey(columnTypeName, unsigned, 0, SingleStoreGuidFormat.Default), out columnTypeMetadata);
 		return columnTypeMetadata;
 	}
 
@@ -308,6 +320,9 @@ internal sealed class TypeMapper
 			case ColumnType.Set:
 				return SingleStoreDbType.Set;
 
+			case ColumnType.Vector:
+				return SingleStoreDbType.Vector;
+
 			default:
 				throw new NotImplementedException($"ConvertToSingleStoreDbType for {columnDefinition.ColumnType} is not implemented");
 		}
@@ -345,6 +360,7 @@ internal sealed class TypeMapper
 			SingleStoreDbType.Geography => ColumnType.Geography,
 			SingleStoreDbType.GeographyPoint => ColumnType.GeographyPoint,
 			SingleStoreDbType.Null => ColumnType.Null,
+			SingleStoreDbType.Vector => ColumnType.Vector,
 			_ => throw new NotImplementedException($"ConvertToColumnTypeAndFlags for {dbType} is not implemented"),
 		};
 		return (ushort) ((byte) columnType | (isUnsigned ? 0x8000 : 0));

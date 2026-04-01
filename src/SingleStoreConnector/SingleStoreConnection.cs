@@ -450,12 +450,7 @@ namespace SingleStoreConnector
 		private void TakeSessionFrom(SingleStoreConnection other)
 		{
 #if DEBUG
-#if NET6_0_OR_GREATER
-		ArgumentNullException.ThrowIfNull(other);
-#else
-			if (other is null)
-				throw new ArgumentNullException(nameof(other));
-#endif
+			ArgumentNullException.ThrowIfNull(other);
 			if (m_session is not null)
 				throw new InvalidOperationException("This connection must not have a session");
 			if (other.m_session is null)
@@ -537,7 +532,7 @@ namespace SingleStoreConnector
 			{
 			}
 
-			SetState(ConnectionState.Closed);
+			SetState(ConnectionState.Broken);
 			return false;
 		}
 

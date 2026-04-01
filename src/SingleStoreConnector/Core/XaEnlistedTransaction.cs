@@ -30,16 +30,25 @@ internal sealed class XaEnlistedTransaction(Transaction transaction, SingleStore
 
 	protected override void OnRollback(Enlistment enlistment)
 	{
+		if (!IsPrepared)
+		{
+			try
+			{
+				ExecuteXaCommand("END");
+			}
+			catch (SingleStoreException ex) when (ex.ErrorCode is SingleStoreErrorCode.XARBDeadlock || (ex.ErrorCode is SingleStoreErrorCode.XAERRemoveFail && ex.Message.Contains("ROLLBACK ONLY")))
+			{
+				// ignore deadlock notification AND any unprepared end failure when XAERRemoveFail is returned telling us the XA state is ROLLBACK ONLY.
+			}
+		}
+
 		try
 		{
-			if (!IsPrepared)
-				ExecuteXaCommand("END");
-
 			ExecuteXaCommand("ROLLBACK");
 		}
 		catch (SingleStoreException ex) when (ex.ErrorCode is SingleStoreErrorCode.XARBDeadlock)
 		{
-			// ignore deadlock when rolling back
+			// ignore deadlock notification when rolling back.
 		}
 	}
 

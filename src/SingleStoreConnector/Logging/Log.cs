@@ -28,6 +28,12 @@ internal static partial class Log
 	[LoggerMessage(EventIds.ResettingConnection, LogLevel.Debug, "Session {SessionId} resetting connection")]
 	public static partial void ResettingConnection(ILogger logger, string sessionId);
 
+	[LoggerMessage(EventIds.ResettingConnectionFailed, LogLevel.Warning, "Session {SessionId} failed to reset connection: {Message}")]
+	public static partial void ResettingConnectionFailed(ILogger logger, string sessionId, string message);
+
+	[LoggerMessage(EventIds.ResetConnection, LogLevel.Debug, "Session {SessionId} reset connection")]
+	public static partial void ResetConnection(ILogger logger, string sessionId);
+
 	[LoggerMessage(EventIds.ReturningToPool, LogLevel.Trace, "Session {SessionId} returning to pool {PoolId}")]
 	public static partial void ReturningToPool(ILogger logger, string sessionId, int poolId);
 
@@ -166,10 +172,10 @@ internal static partial class Log
 #if NETCOREAPP3_0_OR_GREATER
 	[LoggerMessage(EventIds.ConnectedTlsBasic, LogLevel.Debug, "Session {SessionId} connected TLS using {SslProtocol} and {NegotiatedCipherSuite}")]
 	public static partial void ConnectedTlsBasic(ILogger logger, string sessionId, SslProtocols sslProtocol, TlsCipherSuite negotiatedCipherSuite);
-#endif
-
+#else
 	[LoggerMessage(EventIds.ConnectedTlsDetailed, LogLevel.Debug, "Session {SessionId} connected TLS using {SslProtocol}, {CipherAlgorithm}, {HashAlgorithm}, {KeyExchangeAlgorithm}, {KeyExchangeStrength}")]
 	public static partial void ConnectedTlsDetailed(ILogger logger, string sessionId, SslProtocols sslProtocol, CipherAlgorithmType cipherAlgorithm, HashAlgorithmType hashAlgorithm, ExchangeAlgorithmType keyExchangeAlgorithm, int keyExchangeStrength);
+#endif
 
 	[LoggerMessage(EventIds.CouldNotInitializeTlsConnection, LogLevel.Error, "Session {SessionId} couldn't initialize TLS connection")]
 	public static partial void CouldNotInitializeTlsConnection(ILogger logger, Exception exception, string sessionId);
@@ -216,10 +222,10 @@ internal static partial class Log
 #if NETCOREAPP3_0_OR_GREATER
 	[LoggerMessage(EventIds.ConnectedTlsBasicPreliminary, LogLevel.Debug, "Session {SessionId} provisionally connected TLS with error {SslPolicyErrors} using {SslProtocol} and {NegotiatedCipherSuite}")]
 	public static partial void ConnectedTlsBasicPreliminary(ILogger logger, string sessionId, SslPolicyErrors sslPolicyErrors, SslProtocols sslProtocol, TlsCipherSuite negotiatedCipherSuite);
-#endif
-
+#else
 	[LoggerMessage(EventIds.ConnectedTlsDetailedPreliminary, LogLevel.Debug, "Session {SessionId} provisionally connected TLS with error {SslPolicyErrors} using {SslProtocol}, {CipherAlgorithm}, {HashAlgorithm}, {KeyExchangeAlgorithm}, {KeyExchangeStrength}")]
 	public static partial void ConnectedTlsDetailedPreliminary(ILogger logger, string sessionId, SslPolicyErrors sslPolicyErrors, SslProtocols sslProtocol, CipherAlgorithmType cipherAlgorithm, HashAlgorithmType hashAlgorithm, ExchangeAlgorithmType keyExchangeAlgorithm, int keyExchangeStrength);
+#endif
 
 	[LoggerMessage(EventIds.CertificateErrorUnixSocket, LogLevel.Trace, "Session {SessionId} ignoring remote certificate error {SslPolicyErrors} due to Unix socket connection")]
 	public static partial void CertificateErrorUnixSocket(ILogger logger, string sessionId, SslPolicyErrors sslPolicyErrors);

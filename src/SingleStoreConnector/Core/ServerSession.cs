@@ -718,22 +718,40 @@ internal sealed partial class ServerSession : IServerCapabilities
 		return session;
 	}
 
+	private async Task SendAndVerifyOkAsync(
+		Func<Task> sendAsync,
+		IOBehavior ioBehavior,
+		CancellationToken cancellationToken)
+	{
+		await sendAsync().ConfigureAwait(false);
+
+		var response = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+		OkPayload.Verify(response.Span, this);
+	}
+
 	public async Task ResetConnectionAsync(IOBehavior ioBehavior, string targetDatabase = "", CancellationToken cancellationToken = default)
 	{
 		if (S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) < 0)
 			throw new InvalidOperationException("Resetting connection is not supported in SingleStore " + S2ServerVersion.OriginalString);
 
 		Log.ResettingConnection(m_logger, Id);
-		await SendAsync(ResetConnectionPayload.Instance, ioBehavior, cancellationToken).ConfigureAwait(false);
-		var payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-		OkPayload.Verify(payload.Span, this);
+
+		await SendAndVerifyOkAsync(
+			() => SendAsync(ResetConnectionPayload.Instance, ioBehavior, cancellationToken),
+			ioBehavior,
+			cancellationToken).ConfigureAwait(false);
 
 		if (targetDatabase.Length > 0)
 		{
 			var useDb = $"USE {targetDatabase}";
-			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, Encoding.ASCII.GetBytes(useDb)), ioBehavior, cancellationToken).ConfigureAwait(false);
-			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Verify(payload.Span, this);
+
+			await SendAndVerifyOkAsync(
+				() => SendAsync(
+					QueryPayload.Create(SupportsQueryAttributes, Encoding.ASCII.GetBytes(useDb)),
+					ioBehavior,
+					cancellationToken),
+				ioBehavior,
+				cancellationToken).ConfigureAwait(false);
 		}
 	}
 

@@ -14,7 +14,7 @@ namespace SingleStoreConnector;
 /// individually.</para>
 /// <para>Example usage:</para>
 /// <code>
-/// using var connection = new SingleStoreConnection("...connection string...");
+/// await using var connection = new SingleStoreConnection("...connection string...");
 /// await connection.OpenAsync();
 ///
 /// using var batch = new SingleStoreBatch(connection)
@@ -199,10 +199,10 @@ public sealed class SingleStoreBatch :
 #endif
 		int Timeout
 	{
-		get => m_timeout;
+		get;
 		set
 		{
-			m_timeout = value;
+			field = value;
 			((ICancellableCommand) this).EffectiveCommandTimeout = null;
 		}
 	}
@@ -412,7 +412,6 @@ public sealed class SingleStoreBatch :
 
 	private readonly int m_commandId;
 	private bool m_isDisposed;
-	private int m_timeout;
 	private Action? m_cancelAction;
 	private Action? m_cancelForCommandTimeoutAction;
 	private uint m_cancelTimerId;

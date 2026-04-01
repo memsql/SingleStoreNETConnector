@@ -59,7 +59,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	{
 		GC.SuppressFinalize(this);
 		m_commandId = ICancellableCommandExtensions.GetNextId();
-		m_commandText = commandText ?? "";
+		CommandText = commandText ?? "";
 		Connection = connection;
 		Transaction = transaction;
 		CommandType = CommandType.Text;
@@ -71,7 +71,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 		GC.SuppressFinalize(this);
 		m_commandTimeout = other.m_commandTimeout;
 		((ICancellableCommand) this).EffectiveCommandTimeout = null;
-		m_commandType = other.m_commandType;
+		CommandType = other.CommandType;
 		DesignTimeVisible = other.DesignTimeVisible;
 		UpdatedRowSource = other.UpdatedRowSource;
 		m_parameterCollection = other.CloneRawParameters();
@@ -200,12 +200,12 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	[AllowNull]
 	public override string CommandText
 	{
-		get => m_commandText;
+		get;
 		set
 		{
-			if (m_connection?.ActiveCommandId == m_commandId)
+			if (Connection?.ActiveCommandId == m_commandId)
 				throw new InvalidOperationException("Cannot set SingleStoreCommand.CommandText when there is an open DataReader for this command; it must be closed first.");
-			m_commandText = value ?? "";
+			field = value ?? "";
 		}
 	}
 
@@ -215,12 +215,12 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 
 	public new SingleStoreConnection? Connection
 	{
-		get => m_connection;
+		get;
 		set
 		{
-			if (m_connection?.ActiveCommandId == m_commandId)
+			if (field?.ActiveCommandId == m_commandId)
 				throw new InvalidOperationException("Cannot set SingleStoreCommand.Connection when there is an open DataReader for this command; it must be closed first.");
-			m_connection = value;
+			field = value;
 		}
 	}
 
@@ -230,12 +230,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 		get => Math.Min(m_commandTimeout ?? Connection?.DefaultCommandTimeout ?? 0, int.MaxValue / 1000);
 		set
 		{
-#if NET8_0_OR_GREATER
 			ArgumentOutOfRangeException.ThrowIfNegative(value);
-#else
-			if (value < 0)
-				throw new ArgumentOutOfRangeException(nameof(value), "CommandTimeout must be greater than or equal to zero.");
-#endif
 			m_commandTimeout = value;
 			((ICancellableCommand) this).EffectiveCommandTimeout = null;
 		}
@@ -244,12 +239,12 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	/// <inheritdoc/>
 	public override CommandType CommandType
 	{
-		get => m_commandType;
+		get;
 		set
 		{
 			if (value is not CommandType.Text and not CommandType.StoredProcedure)
 				throw new ArgumentException("CommandType must be Text or StoredProcedure.", nameof(value));
-			m_commandType = value;
+			field = value;
 		}
 	}
 
@@ -454,8 +449,8 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 		return exception is null;
 	}
 
-	PreparedStatements? ISingleStoreCommand.TryGetPreparedStatements() => CommandType == CommandType.Text && !string.IsNullOrWhiteSpace(CommandText) && m_connection is not null &&
-		m_connection.State == ConnectionState.Open ? m_connection.Session.TryGetPreparedStatement(CommandText!) : null;
+	PreparedStatements? ISingleStoreCommand.TryGetPreparedStatements() => CommandType == CommandType.Text && !string.IsNullOrWhiteSpace(CommandText) && Connection is not null &&
+		Connection.State == ConnectionState.Open ? Connection.Session.TryGetPreparedStatement(CommandText!) : null;
 
 	CommandBehavior ISingleStoreCommand.CommandBehavior => m_commandBehavior;
 	SingleStoreParameterCollection? ISingleStoreCommand.OutParameters { get; set; }
@@ -464,12 +459,9 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 
 	private readonly int m_commandId;
 	private bool m_isDisposed;
-	private SingleStoreConnection? m_connection;
-	private string m_commandText;
 	private SingleStoreParameterCollection? m_parameterCollection;
 	private SingleStoreAttributeCollection? m_attributeCollection;
 	private int? m_commandTimeout;
-	private CommandType m_commandType;
 	private CommandBehavior m_commandBehavior;
 	private Action? m_cancelAction;
 	private Action? m_cancelForCommandTimeoutAction;
