@@ -24,7 +24,6 @@ public class ClientFactoryTests
 		Assert.IsType<SingleStoreConnectionStringBuilder>(SingleStoreConnectorFactory.Instance.CreateConnectionStringBuilder());
 	}
 
-
 	[Fact]
 	public void CreateParameter()
 	{

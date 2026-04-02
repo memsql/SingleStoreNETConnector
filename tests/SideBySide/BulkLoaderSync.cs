@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using SingleStoreConnector.Core;
 using Xunit.Sdk;
 
@@ -180,7 +181,7 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		connection.Open();
 		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
 		{
-			Timeout = 3, //Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
+			Timeout = 3, // Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
 			FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile + "-junk",
 			TableName = m_testTable,
 			CharacterSet = "UTF8",
@@ -217,7 +218,7 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		}
 		catch (Exception exception)
 		{
-			//We know that the exception is not a SingleStoreException, just use the assertion to fail the test
+			// We know that the exception is not a SingleStoreException, just use the assertion to fail the test
 			Assert.IsType<SingleStoreException>(exception);
 		}
 	}
@@ -589,6 +590,71 @@ create table bulk_load_data_table(a int, b decimal(20, 10));", connection))
 		}
 	}
 
+	[SkippableTheory(ServerFeatures.Vector)]
+	[InlineData("byte[]")]
+	[InlineData("float[]")]
+	public void BulkCopyDataTableWithVector(string dataType)
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("data",
+#pragma warning disable SA1118 // Parameter should not span multiple lines
+					dataType switch
+					{
+						"byte[]" => typeof(byte[]),
+						"float[]" => typeof(float[]),
+						_ => throw new ArgumentOutOfRangeException(nameof(dataType)),
+					}),
+#pragma warning restore SA1118 // Parameter should not span multiple lines
+			},
+			Rows =
+			{
+				new object[] { 1, GetDataRowValue([0, 0, 0], dataType) },
+				new object[] { 2, GetDataRowValue([1f, 2f, 3f], dataType) },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create table bulk_load_data_table(a int, b vector(3));", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_data_table",
+		};
+		var result = bulkCopy.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(@"select b from bulk_load_data_table order by a;", connection))
+		{
+			using var reader = cmd.ExecuteReader();
+			Assert.True(reader.Read());
+			Assert.Equal(new float[3], GetFloatArray(reader, 0));
+			Assert.True(reader.Read());
+			Assert.Equal([1f, 2f, 3f], GetFloatArray(reader, 0));
+			Assert.False(reader.Read());
+		}
+
+		static object GetDataRowValue(float[] data, string dataType) =>
+			dataType == "byte[]" ? MemoryMarshal.Cast<float, byte>(data).ToArray() : data;
+
+		static float[] GetFloatArray(SingleStoreDataReader reader, int ordinal) =>
+			reader.GetValue(ordinal) switch
+			{
+				ReadOnlyMemory<float> romf => romf.ToArray(),
+				byte[] b => MemoryMarshal.Cast<byte, float>(b).ToArray(),
+				{ } x => throw new NotSupportedException(x.GetType().Name),
+			};
+	}
+
 #if NET6_0_OR_GREATER
 	[Fact]
 	public void BulkCopyDataTableWithDateOnly()
@@ -672,7 +738,6 @@ create table bulk_load_data_table(a int, time1 time, time2 time(6));", connectio
 		}
 	}
 #endif
-
 
 	public static IEnumerable<object[]> GetBulkCopyData() =>
 		new object[][]
@@ -1066,7 +1131,7 @@ create table bulk_load_data_table(a int, b text);", connection))
 				new object[] { 1, 100, "a", "A", new byte[] { 0x33, 0x30 } },
 				new object[] { 2, 200, "bb", "BB", new byte[] { 0x33, 0x31 } },
 				new object[] { 3, 300, "ccc", "CCC", new byte[] { 0x33, 0x32 } },
-			}
+			},
 		};
 
 		var result = bulkCopy.WriteToServer(dataTable);
@@ -1120,7 +1185,7 @@ create table bulk_load_data_table(a int, b text);", connection))
 				new object[] { 1 },
 				new object[] { 2 },
 				new object[] { 3 },
-			}
+			},
 		};
 
 		Assert.Throws<InvalidOperationException>(() => bulkCopy.WriteToServer(dataTable));
@@ -1157,10 +1222,70 @@ create table bulk_load_data_table(a int, b text);", connection))
 				new object[] { 1 },
 				new object[] { 2 },
 				new object[] { 3 },
-			}
+			},
 		};
 
 		Assert.Throws<InvalidOperationException>(() => bulkCopy.WriteToServer(dataTable));
+	}
+
+	[Fact]
+	public void BulkCopyToTableWithYear()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = """
+		                  DROP TABLE IF EXISTS bulk_copy_year;
+		                  CREATE TABLE bulk_copy_year(int_value int NULL, year_value year NULL)
+		                  """;
+		cmd.ExecuteNonQuery();
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_copy_year",
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "int_value", null),
+			},
+		};
+
+		var dt = new DataTable();
+		dt.Columns.Add("numbers");
+		dt.Rows.Add(1);
+		dt.Rows.Add(2);
+
+		var result = bulkCopy.WriteToServer(dt);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+	}
+
+	[Fact]
+	public void BulkCopyToTableWithYearNotSupported()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = """
+		                  DROP TABLE IF EXISTS bulk_copy_year;
+		                  CREATE TABLE bulk_copy_year(int_value int NULL, year_value year NULL)
+		                  """;
+		cmd.ExecuteNonQuery();
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_copy_year",
+		};
+
+		var dt = new DataTable();
+		dt.Columns.Add("numbers");
+		dt.Columns.Add("year");
+		dt.Rows.Add(1, 2000);
+		dt.Rows.Add(2, 2001);
+
+		var exception = Assert.Throws<NotSupportedException>(() => bulkCopy.WriteToServer(dt));
+		Assert.Equal("'YEAR' columns are not supported by MySqlBulkCopy.", exception.Message);
 	}
 
 	[Fact]
@@ -1174,7 +1299,7 @@ create table bulk_copy_duplicate_pk(id integer primary key, value text not null)
 
 		var bcp = new SingleStoreBulkCopy(connection)
 		{
-			DestinationTableName = "bulk_copy_duplicate_pk"
+			DestinationTableName = "bulk_copy_duplicate_pk",
 		};
 
 		var dataTable = new DataTable()
@@ -1189,7 +1314,7 @@ create table bulk_copy_duplicate_pk(id integer primary key, value text not null)
 				new object[] { 1, "a" },
 				new object[] { 1, "b" },
 				new object[] { 3, "c" },
-			}
+			},
 		};
 
 		var ex = Assert.Throws<SingleStoreException>(() => bcp.WriteToServer(dataTable));
@@ -1310,6 +1435,46 @@ create table bulk_load_data_table(a int not null primary key auto_increment, b t
 		using (var cmd = new SingleStoreCommand("select b from bulk_load_data_table;", connection))
 			Assert.Equal(expected, cmd.ExecuteScalar());
 	}
+
+	// TODO: reimplement for SingleStore Geography types
+	/*[Fact]
+	public void BulkCopyGeometry()
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("geo_data", typeof(MySqlGeometry)),
+			},
+			Rows =
+			{
+				new object[] { MySqlGeometry.FromWkb(0, [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63]) },
+			},
+		};
+
+		using var connection = new MySqlConnection(GetLocalConnectionString());
+		connection.Open();
+		using (var cmd = new MySqlCommand(@"drop table if exists bulk_load_data_table;
+create table bulk_load_data_table(id BIGINT UNIQUE NOT NULL AUTO_INCREMENT, geo_data GEOMETRY NOT NULL);", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bc = new MySqlBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_data_table",
+			ColumnMappings =
+			{
+				new()
+				{
+					SourceOrdinal = 0,
+					DestinationColumn = "geo_data",
+				},
+			},
+		};
+
+		bc.WriteToServer(dataTable);
+	}*/
 #endif
 
 	internal static string GetConnectionString() => AppConfig.ConnectionString;
@@ -1321,6 +1486,6 @@ create table bulk_load_data_table(a int not null primary key auto_increment, b t
 		return csb.ConnectionString;
 	}
 
-	readonly string m_testTable;
-	readonly byte[] m_memoryStreamBytes;
+	private readonly string m_testTable;
+	private readonly byte[] m_memoryStreamBytes;
 }

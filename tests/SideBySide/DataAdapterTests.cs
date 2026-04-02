@@ -187,9 +187,8 @@ insert into data_adapter(int_value, text_value) values
 			da.Update(ds);
 		}
 
-		Assert.Equal(new List<string>{ "two", "three", "four" }, m_connection.Query<string>("SELECT text_value FROM data_adapter ORDER BY int_value"));
+		Assert.Equal(new List<string> { "two", "three", "four" }, m_connection.Query<string>("SELECT text_value FROM data_adapter ORDER BY int_value"));
 	}
-
 
 	[Fact]
 	public void BatchInsert()
@@ -326,5 +325,5 @@ insert into data_adapter(int_value, text_value) values
 	}
 #endif
 
-	readonly SingleStoreConnection m_connection;
+	private readonly SingleStoreConnection m_connection;
 }

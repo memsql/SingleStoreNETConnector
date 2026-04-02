@@ -161,7 +161,7 @@ public class BulkLoaderAsync : IClassFixture<DatabaseFixture>
 		await connection.OpenAsync();
 		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
 		{
-			Timeout = 3, //Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
+			Timeout = 3, // Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
 			FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile + "-junk",
 			TableName = m_testTable,
 			CharacterSet = "UTF8",
@@ -198,7 +198,7 @@ public class BulkLoaderAsync : IClassFixture<DatabaseFixture>
 		}
 		catch (Exception exception)
 		{
-			//We know that the exception is not a SingleStoreException, just use the assertion to fail the test
+			// We know that the exception is not a SingleStoreException, just use the assertion to fail the test
 			Assert.IsType<SingleStoreException>(exception);
 		}
 	}
@@ -649,11 +649,51 @@ create table bulk_load_data_table(str varchar(5), number tinyint);", connection)
 		var bulkCopy = new SingleStoreBulkCopy(connection);
 		await Assert.ThrowsAsync<ArgumentNullException>(async () => await bulkCopy.WriteToServerAsync(default(DbDataReader)));
 	}
+
+	// TODO: reimplement for SingleStore Geography types
+	/*[Fact]
+	public async Task BulkCopyGeometryAsync()
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("geo_data", typeof(SingleStoreGeometry)),
+			},
+			Rows =
+			{
+				new object[] { SingleStoreGeometry.FromWkb(0, [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63]) },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create table bulk_load_data_table(id BIGINT UNIQUE NOT NULL AUTO_INCREMENT, geo_data GEOMETRY NOT NULL);", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var bc = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_data_table",
+			ColumnMappings =
+			{
+				new()
+				{
+					SourceOrdinal = 0,
+					DestinationColumn = "geo_data",
+				},
+			},
+		};
+
+		await bc.WriteToServerAsync(dataTable);
+	}*/
 #endif
 
 	private static string GetConnectionString() => BulkLoaderSync.GetConnectionString();
 	private static string GetLocalConnectionString() => BulkLoaderSync.GetLocalConnectionString();
 
-	readonly string m_testTable;
-	readonly byte[] m_memoryStreamBytes;
+	private readonly string m_testTable;
+	private readonly byte[] m_memoryStreamBytes;
 }
