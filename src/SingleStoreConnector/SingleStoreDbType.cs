@@ -38,6 +38,7 @@ public enum SingleStoreDbType
 	String,
 	Geography,
 	GeographyPoint,
+	Vector = 242,
 	UByte = 501,
 	UInt16,
 	UInt32,

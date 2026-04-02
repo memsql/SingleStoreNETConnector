@@ -744,12 +744,7 @@ namespace SingleStoreConnector
 		private static async Task ClearPoolAsync(SingleStoreConnection connection, IOBehavior ioBehavior,
 			CancellationToken cancellationToken)
 		{
-#if NET6_0_OR_GREATER
-		ArgumentNullException.ThrowIfNull(connection);
-#else
-			if (connection is null)
-				throw new ArgumentNullException(nameof(connection));
-#endif
+			ArgumentNullException.ThrowIfNull(connection);
 
 			var pool = ConnectionPool.GetPool(connection.m_connectionString, null, createIfNotFound: false);
 			if (pool is not null)
@@ -1097,12 +1092,7 @@ namespace SingleStoreConnector
 
 		internal void SetActiveReader(SingleStoreDataReader dataReader)
 		{
-#if NET6_0_OR_GREATER
-		ArgumentNullException.ThrowIfNull(dataReader);
-#else
-			if (dataReader is null)
-				throw new ArgumentNullException(nameof(dataReader));
-#endif
+			ArgumentNullException.ThrowIfNull(dataReader);
 			if (m_activeReader is not null)
 				throw new InvalidOperationException("Can't replace active reader.");
 			m_activeReader = dataReader;
@@ -1213,6 +1203,8 @@ namespace SingleStoreConnector
 		internal SslProtocols SslProtocol => m_session!.SslProtocol;
 
 		internal IPEndPoint? SessionEndPoint => m_session!.IPEndPoint;
+
+		internal SingleStoreDataSource? MySqlDataSource => m_dataSource;
 
 		internal void SetState(ConnectionState newState)
 		{

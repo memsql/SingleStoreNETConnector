@@ -21,6 +21,18 @@ public sealed class SingleStoreDataSourceBuilder
 	}
 
 	/// <summary>
+	/// Configures OpenTelemetry tracing options.
+	/// </summary>
+	/// <returns>This builder, so that method calls can be chained.</returns>
+	public SingleStoreDataSourceBuilder ConfigureTracing(Action<SingleStoreConnectorTracingOptionsBuilder> configureAction)
+	{
+		ArgumentNullException.ThrowIfNull(configureAction);
+		m_tracingOptionsBuilderCallbacks ??= [];
+		m_tracingOptionsBuilderCallbacks.Add(configureAction);
+		return this;
+	}
+
+	/// <summary>
 	/// Sets the <see cref="ILoggerFactory"/> that will be used for logging.
 	/// </summary>
 	/// <param name="loggerFactory">The logger factory.</param>
@@ -106,8 +118,15 @@ public sealed class SingleStoreDataSourceBuilder
 	public SingleStoreDataSource Build()
 	{
 		var loggingConfiguration = m_loggerFactory is null ? SingleStoreConnectorLoggingConfiguration.NullConfiguration : new(m_loggerFactory);
+
+		var tracingOptionsBuilder = new SingleStoreConnectorTracingOptionsBuilder();
+		foreach (var callback in m_tracingOptionsBuilderCallbacks ?? (IEnumerable<Action<SingleStoreConnectorTracingOptionsBuilder>>) [])
+			callback.Invoke(tracingOptionsBuilder);
+		var tracingOptions = tracingOptionsBuilder.Build();
+
 		return new(ConnectionStringBuilder.ConnectionString,
 			loggingConfiguration,
+			tracingOptions,
 			m_name,
 			m_clientCertificatesCallback,
 			m_remoteCertificateValidationCallback,
@@ -131,4 +150,5 @@ public sealed class SingleStoreDataSourceBuilder
 	private TimeSpan m_periodicPasswordProviderSuccessRefreshInterval;
 	private TimeSpan m_periodicPasswordProviderFailureRefreshInterval;
 	private SingleStoreConnectionOpenedCallback? m_connectionOpenedCallback;
+	private List<Action<SingleStoreConnectorTracingOptionsBuilder>>? m_tracingOptionsBuilderCallbacks;
 }

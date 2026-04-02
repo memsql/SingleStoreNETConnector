@@ -719,7 +719,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 	}
 
 	private async Task SendAndVerifyOkAsync(
-		Func<Task> sendAsync,
+		Func<ValueTask> sendAsync,
 		IOBehavior ioBehavior,
 		CancellationToken cancellationToken)
 	{

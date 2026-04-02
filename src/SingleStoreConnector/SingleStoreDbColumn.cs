@@ -25,6 +25,7 @@ public sealed class SingleStoreDbColumn : DbColumn
 		}
 		else
 		{
+			// TODO: VECTOR COLUMNSIZE HANDLING
 			if (mySqlDbType == SingleStoreDbType.JSON || mySqlDbType == SingleStoreDbType.LongBlob)
 				ColumnSize = int.MaxValue;
 			else
