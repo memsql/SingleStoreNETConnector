@@ -9,13 +9,13 @@ public class TransactionScopeTests : IClassFixture<DatabaseFixture>
 		m_database = database;
 	}
 
-	public static IEnumerable<object[]> ConnectionStrings = new[]
+	public static IEnumerable<object[]> ConnectionStrings { get; } = new[]
 	{
 #if BASELINE
 		new object[] { "" },
 #else
 		new object[] { "UseXaTransactions=False" },
-		// new object[] { "UseXaTransactions=True" }, no XA transactions in SingleStore
+		//// new object[] { "UseXaTransactions=True" }, no XA transactions in SingleStore
 #endif
 	};
 
@@ -274,7 +274,7 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		var transactionOptions = new TransactionOptions
 		{
 			IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted,
-			Timeout = TransactionManager.MaximumTimeout
+			Timeout = TransactionManager.MaximumTimeout,
 		};
 		using (var scope = new TransactionScope(TransactionScopeOption.Required, transactionOptions, TransactionScopeAsyncFlowOption.Enabled))
 		{
@@ -318,7 +318,7 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		var transactionOptions = new TransactionOptions
 		{
 			IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted,
-			Timeout = TransactionManager.MaximumTimeout
+			Timeout = TransactionManager.MaximumTimeout,
 		};
 		using (new TransactionScope(TransactionScopeOption.Required, transactionOptions, TransactionScopeAsyncFlowOption.Enabled))
 		{
@@ -370,7 +370,7 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 			{
 				connection.Open();
 				connection.EnlistTransaction(transaction);
-				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = command.LastInsertedId});
+				connection.Execute("update transaction_scope_test set value = @newValue where rowid = @id", new { newValue = "new value", id = command.LastInsertedId });
 			}
 
 			transaction.Commit();
@@ -458,7 +458,7 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		var transactionOptions = new TransactionOptions
 		{
 			IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted,
-			Timeout = TransactionManager.MaximumTimeout
+			Timeout = TransactionManager.MaximumTimeout,
 		};
 		using (var scope = new TransactionScope(TransactionScopeOption.Required, transactionOptions, TransactionScopeAsyncFlowOption.Enabled))
 		{
@@ -499,7 +499,7 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 		var transactionOptions = new TransactionOptions
 		{
 			IsolationLevel = System.Transactions.IsolationLevel.ReadCommitted,
-			Timeout = TransactionManager.MaximumTimeout
+			Timeout = TransactionManager.MaximumTimeout,
 		};
 		using (new TransactionScope(TransactionScopeOption.Required, transactionOptions, TransactionScopeAsyncFlowOption.Enabled))
 		{
@@ -881,6 +881,6 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 	}
 #endif
 
-	DatabaseFixture m_database;
+	private DatabaseFixture m_database;
 }
 

@@ -18,7 +18,7 @@ public class CancellationTests : IDisposable
 
 	public void Dispose() => m_server.Stop();
 
-	// NOTE: Multiple nested classes in order to force tests to run in parallel against each other
+	//// NOTE: Multiple nested classes in order to force tests to run in parallel against each other
 
 	public class CancelWithCommandTimeout : CancellationTests
 	{
@@ -329,7 +329,7 @@ public class CancellationTests : IDisposable
 			Assert.Null(ex.InnerException);
 
 			// connection is unusable
-			Assert.Equal(ConnectionState.Closed, connection.State);
+			Assert.Equal(ConnectionState.Broken, connection.State);
 		}
 	}
 
@@ -351,7 +351,7 @@ public class CancellationTests : IDisposable
 			Assert.IsType<SocketException>(ex.InnerException);
 
 			// connection is unusable
-			Assert.Equal(ConnectionState.Closed, connection.State);
+			Assert.Equal(ConnectionState.Broken, connection.State);
 		}
 	}
 
@@ -374,7 +374,7 @@ public class CancellationTests : IDisposable
 			Assert.Null(ex.InnerException);
 
 			// connection is unusable
-			Assert.Equal(ConnectionState.Closed, connection.State);
+			Assert.Equal(ConnectionState.Broken, connection.State);
 		}
 
 		[SkipCITheory]
@@ -394,7 +394,7 @@ public class CancellationTests : IDisposable
 			Assert.IsType<SocketException>(ex.InnerException);
 
 			// connection is unusable
-			Assert.Equal(ConnectionState.Closed, connection.State);
+			Assert.Equal(ConnectionState.Broken, connection.State);
 		}
 	}
 
@@ -425,8 +425,19 @@ public class CancellationTests : IDisposable
 
 	private static int ExecuteScalar(SingleStoreCommand command) => (int) command.ExecuteScalar();
 	private static async Task<int> ExecuteScalarAsync(SingleStoreCommand command, CancellationToken token) => (int) await command.ExecuteScalarAsync(token);
-	private static int ExecuteNonQuery(SingleStoreCommand command) { command.ExecuteNonQuery(); return 0; }
-	private static async Task<int> ExecuteNonQueryAsync(SingleStoreCommand command, CancellationToken token) { await command.ExecuteNonQueryAsync(token); return 0; }
+
+	private static int ExecuteNonQuery(SingleStoreCommand command)
+	{
+		command.ExecuteNonQuery();
+		return 0;
+	}
+
+	private static async Task<int> ExecuteNonQueryAsync(SingleStoreCommand command, CancellationToken token)
+	{
+		await command.ExecuteNonQueryAsync(token);
+		return 0;
+	}
+
 	private static int ExecuteReader(SingleStoreCommand command)
 	{
 		using var reader = command.ExecuteReader();
@@ -450,6 +461,6 @@ public class CancellationTests : IDisposable
 		return value.Value;
 	}
 
-	readonly FakeSingleStoreServer m_server;
-	readonly SingleStoreConnectionStringBuilder m_csb;
+	private readonly FakeSingleStoreServer m_server;
+	private readonly SingleStoreConnectionStringBuilder m_csb;
 }

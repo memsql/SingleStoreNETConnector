@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace SideBySide;
 
 public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
@@ -88,7 +90,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	}
 
 	[SkippableTheory(ServerFeatures.StoredProcedures)]
-	// [InlineData("FUNCTION", false)] see PLAT-6053
+	//// [InlineData("FUNCTION", false)] see PLAT-6053
 	[InlineData("PROCEDURE", true)]
 	[InlineData("PROCEDURE", false)]
 	public async Task StoredProcedureEchoException(string procedureType, bool prepare)
@@ -207,8 +209,8 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		var reader = (SingleStoreDataReader) await cmd.ExecuteReaderAsync();
 		var result = await reader.ReadAsync();
 		Assert.True(result);
-        Assert.Equal(DBNull.Value, reader.GetValue(0));
-        Assert.Equal(DBNull.Value, reader.GetValue(1));
+		Assert.Equal(DBNull.Value, reader.GetValue(0));
+		Assert.Equal(DBNull.Value, reader.GetValue(1));
 	}
 
 	[Theory]
@@ -304,12 +306,20 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		{
 		    var reader = (SingleStoreDataReader) await cmd.ExecuteReaderAsync();
 		    var result = await reader.ReadAsync();
+
 		    Assert.True(result);
-			Assert.Equal(2 * (double) cmd.Parameters["@radius"].Value, reader.GetDouble("diameter"));
-			Assert.Equal(2.0 * Math.PI * (double) cmd.Parameters["@radius"].Value, reader.GetDouble("circumference"));
-			Assert.Equal(Math.PI * Math.Pow((double) cmd.Parameters["@radius"].Value, 2), reader.GetDouble("area"));
-			Assert.Equal(reader.GetDouble("area") * (double) cmd.Parameters["@height"].Value, reader.GetDouble("volume"));
-		} else {
+
+		    var radius = (double)cmd.Parameters["@radius"].Value;
+		    var height = (double)cmd.Parameters["@height"].Value;
+		    var area = reader.GetDouble("area");
+
+		    Assert.Equal(2 * radius, reader.GetDouble("diameter"));
+		    Assert.Equal(2.0 * Math.PI * radius, reader.GetDouble("circumference"));
+		    Assert.Equal(Math.PI * Math.Pow(radius, 2), area);
+		    Assert.Equal(area * height, reader.GetDouble("volume"));
+		}
+		else
+		{
 			var result = await ExecuteCommandAsync(cmd, executorType);
 			if (executorType != "NonQuery")
 				Assert.Equal((string) cmd.Parameters["@name"].Value + "circle", result);
@@ -409,7 +419,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 			ParameterName = "high",
 			DbType = DbType.Int32,
 			Direction = ParameterDirection.Input,
-			Value = 1
+			Value = 1,
 		};
 		while ((int) parameter.Value < 8)
 		{
@@ -546,11 +556,11 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 #endif
 	[InlineData("char(30)", 30)]
 	[InlineData("varchar(50)", 50)]
-	// These return nonzero sizes for some versions of MySQL Server 8.0
-	// [InlineData("bit", 0)]
-	// [InlineData("tinyint", 0)]
-	// [InlineData("bigint", 0)]
-	// [InlineData("bigint unsigned", 0)]
+	//// These return nonzero sizes for some versions of MySQL Server 8.0
+	//// [InlineData("bit", 0)]
+	//// [InlineData("tinyint", 0)]
+	//// [InlineData("bigint", 0)]
+	//// [InlineData("bigint unsigned", 0)]
 	public void DeriveParametersParameterSize(string parameterType, int expectedSize)
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();
@@ -575,7 +585,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	[InlineData("bit(1)", SingleStoreDbType.Bit)]
 #if BASELINE
 	[InlineData("bool", SingleStoreDbType.Byte)]
-	[InlineData("tinyint(1)", MySqlDbType.Byte)]
+	[InlineData("tinyint(1)", SingleStoreDbType.Byte)]
 #else
 	[InlineData("bool", SingleStoreDbType.Bool)]
 	[InlineData("tinyint(1)", SingleStoreDbType.Bool)]
@@ -629,6 +639,39 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		Assert.True(reader.Read());
 		Assert.Equal(json, reader.GetString(0).Replace(" ", ""));
 		Assert.False(reader.Read());
+	}
+
+	[SkippableTheory(ServerFeatures.Vector | ServerFeatures.VectorType)]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void VectorOutputParameter(bool prepare)
+	{
+		using var cmd = m_database.Connection.CreateCommand();
+		cmd.CommandText = """
+		                  DROP PROCEDURE IF EXISTS sp_vector_out;
+		                  CREATE PROCEDURE sp_vector_out (OUT vec VECTOR)
+		                  BEGIN
+		                  	SELECT STRING_TO_VECTOR('[1.2, 3.4, 5.6]') INTO vec;
+		                  END;
+		                  """;
+		cmd.ExecuteNonQuery();
+
+		cmd.CommandText = "sp_vector_out";
+		cmd.CommandType = CommandType.StoredProcedure;
+		cmd.Parameters.Add(new SingleStoreParameter
+		{
+			Direction = ParameterDirection.Output,
+			SingleStoreDbType = SingleStoreDbType.Vector,
+			ParameterName = "@vec",
+		});
+
+		if (prepare)
+			cmd.Prepare();
+		cmd.ExecuteNonQuery();
+
+		var value = cmd.Parameters[0].Value;
+		var result = Assert.IsType<byte[]>(value);
+		Assert.Equal(new float[] { 1.2f, 3.4f, 5.6f }, MemoryMarshal.Cast<byte, float>(result).ToArray());
 	}
 
 	private static Action<SingleStoreParameter> AssertParameter(string name, ParameterDirection direction, SingleStoreDbType mySqlDbType)
@@ -737,6 +780,60 @@ END;", connection))
 		}
 	}
 
+#if !BASELINE
+	[Theory]
+	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", false, false)]
+	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", false, true)]
+	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", true, false)]
+	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", true, true)]
+	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", false, false)]
+	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", false, true)]
+	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", true, false)]
+	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", true, true)]
+	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", false, false)]
+	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", false, true)]
+	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", true, false)]
+	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", true, true)]
+	public void StoredProcedureReturnsGuid(SingleStoreGuidFormat guidFormat, string columnDefinition, string columnValue, bool setMySqlDbType, bool prepare)
+	{
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.GuidFormat = guidFormat;
+		csb.Pooling = false;
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		connection.Open();
+
+		using (var command = new SingleStoreCommand($"""
+			DROP TABLE IF EXISTS out_guid_table;
+			CREATE TABLE out_guid_table (id INT PRIMARY KEY AUTO_INCREMENT, guid {columnDefinition});
+			INSERT INTO out_guid_table (guid) VALUES ({columnValue});
+			DROP PROCEDURE IF EXISTS out_guid;
+			CREATE PROCEDURE out_guid
+			(
+				OUT out_name {columnDefinition}
+			)
+			BEGIN
+				SELECT guid INTO out_name FROM out_guid_table;
+			END;
+			""", connection))
+		{
+			command.ExecuteNonQuery();
+		}
+
+		using (var command = new SingleStoreCommand("out_guid", connection))
+		{
+			command.CommandType = CommandType.StoredProcedure;
+			var param = new SingleStoreParameter("out_name", null) { Direction = ParameterDirection.Output };
+			if (setMySqlDbType)
+				param.SingleStoreDbType = SingleStoreDbType.Guid;
+			command.Parameters.Add(param);
+			command.ExecuteNonQuery();
+			if (prepare)
+				command.Prepare();
+			Assert.Equal(new Guid("BABD8384C908499C9D95C02ADA94A970"), param.Value);
+		}
+	}
+#endif
+
 	private static string NormalizeSpaces(string input)
 	{
 		input = input.Replace('\r', ' ');
@@ -758,5 +855,5 @@ END;", connection))
 		return connection;
 	}
 
-	readonly DatabaseFixture m_database;
+	private readonly DatabaseFixture m_database;
 }

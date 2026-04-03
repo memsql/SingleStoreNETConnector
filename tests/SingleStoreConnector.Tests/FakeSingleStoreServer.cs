@@ -21,6 +21,22 @@ public sealed class FakeSingleStoreServer
 		m_tasks.Add(AcceptConnectionsAsync());
 	}
 
+	public void Reset()
+	{
+		m_cts.Cancel();
+		try
+		{
+			Task.WaitAll(m_tasks.Skip(1).ToArray());
+		}
+		catch (AggregateException)
+		{
+		}
+		m_connections.Clear();
+		m_tasks.Clear();
+		m_cts.Dispose();
+		m_cts = new();
+	}
+
 	public void Stop()
 	{
 		if (m_cts is not null)
@@ -81,10 +97,10 @@ public sealed class FakeSingleStoreServer
 		}
 	}
 
-	readonly object m_lock;
-	readonly TcpListener m_tcpListener;
-	readonly List<FakeSingleStoreServerConnection> m_connections;
-	readonly List<Task> m_tasks;
-	CancellationTokenSource m_cts;
-	int m_activeConnections;
+	private readonly object m_lock;
+	private readonly TcpListener m_tcpListener;
+	private readonly List<FakeSingleStoreServerConnection> m_connections;
+	private readonly List<Task> m_tasks;
+	private CancellationTokenSource m_cts;
+	private int m_activeConnections;
 }

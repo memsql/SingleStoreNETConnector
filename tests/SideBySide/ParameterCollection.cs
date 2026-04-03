@@ -299,6 +299,6 @@ public class ParameterCollection : IDisposable
 #endif
 	}
 
-	readonly SingleStoreCommand m_command;
-	readonly SingleStoreParameterCollection m_parameterCollection;
+	private readonly SingleStoreCommand m_command;
+	private readonly SingleStoreParameterCollection m_parameterCollection;
 }

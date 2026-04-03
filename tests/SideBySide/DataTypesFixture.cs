@@ -121,21 +121,22 @@ create table datatypes_strings (
   latin1bin varchar(300) character set utf8 collate utf8_bin null,
   cp1251 varchar(300) character set 'utf8' null,
   guid char(36) null,
-  guidbin char(36) binary null
+  guidbin char(36) binary null,
+  nonguid_utf8 varchar(36) character set 'utf8mb4' null
 );
 
-insert into datatypes_strings(utf8, utf8bin, latin1, latin1bin, cp1251, guid, guidbin)
+insert into datatypes_strings(utf8, utf8bin, latin1, latin1bin, cp1251, guid, guidbin, nonguid_utf8)
 values
-  (null, null, null, null, null, null, null),
-  ('', '', '', '', '', '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000000'),
-  ('ASCII', 'ASCII', 'ASCII', 'ASCII', 'ASCII', '00000000-0000-0000-c000-000000000046', '00000000-0000-0000-c000-000000000046'),
-  ('Ũńıċōđĕ', 'Ũńıċōđĕ', 'Lãtïñ', 'Lãtïñ', 'АБВГабвг', 'fd24a0e8-c3f2-4821-a456-35da2dc4bb8f', 'fd24a0e8-c3f2-4821-a456-35da2dc4bb8f'),
+  (null, null, null, null, null, null, null, null),
+  ('', '', '', '', '', '00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000000', ''),
+  ('ASCII', 'ASCII', 'ASCII', 'ASCII', 'ASCII', '00000000-0000-0000-c000-000000000046', '00000000-0000-0000-c000-000000000046', 'ASCII'),
+  ('Ũńıċōđĕ', 'Ũńıċōđĕ', 'Lãtïñ', 'Lãtïñ', 'АБВГабвг', 'fd24a0e8-c3f2-4821-a456-35da2dc4bb8f', 'fd24a0e8-c3f2-4821-a456-35da2dc4bb8f', 'Ũńıċōđĕ'),
   ('This string has exactly 251 characters in it. The encoded length is stored as 0xFC 0xFB 0x00. 0xFB (i.e., 251) is the sentinel byte indicating ""this field is null"". Incorrectly interpreting the (decoded) length as the sentinel byte would corrupt data.',
    'This string has exactly 251 characters in it. The encoded length is stored as 0xFC 0xFB 0x00. 0xFB (i.e., 251) is the sentinel byte indicating ""this field is null"". Incorrectly interpreting the (decoded) length as the sentinel byte would corrupt data.',
    'This string has exactly 251 characters in it. The encoded length is stored as 0xFC 0xFB 0x00. 0xFB (i.e., 251) is the sentinel byte indicating ""this field is null"". Incorrectly interpreting the (decoded) length as the sentinel byte would corrupt data.',
    'This string has exactly 251 characters in it. The encoded length is stored as 0xFC 0xFB 0x00. 0xFB (i.e., 251) is the sentinel byte indicating ""this field is null"". Incorrectly interpreting the (decoded) length as the sentinel byte would corrupt data.',
    'This string has exactly 251 characters in it. The encoded length is stored as 0xFC 0xFB 0x00. 0xFB (i.e., 251) is the sentinel byte indicating ""this field is null"". Incorrectly interpreting the (decoded) length as the sentinel byte would corrupt data.',
-   '6a0e0a40-6228-11d3-a996-0050041896c8', '6a0e0a40-6228-11d3-a996-0050041896c8');
+   '6a0e0a40-6228-11d3-a996-0050041896c8', '6a0e0a40-6228-11d3-a996-0050041896c8', 'This string has 36 characters in it.');
 
 drop table if exists datatypes_blobs;
 create table datatypes_blobs(
@@ -236,6 +237,29 @@ values
   ('{""a"": ""b""}');
 ");
 		}
+
+		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.Vector))
+		{
+			/* create a helper function for MariaDB 11.7+
+			if (Connection.ServerVersion.StartsWith("11.8.", StringComparison.Ordinal))
+				Connection.Execute("create function if not exists STRING_TO_VECTOR(s text) returns vector(3) deterministic return Vec_FromText(s);");*/
+
+			Connection.Execute("""
+			                   drop table if exists datatypes_vector;
+			                   create table datatypes_vector (
+			                   	rowid bigint not null primary key auto_increment,
+			                   	value vector(3) null
+			                   );
+			                   insert into datatypes_vector (value)
+			                   values
+			                   	(null),
+			                   	(STRING_TO_VECTOR('[0, 0, 0]')),
+			                   	(STRING_TO_VECTOR('[1, 1, 1]')),
+			                   	(STRING_TO_VECTOR('[1, 2, 3]')),
+			                   	(STRING_TO_VECTOR('[-1, -1, -1]'));
+			                   """);
+		}
+
 		Connection.Close();
 	}
 }

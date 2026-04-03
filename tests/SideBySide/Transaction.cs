@@ -377,6 +377,6 @@ public class Transaction : IClassFixture<TransactionFixture>
 	}
 #endif
 
-	readonly TransactionFixture m_database;
-	readonly SingleStoreConnection m_connection;
+	private readonly TransactionFixture m_database;
+	private readonly SingleStoreConnection m_connection;
 }

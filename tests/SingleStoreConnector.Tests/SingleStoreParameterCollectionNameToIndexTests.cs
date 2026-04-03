@@ -124,5 +124,5 @@ public class SingleStoreParameterCollectionNameToIndexTests
 		Assert.Equal(1, m_collection.NormalizedIndexOf("D"));
 	}
 
-	readonly SingleStoreParameterCollection m_collection;
+	private readonly SingleStoreParameterCollection m_collection;
 }

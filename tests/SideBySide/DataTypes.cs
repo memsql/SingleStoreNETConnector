@@ -326,6 +326,7 @@ public sealed class DataTypes : IClassFixture<DataTypesFixture>, IDisposable
 	[Theory]
 	[InlineData("utf8", new[] { null, "", "ASCII", "Ũńıċōđĕ", c_251ByteString })]
 	[InlineData("utf8bin", new[] { null, "", "ASCII", "Ũńıċōđĕ", c_251ByteString })]
+	[InlineData("nonguid_utf8", new[] { null, "", "ASCII", "Ũńıċōđĕ", "This string has 36 characters in it." })]
 	public void QueryString(string column, string[] expected)
 	{
 		DoQuery("strings", column, "VARCHAR", expected, reader => reader.GetString(0));
@@ -1366,7 +1367,6 @@ create table schema_table({createColumn});");
 	[InlineData("guid", "datatypes_strings", SingleStoreDbType.Guid, "CHAR(36)", 36, typeof(Guid), "N", -1, 0)]
 	[InlineData("guidbin", "datatypes_strings", SingleStoreDbType.Guid, "CHAR(36)", 36, typeof(Guid), "N", -1, 0)]
 	[InlineData("nonguid_utf8", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR", 36, typeof(string), "N", -1, 0)]
-	[InlineData("nonguid_latin1", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR", 36, typeof(string), "N", -1, 0)]
 	[InlineData("Date", "datatypes_times", SingleStoreDbType.Date, "DATE", 10, typeof(DateTime), "N", -1, 0)]
 	[InlineData("DateTime", "datatypes_times", SingleStoreDbType.DateTime, "DATETIME", 26, typeof(DateTime), "N", -1, 6)]
 	[InlineData("Timestamp", "datatypes_times", SingleStoreDbType.Timestamp, "TIMESTAMP", 26, typeof(DateTime), "N", -1, 6)]
@@ -1491,6 +1491,7 @@ create table schema_table({createColumn});");
 	[InlineData("MediumDecimal", "datatypes_reals", "DECIMAL(28,8)", typeof(decimal), 3, null)]
 	[InlineData("BigDecimal", "datatypes_reals", "DECIMAL(50,30)", typeof(decimal), 3, null)]
 	[InlineData("utf8", "datatypes_strings", "VARCHAR(300)", typeof(string), 3, "ASCII")]
+	[InlineData("nonguid_utf8", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR(36)", typeof(string), 3, "ASCII")]
 	[InlineData("Date", "datatypes_times", "DATE", typeof(DateTime), 2, null)]
 	[InlineData("DateTime", "datatypes_times", "DATETIME", typeof(DateTime), 2, null)]
 	[InlineData("Timestamp", "datatypes_times", "TIMESTAMP", typeof(DateTime), 2, null)]

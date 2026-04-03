@@ -95,7 +95,7 @@ create table insert_time(value TIME({precision}));");
 			using (var reader = command.ExecuteReader())
 			{
 				Assert.True(reader.Read());
-				if(precision == 0)
+				if (precision == 0)
 					Assert.Equal(TimeSpan.Zero, reader.GetValue(0));
 				else
 					Assert.Equal(TimeSpan.FromMilliseconds(10), reader.GetValue(0));
@@ -113,7 +113,7 @@ create table insert_time(value TIME({precision}));");
 	{
 		m_database.Connection.Execute(@"drop table if exists insert_datetimeoffset;
 create table insert_datetimeoffset(rowid integer not null primary key auto_increment, datetimeoffset1 datetime null);");
-		var value = new DateTimeOffsetValues { datetimeoffset1 = new DateTimeOffset(2017, 1, 2, 3, 4, 5, TimeSpan.FromMinutes(678)) };
+		var value = new DateTimeOffsetValues { DateTimeOffset1 = new DateTimeOffset(2017, 1, 2, 3, 4, 5, TimeSpan.FromMinutes(678)) };
 
 		m_database.Connection.Open();
 		try
@@ -124,7 +124,7 @@ create table insert_datetimeoffset(rowid integer not null primary key auto_incre
 			{
 				ParameterName = "@datetimeoffset1",
 				DbType = DbType.DateTimeOffset,
-				Value = value.datetimeoffset1
+				Value = value.DateTimeOffset1,
 			});
 			Assert.Equal(1, cmd.ExecuteNonQuery());
 		}
@@ -137,7 +137,7 @@ create table insert_datetimeoffset(rowid integer not null primary key auto_incre
 
 		DateTime.SpecifyKind(datetime, DateTimeKind.Utc);
 
-		Assert.Equal(value.datetimeoffset1.Value.UtcDateTime, datetime);
+		Assert.Equal(value.DateTimeOffset1.Value.UtcDateTime, datetime);
 	}
 
 	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=91199")]
@@ -145,7 +145,7 @@ create table insert_datetimeoffset(rowid integer not null primary key auto_incre
 	{
 		m_database.Connection.Execute(@"drop table if exists insert_mysqldatetime;
 create table insert_mysqldatetime(rowid integer not null primary key auto_increment, ts timestamp(6) null);");
-		var value = new DateTimeOffsetValues { datetimeoffset1 = new DateTimeOffset(2017, 1, 2, 3, 4, 5, TimeSpan.FromMinutes(678)) };
+		var value = new DateTimeOffsetValues { DateTimeOffset1 = new DateTimeOffset(2017, 1, 2, 3, 4, 5, TimeSpan.FromMinutes(678)) };
 
 		m_database.Connection.Open();
 		try
@@ -178,7 +178,7 @@ create rowstore table insert_singlestoregeography(rowid integer not null primary
 			using var cmd = m_database.Connection.CreateCommand();
 			cmd.CommandText = @"insert into insert_singlestoregeography(shape) values(@shape);";
 			cmd.Parameters.AddWithValue("@shape", new SingleStoreGeography("POLYGON((3 3,4 3,4 4,3 4,3 3))"));
-			if(prepare)
+			if (prepare)
 				cmd.Prepare();
 			Assert.Equal(1, cmd.ExecuteNonQuery());
 		}
@@ -326,6 +326,130 @@ create table insert_big_integer(rowid integer not null primary key auto_incremen
 		var val = ((decimal) reader.GetValue(0)).ToString(CultureInfo.InvariantCulture);
 		Assert.Equal(value, val);
 	}
+
+	[Theory]
+	[InlineData(1_000_000, 1024, true)]
+	[InlineData(1_000_000, 1024, false)]
+	[InlineData(1_000_000, int.MaxValue, true)]
+	[InlineData(1_000_000, int.MaxValue, false)]
+	[InlineData(0xff_fff8, 299593, true)]
+	[InlineData(0xff_fff8, 299593, false)]
+	[InlineData(0xff_fff8, 300000, true)]
+	[InlineData(0xff_fff8, 300000, false)]
+	[InlineData(0xff_fff8, int.MaxValue, true)]
+	[InlineData(0xff_fff8, int.MaxValue, false)]
+	[InlineData(0xff_fff9, int.MaxValue, true)]
+	[InlineData(0xff_fff9, int.MaxValue, false)]
+	[InlineData(0x1ff_fff0, 299593, true)]
+	[InlineData(0x1ff_fff0, 299593, false)]
+	[InlineData(0x1ff_fff0, 300000, true)]
+	[InlineData(0x1ff_fff0, 300000, false)]
+	[InlineData(15_999_999, int.MaxValue, true)]
+	[InlineData(15_999_999, int.MaxValue, false)]
+	[InlineData(16_000_000, int.MaxValue, true)]
+	[InlineData(16_000_000, int.MaxValue, false)]
+	[InlineData(16_000_001, int.MaxValue, true)]
+	[InlineData(16_000_001, int.MaxValue, false)]
+	[InlineData(31_999_999, 999_999, true)]
+	[InlineData(31_999_999, 1_000_000, false)]
+	[InlineData(32_000_000, 1_000_001, true)]
+	[InlineData(32_000_000, 1_000_002, false)]
+	[InlineData(32_000_001, 1_000_003, true)]
+	[InlineData(32_000_001, 1_000_004, false)]
+	public async Task SendLongData(int dataLength, int chunkLength, bool isAsync)
+	{
+		using SingleStoreConnection connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+		connection.Execute("""
+			drop table if exists insert_mysql_long_data;
+			create table insert_mysql_long_data(rowid bigint not null primary key auto_increment, value longblob);
+			""");
+
+		var random = new Random(dataLength);
+		var data = new byte[dataLength];
+		random.NextBytes(data);
+
+		using var chunkStream = new ChunkStream(data, chunkLength);
+
+		using var writeCommand = new SingleStoreCommand("""
+			insert into insert_mysql_long_data(value) values(@value);
+			select length(value) from insert_mysql_long_data order by rowid;
+			""", connection);
+		writeCommand.Parameters.AddWithValue("@value", chunkStream);
+		writeCommand.Prepare();
+		using (var reader = isAsync ? await writeCommand.ExecuteReaderAsync().ConfigureAwait(true) : writeCommand.ExecuteReader())
+		{
+			Assert.True(reader.Read());
+			Assert.Equal(1, reader.FieldCount);
+			Assert.Equal(dataLength, reader.GetInt32(0));
+			Assert.False(reader.Read());
+		}
+
+		using var readCommand = new SingleStoreCommand("select value from insert_mysql_long_data order by rowid;", connection);
+		using (var reader = readCommand.ExecuteReader())
+		{
+			Assert.True(reader.Read());
+			var readData = (byte[]) reader.GetValue(0);
+			Assert.True(data.AsSpan().SequenceEqual(readData)); // much faster than Assert.Equal
+		}
+	}
+
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task SendLongDataMultipleStatements(bool isAsync)
+	{
+		using SingleStoreConnection connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+		connection.Execute("""
+			drop table if exists insert_mysql_long_data;
+			create table insert_mysql_long_data(rowid bigint not null primary key auto_increment, value longblob);
+			""");
+
+		var data1 = new byte[1000];
+		var data2 = new byte[2000];
+		var data3 = new byte[3000];
+		var random = new Random(1);
+		random.NextBytes(data1);
+		random.NextBytes(data2);
+		random.NextBytes(data3);
+
+		using var chunkStream1 = new ChunkStream(data1, int.MaxValue);
+		using var chunkStream2 = new ChunkStream(data2, int.MaxValue);
+		using var chunkStream3 = new ChunkStream(data3, int.MaxValue);
+
+		using var writeCommand = new SingleStoreCommand("""
+			insert into insert_mysql_long_data(rowid, value) values(1, @value1);
+			insert into insert_mysql_long_data(rowid, value) values(2, @value2);
+			insert into insert_mysql_long_data(rowid, value) values(3, @value3);
+			""", connection);
+		writeCommand.Parameters.AddWithValue("@value1", chunkStream1);
+		writeCommand.Parameters.AddWithValue("@value2", chunkStream2);
+		writeCommand.Parameters.AddWithValue("@value3", chunkStream3);
+		writeCommand.Prepare();
+		if (isAsync)
+			await writeCommand.ExecuteNonQueryAsync();
+		else
+			writeCommand.ExecuteNonQuery();
+
+		using var readCommand = new SingleStoreCommand("select value from insert_mysql_long_data order by rowid;", connection);
+		using (var reader = readCommand.ExecuteReader())
+		{
+			Assert.True(reader.Read());
+			var readData = (byte[]) reader.GetValue(0);
+			Assert.True(data1.AsSpan().SequenceEqual(readData));
+
+			Assert.True(reader.Read());
+			readData = (byte[]) reader.GetValue(0);
+			Assert.True(data2.AsSpan().SequenceEqual(readData));
+
+			Assert.True(reader.Read());
+			readData = (byte[]) reader.GetValue(0);
+			Assert.True(data3.AsSpan().SequenceEqual(readData));
+
+			Assert.False(reader.Read());
+		}
+	}
 #endif
 
 	[Theory]
@@ -460,40 +584,39 @@ create table insert_enum_value2(rowid integer not null primary key auto_incremen
 		{
 			m_database.Connection.Close();
 		}
-
 	}
 
-	enum Enum16 : short
+	private enum Enum16 : short
 	{
 		Off,
 		On,
 	}
 
-	enum Enum32 : int
+	private enum Enum32 : int
 	{
 		Off,
 		On,
 	}
 
-	enum Enum64 : long
+	private enum Enum64 : long
 	{
 		Off,
 		On,
 	}
 
-	class DateTimeOffsetValues
+	private class DateTimeOffsetValues
 	{
-		public DateTimeOffset? datetimeoffset1 { get; set; }
+		public DateTimeOffset? DateTimeOffset1 { get; set; }
 	}
 
-	class ColorEnumValues
+	private class ColorEnumValues
 	{
 		public string Varchar { get; set; }
 		public string String { get; set; }
 		public int Int { get; set; }
 	}
 
-	class EnumValues
+	private class EnumValues
 	{
 		public Enum16? Enum16 { get; set; }
 		public Enum32? Enum32 { get; set; }
@@ -514,17 +637,17 @@ create table insert_mysql_enums(
 		Assert.Equal(new[] { "blue" }, m_database.Connection.Query<string>(@"select color from insert_mysql_enums"));
 	}
 
-	enum SingleStoreSize
+	private enum SingleStoreSize
 	{
 		None,
 		XSmall,
 		Small,
 		Medium,
 		Large,
-		XLarge
+		XLarge,
 	}
 
-	enum SingleStoreColor
+	private enum SingleStoreColor
 	{
 		None,
 		Red,
@@ -533,7 +656,7 @@ create table insert_mysql_enums(
 		Green,
 		Blue,
 		Indigo,
-		Violet
+		Violet,
 	}
 
 	[Fact]
@@ -547,7 +670,6 @@ create table insert_mysql_set(
 		m_database.Connection.Execute(@"insert into insert_mysql_set(value) values('""one""'), ('""two""'), ('""one"",""two""'), ('""four""'), ('""four"",""one""'), ('""four"",""two""'), ('""four"",""two"",""one""'), ('""eight""');");
 		Assert.Equal(new[] { "\"one\"", "\"one\",\"two\"", "\"one\",\"four\"", "\"one\",\"two\",\"four\"" }, m_database.Connection.Query<string>(@"select value from insert_mysql_set where JSON_ARRAY_CONTAINS_STRING(concat('[', value, ']'), 'one') order by rowid"));
 	}
-
 
 #if !BASELINE
 	[Theory]
@@ -588,5 +710,5 @@ value mediumblob null
 	}
 #endif
 
-	readonly DatabaseFixture m_database;
+	private readonly DatabaseFixture m_database;
 }
