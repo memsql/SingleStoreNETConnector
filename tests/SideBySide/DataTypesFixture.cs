@@ -240,23 +240,21 @@ values
 
 		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.Vector))
 		{
-			/* create a helper function for MariaDB 11.7+
-			if (Connection.ServerVersion.StartsWith("11.8.", StringComparison.Ordinal))
-				Connection.Execute("create function if not exists STRING_TO_VECTOR(s text) returns vector(3) deterministic return Vec_FromText(s);");*/
-
 			Connection.Execute("""
-			                   drop table if exists datatypes_vector;
-			                   create table datatypes_vector (
-			                   	rowid bigint not null primary key auto_increment,
-			                   	value vector(3) null
+			                   DROP TABLE IF EXISTS datatypes_vector;
+
+			                   CREATE TABLE datatypes_vector (
+			                       rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			                       value VECTOR(3) NULL
 			                   );
-			                   insert into datatypes_vector (value)
-			                   values
-			                   	(null),
-			                   	(STRING_TO_VECTOR('[0, 0, 0]')),
-			                   	(STRING_TO_VECTOR('[1, 1, 1]')),
-			                   	(STRING_TO_VECTOR('[1, 2, 3]')),
-			                   	(STRING_TO_VECTOR('[-1, -1, -1]'));
+
+			                   INSERT INTO datatypes_vector (value)
+			                   VALUES
+			                       (NULL),
+			                       ('[0, 0, 0]'),
+			                       ('[1, 1, 1]'),
+			                       ('[1, 2, 3]'),
+			                       ('[-1, -1, -1]');
 			                   """);
 		}
 

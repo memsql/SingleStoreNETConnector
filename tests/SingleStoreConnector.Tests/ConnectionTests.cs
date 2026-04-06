@@ -277,7 +277,7 @@ public class ConnectionTests : IDisposable
 		connection.Close();
 	}
 
-	[Fact]
+	[Fact(Skip = "Resetting connection is not supported in SingleStore")]
 	public async Task ResetServerConnectionWhileOpen()
 	{
 		var csb = new SingleStoreConnectionStringBuilder(m_csb.ConnectionString)
