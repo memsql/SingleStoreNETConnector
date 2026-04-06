@@ -145,7 +145,7 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 	[InlineData(false)]
 	public void ReadResultSetHeaderEvent(bool enableEvent)
 	{
-		var dataSourceBuilder = new MySqlDataSourceBuilder(AppConfig.ConnectionString)
+		var dataSourceBuilder = new SingleStoreDataSourceBuilder(AppConfig.ConnectionString)
 			.ConfigureTracing(o => o.EnableResultSetHeaderEvent(enableEvent));
 		using var dataSource = dataSourceBuilder.Build();
 		using var connection = dataSource.OpenConnection();
@@ -156,14 +156,14 @@ public class ActivityTests : IClassFixture<DatabaseFixture>
 		Activity activity = null;
 		using var listener = new ActivityListener
 		{
-			ShouldListenTo = x => x.Name == "MySqlConnector",
+			ShouldListenTo = x => x.Name == "SingleStoreConnector",
 			Sample = (ref ActivityCreationOptions<ActivityContext> options) =>
 				options.TraceId == parentActivity.TraceId ? ActivitySamplingResult.AllData : ActivitySamplingResult.None,
 			ActivityStopped = x => activity = x,
 		};
 		ActivitySource.AddActivityListener(listener);
 
-		using (var command = new MySqlCommand("SELECT 1;", connection))
+		using (var command = new SingleStoreCommand("SELECT 1;", connection))
 		{
 			command.ExecuteScalar();
 		}

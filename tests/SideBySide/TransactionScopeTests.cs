@@ -883,4 +883,3 @@ insert into transaction_scope_test(value) values('one'),('two'),('three');");
 
 	private DatabaseFixture m_database;
 }
-

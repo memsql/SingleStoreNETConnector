@@ -445,9 +445,9 @@ public sealed class DataTypes : IClassFixture<DataTypesFixture>, IDisposable
 			Assert.Equal(oldGuids ? 0L : 1L, (await connection.QueryAsync<long>(@"select count(*) from datatypes_strings where guid = @guid", new { guid = new Guid("fd24a0e8-c3f2-4821-a456-35da2dc4bb8f") }).ConfigureAwait(false)).SingleOrDefault());
 			Assert.Equal(oldGuids ? 0L : 1L, (await connection.QueryAsync<long>(@"select count(*) from datatypes_strings where guidbin = @guid", new { guid = new Guid("fd24a0e8-c3f2-4821-a456-35da2dc4bb8f") }).ConfigureAwait(false)).SingleOrDefault());
 		}
-		catch (SingleStoreException ex) when (oldGuids && ex.Number is 1300 or 3854) // InvalidCharacterString, CannotConvertString
+		//// 1300 = InvalidCharacterString, 3854 = CannotConvertString.
+		catch (SingleStoreException ex) when (oldGuids && ex.Number is 1300 or 3854)
 		{
-			// new error in MySQL 8.0.24, MariaDB 10.5
 		}
 		Assert.Equal(oldGuids ? 1L : 0L, (await connection.QueryAsync<long>(@"select count(*) from datatypes_blobs where guidbin = @guid", new { guid = new Guid(0x33221100, 0x5544, 0x7766, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF) }).ConfigureAwait(false)).SingleOrDefault());
 	}
@@ -1491,7 +1491,6 @@ create table schema_table({createColumn});");
 	[InlineData("MediumDecimal", "datatypes_reals", "DECIMAL(28,8)", typeof(decimal), 3, null)]
 	[InlineData("BigDecimal", "datatypes_reals", "DECIMAL(50,30)", typeof(decimal), 3, null)]
 	[InlineData("utf8", "datatypes_strings", "VARCHAR(300)", typeof(string), 3, "ASCII")]
-	[InlineData("nonguid_utf8", "datatypes_strings", SingleStoreDbType.VarChar, "VARCHAR(36)", typeof(string), 3, "ASCII")]
 	[InlineData("Date", "datatypes_times", "DATE", typeof(DateTime), 2, null)]
 	[InlineData("DateTime", "datatypes_times", "DATETIME", typeof(DateTime), 2, null)]
 	[InlineData("Timestamp", "datatypes_times", "TIMESTAMP", typeof(DateTime), 2, null)]

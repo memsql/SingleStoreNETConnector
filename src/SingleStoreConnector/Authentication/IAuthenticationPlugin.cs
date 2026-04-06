@@ -21,7 +21,6 @@ public interface IAuthenticationPlugin
 	byte[] CreateResponse(string password, ReadOnlySpan<byte> authenticationData);
 }
 
-
 /// <summary>
 /// <see cref="IAuthenticationPlugin2"/> is an extension to <see cref="IAuthenticationPlugin"/> that returns a hash of the client's password.
 /// </summary>

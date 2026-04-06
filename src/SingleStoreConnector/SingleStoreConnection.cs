@@ -1136,8 +1136,7 @@ namespace SingleStoreConnector
 				// (from the connection string, if non-zero), or a combination of both
 				if (connectionSettings.ConnectionTimeout != 0)
 					timeoutSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(Math.Max(1,
-						connectionSettings.ConnectionTimeoutMilliseconds -
-						Utility.GetElapsedMilliseconds(startingTimestamp))));
+						connectionSettings.ConnectionTimeoutMilliseconds - Utility.GetElapsedMilliseconds(startingTimestamp))));
 				if (cancellationToken.CanBeCanceled && timeoutSource is not null)
 					linkedSource =
 						CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
@@ -1204,7 +1203,7 @@ namespace SingleStoreConnector
 
 		internal IPEndPoint? SessionEndPoint => m_session!.IPEndPoint;
 
-		internal SingleStoreDataSource? MySqlDataSource => m_dataSource;
+		internal SingleStoreDataSource? SingleStoreDataSource => m_dataSource;
 
 		internal void SetState(ConnectionState newState)
 		{
