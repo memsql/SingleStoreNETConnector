@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
+    tags:
+      - 'v*'
   workflow_call:
   workflow_dispatch:
 
@@ -90,11 +92,9 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y apt-transport-https
-          sudo apt-get install -y mariadb-client-core-10.6
-          sudo apt-get install -y mariadb-client-10.6
+          sudo apt-get install -y mariadb-client-core
+          sudo apt-get install -y mariadb-client
           sudo apt-get update
-          sudo apt-get install -y dotnet-sdk-10.0
           dotnet --info
 
       - name: Start SingleStore Cluster
