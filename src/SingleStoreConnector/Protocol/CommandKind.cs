@@ -9,6 +9,5 @@ internal enum CommandKind
 	ChangeUser = 17,
 	StatementPrepare = 22,
 	StatementExecute = 23,
-	StatementSendLongData = 24,
 	ResetConnection = 31,
 }

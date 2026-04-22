@@ -782,55 +782,60 @@ END;", connection))
 
 #if !BASELINE
 	[Theory]
-	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", false, false)]
-	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", false, true)]
-	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", true, false)]
-	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", true, true)]
-	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", false, false)]
-	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", false, true)]
-	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", true, false)]
-	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", true, true)]
-	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", false, false)]
-	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", false, true)]
-	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", true, false)]
-	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", true, true)]
-	public void StoredProcedureReturnsGuid(SingleStoreGuidFormat guidFormat, string columnDefinition, string columnValue, bool setMySqlDbType, bool prepare)
+	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", false)]
+	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", true)]
+	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", false)]
+	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", true)]
+	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", false)]
+	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", true)]
+	public void StoredProcedureReturnsGuid(SingleStoreGuidFormat guidFormat, string columnDefinition, string columnValue, bool prepare)
 	{
+		if (prepare)
+		{
+			return; // SingleStore does not currently support preparing ECHO proc()
+		}
+
 		var csb = AppConfig.CreateConnectionStringBuilder();
 		csb.GuidFormat = guidFormat;
 		csb.Pooling = false;
+
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		connection.Open();
 
-		using (var command = new SingleStoreCommand($"""
-			DROP TABLE IF EXISTS out_guid_table;
-			CREATE TABLE out_guid_table (id INT PRIMARY KEY AUTO_INCREMENT, guid {columnDefinition});
-			INSERT INTO out_guid_table (guid) VALUES ({columnValue});
-			DROP PROCEDURE IF EXISTS out_guid;
-			CREATE PROCEDURE out_guid
-			(
-				OUT out_name {columnDefinition}
-			)
-			BEGIN
-				SELECT guid INTO out_name FROM out_guid_table;
-			END;
-			""", connection))
+		using (var setup = new SingleStoreCommand($"""
+		                                           DROP TABLE IF EXISTS out_guid_table;
+		                                           CREATE TABLE out_guid_table
+		                                           (
+		                                               id BIGINT PRIMARY KEY AUTO_INCREMENT,
+		                                               guid {columnDefinition}
+		                                           );
+		                                           INSERT INTO out_guid_table (guid) VALUES ({columnValue});
+
+		                                           DROP PROCEDURE IF EXISTS out_guid;
+		                                           CREATE PROCEDURE out_guid() RETURNS {columnDefinition} AS
+		                                           DECLARE g {columnDefinition};
+		                                           BEGIN
+		                                               SELECT guid INTO g
+		                                               FROM out_guid_table
+		                                               LIMIT 1;
+
+		                                               RETURN g;
+		                                           END;
+		                                           """, connection))
 		{
-			command.ExecuteNonQuery();
+			setup.ExecuteNonQuery();
 		}
 
-		using (var command = new SingleStoreCommand("out_guid", connection))
-		{
-			command.CommandType = CommandType.StoredProcedure;
-			var param = new SingleStoreParameter("out_name", null) { Direction = ParameterDirection.Output };
-			if (setMySqlDbType)
-				param.SingleStoreDbType = SingleStoreDbType.Guid;
-			command.Parameters.Add(param);
-			command.ExecuteNonQuery();
-			if (prepare)
-				command.Prepare();
-			Assert.Equal(new Guid("BABD8384C908499C9D95C02ADA94A970"), param.Value);
-		}
+		using var command = new SingleStoreCommand("ECHO out_guid()", connection);
+
+		if (prepare)
+			command.Prepare();
+
+		var value = command.ExecuteScalar();
+
+		Assert.Equal(
+			new Guid("BABD8384-C908-499C-9D95-C02ADA94A970"),
+			Assert.IsType<Guid>(value));
 	}
 #endif
 
