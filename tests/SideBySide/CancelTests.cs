@@ -99,8 +99,7 @@ public class CancelTests : IClassFixture<CancelFixture>, IDisposable
 
 		var stopwatch = Stopwatch.StartNew();
 		await TestUtilities.AssertExecuteScalarReturnsOneOrIsCanceledAsync(command);
-
-		// Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		task.Wait(); // shouldn't throw
 	}
 
@@ -119,8 +118,7 @@ public class CancelTests : IClassFixture<CancelFixture>, IDisposable
 		using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
 		var stopwatch = Stopwatch.StartNew();
 		await TestUtilities.AssertExecuteScalarReturnsOneOrIsCanceledAsync(command, cts.Token);
-
-		// Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 	}
 #endif
 
@@ -143,8 +141,7 @@ public class CancelTests : IClassFixture<CancelFixture>, IDisposable
 			Assert.Equal((int) SingleStoreErrorCode.QueryInterrupted, ex.Number);
 		}
 		Assert.False(reader.NextResult());
-
-		// TestUtilities.AssertDuration(stopwatch, 0, 1000); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// TestUtilities.AssertDuration(stopwatch, 0, 1000); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		Assert.InRange(rows, 0, 10000000);
 	}
 
@@ -198,8 +195,7 @@ public class CancelTests : IClassFixture<CancelFixture>, IDisposable
 			stopwatch = Stopwatch.StartNew();
 		}
 		stopwatch.Stop();
-
-		// TestUtilities.AssertDuration(stopwatch, 0, 1000); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// TestUtilities.AssertDuration(stopwatch, 0, 1000); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 	}
 
 #if !BASELINE
@@ -369,8 +365,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 		catch (OperationCanceledException ex)
 		{
 			Assert.Equal(cts.Token, ex.CancellationToken);
-
-			// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
+			//// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
 		}
 	}
 
@@ -405,8 +400,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 			catch (OperationCanceledException ex)
 			{
 				Assert.Equal(cts.Token, ex.CancellationToken);
-
-				// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
+				//// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
 			}
 		}
 
@@ -458,8 +452,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 		var stopwatch = Stopwatch.StartNew();
 		var ex = Assert.Throws<SingleStoreException>(() => batch.ExecuteScalar());
 		Assert.Equal("Query execution was interrupted", ex.Message);
-
-		// Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// Assert.InRange(stopwatch.ElapsedMilliseconds, 250, 2500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		task.Wait(); // shouldn't throw
 	}
 
@@ -528,8 +521,7 @@ create table cancel_completed_command(id integer not null primary key, value tex
 			Assert.Equal(SingleStoreErrorCode.QueryInterrupted, ex.ErrorCode);
 		}
 		Assert.False(reader.NextResult());
-
-		// TestUtilities.AssertDuration(stopwatch, 0, 1000); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// TestUtilities.AssertDuration(stopwatch, 0, 1000); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		Assert.InRange(rows, 0, 10000000);
 	}
 
@@ -673,8 +665,7 @@ create table cancel_completed_command (
 		// the call to ExecuteReader should block until the token is cancelled
 		var stopwatch = Stopwatch.StartNew();
 		using var reader = await batch.ExecuteReaderAsync(cts.Token);
-
-		// TestUtilities.AssertDuration(stopwatch, 450, 3000); commented out due to flakiness — execution can complete too quickly depending on system/load.
+		//// TestUtilities.AssertDuration(stopwatch, 450, 3000); commented out due to flakiness — execution can complete too quickly depending on system/load.
 		var rows = 0;
 		try
 		{
@@ -686,8 +677,7 @@ create table cancel_completed_command (
 		catch (OperationCanceledException ex)
 		{
 			Assert.Equal(cts.Token, ex.CancellationToken);
-
-			// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
+			//// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
 		}
 	}
 
@@ -714,8 +704,7 @@ create table cancel_completed_command (
 			// the call to NextResult should block until the token is cancelled
 			var stopwatch = Stopwatch.StartNew();
 			Assert.True(await reader.NextResultAsync(cts.Token));
-
-			// TestUtilities.AssertDuration(stopwatch, 450, 1500); commented out due to flakiness — execution can complete too quickly depending on system/load.
+			//// TestUtilities.AssertDuration(stopwatch, 450, 1500); commented out due to flakiness — execution can complete too quickly depending on system/load.
 			int rows = 0;
 			try
 			{
@@ -726,8 +715,7 @@ create table cancel_completed_command (
 			catch (OperationCanceledException ex)
 			{
 				Assert.Equal(cts.Token, ex.CancellationToken);
-
-				// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
+				//// Assert.InRange(rows, 0, 100); commented out due to flakiness — we can't guarantee that it won't read more rows
 			}
 		}
 

@@ -183,8 +183,7 @@ public class BatchTests : IClassFixture<DatabaseFixture>
 	[InlineData(";\n")]
 	[InlineData("; -- ")]
 	[InlineData(" # ")]
-
-	// [InlineData(" -- ")]  TODO: uncomment if DB-53659 is done
+	//// [InlineData(" -- ")]  TODO: uncomment if DB-53659 is done
 	public void ExecuteBatch(string suffix)
 	{
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);

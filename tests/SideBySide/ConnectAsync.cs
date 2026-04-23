@@ -125,8 +125,7 @@ public class ConnectAsync : IClassFixture<DatabaseFixture>
 		var ex = await Assert.ThrowsAsync<SingleStoreException>(connection.OpenAsync);
 		stopwatch.Stop();
 		Assert.Equal((int) SingleStoreErrorCode.UnableToConnectToHost, ex.Number);
-
-		// TestUtilities.AssertDuration(stopwatch, 1900, 1500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// TestUtilities.AssertDuration(stopwatch, 1900, 1500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 	}
 
 	[SkippableFact(ServerFeatures.Timeout, Baseline = "https://bugs.mysql.com/bug.php?id=94760")]
@@ -150,8 +149,7 @@ public class ConnectAsync : IClassFixture<DatabaseFixture>
 		stopwatch.Stop();
 		Assert.Equal(TaskStatus.Canceled, task.Status);
 		Assert.Equal(cts.Token, ex.CancellationToken);
-
-		// TestUtilities.AssertDuration(stopwatch, 1900, 1500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// TestUtilities.AssertDuration(stopwatch, 1900, 1500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 	}
 
 #if !BASELINE
