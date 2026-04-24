@@ -1436,31 +1436,35 @@ create table bulk_load_data_table(a int not null primary key auto_increment, b t
 			Assert.Equal(expected, cmd.ExecuteScalar());
 	}
 
-	// TODO: reimplement for SingleStore Geography types
-	/*[Fact]
-	public void BulkCopyGeometry()
+	[Fact]
+	public void BulkCopyGeography()
 	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
 		var dataTable = new DataTable()
 		{
 			Columns =
 			{
-				new DataColumn("geo_data", typeof(MySqlGeometry)),
+				new DataColumn("geo_data", typeof(SingleStoreGeography)),
 			},
 			Rows =
 			{
-				new object[] { MySqlGeometry.FromWkb(0, [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 240, 63]) },
+				new object[] { new SingleStoreGeography("LINESTRING(0.00000000 0.00000000, 1.00000000 1.00000000, 2.00000000 2.00000000)") },
+				new object[] { new SingleStoreGeography("POLYGON((0.00000000 0.00000000, 1.00000000 0.00000000, 1.00000000 1.00000000, 0.00000000 1.00000000, 0.00000000 0.00000000))") },
 			},
 		};
 
-		using var connection = new MySqlConnection(GetLocalConnectionString());
-		connection.Open();
-		using (var cmd = new MySqlCommand(@"drop table if exists bulk_load_data_table;
-create table bulk_load_data_table(id BIGINT UNIQUE NOT NULL AUTO_INCREMENT, geo_data GEOMETRY NOT NULL);", connection))
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create rowstore table bulk_load_data_table(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    geo_data GEOGRAPHY NOT NULL
+);", connection))
 		{
 			cmd.ExecuteNonQuery();
 		}
 
-		var bc = new MySqlBulkCopy(connection)
+		var bc = new SingleStoreBulkCopy(connection)
 		{
 			DestinationTableName = "bulk_load_data_table",
 			ColumnMappings =
@@ -1473,8 +1477,82 @@ create table bulk_load_data_table(id BIGINT UNIQUE NOT NULL AUTO_INCREMENT, geo_
 			},
 		};
 
-		bc.WriteToServer(dataTable);
-	}*/
+		var result = bc.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand("select geo_data from bulk_load_data_table order by id;", connection))
+		using (var reader = cmd.ExecuteReader())
+		{
+			Assert.True(reader.Read());
+			Assert.Equal("LINESTRING(0.00000000 0.00000000, 1.00000000 1.00000000, 2.00000000 2.00000000)", reader.GetString(0));
+			Assert.True(reader.Read());
+			Assert.Equal("POLYGON((0.00000000 0.00000000, 1.00000000 0.00000000, 1.00000000 1.00000000, 0.00000000 1.00000000, 0.00000000 0.00000000))", reader.GetString(0));
+			Assert.False(reader.Read());
+		}
+	}
+
+	[Fact]
+	public void BulkCopyGeographyPoint()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("point_data", typeof(SingleStoreGeographyPoint)),
+			},
+			Rows =
+			{
+				new object[] { new SingleStoreGeographyPoint("POINT(0.00000000 0.00000000)") },
+				new object[] { new SingleStoreGeographyPoint("POINT(1.00000000 1.00000000)") },
+			},
+		};
+
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create table bulk_load_data_table(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    point_data GEOGRAPHYPOINT NOT NULL
+);", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bc = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_data_table",
+			ColumnMappings =
+			{
+				new()
+				{
+					SourceOrdinal = 0,
+					DestinationColumn = "point_data",
+				},
+			},
+		};
+
+		var result = bc.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(
+			       "select GEOGRAPHY_LONGITUDE(point_data), GEOGRAPHY_LATITUDE(point_data) from bulk_load_data_table order by id;",
+			       connection))
+		using (var reader = cmd.ExecuteReader())
+		{
+			Assert.True(reader.Read());
+			Assert.InRange(reader.GetDouble(0), -1e-6, 1e-6);
+			Assert.InRange(reader.GetDouble(1), -1e-6, 1e-6);
+
+			Assert.True(reader.Read());
+			Assert.InRange(reader.GetDouble(0), 1.0 - 1e-6, 1.0 + 1e-6);
+			Assert.InRange(reader.GetDouble(1), 1.0 - 1e-6, 1.0 + 1e-6);
+
+			Assert.False(reader.Read());
+		}
+	}
 #endif
 
 	internal static string GetConnectionString() => AppConfig.ConnectionString;
