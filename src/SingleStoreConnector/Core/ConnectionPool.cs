@@ -295,11 +295,11 @@ internal sealed class ConnectionPool : IConnectionPoolMetadata, IDisposable
 
 		foreach (var (session, connection) in recoveredSessions)
 		{
-			// bypass SingleStoreConnection.Dispose(Async), because it's a dummy MySqlConnection that's not set up
+			// bypass SingleStoreConnection.Dispose(Async), because it's a dummy SingleStoreConnection that's not set up
 			// properly, and simply return the session to the pool directly
 			await session.ReturnToPoolAsync(ioBehavior, null).ConfigureAwait(false);
 
-			// be explicit about keeping the associated MySqlConnection alive until the session has been returned
+			// be explicit about keeping the associated SingleStoreConnection alive until the session has been returned
 			GC.KeepAlive(connection);
 		}
 	}

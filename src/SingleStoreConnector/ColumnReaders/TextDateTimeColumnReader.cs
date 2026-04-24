@@ -81,7 +81,7 @@ internal sealed class TextDateTimeColumnReader : ColumnReader
 
 		try
 		{
-			return allowZeroDateTime ? (ticks % 10 == 0 ? (object) new SingleStoreDateTime(year, month, day, hour, minute, second, ticks / 10) : throw new NotSupportedException("MySqlDateTime does not support sub-microsecond precision")) :
+			return allowZeroDateTime ? (ticks % 10 == 0 ? (object) new SingleStoreDateTime(year, month, day, hour, minute, second, ticks / 10) : throw new NotSupportedException("SingleStoreDateTime does not support sub-microsecond precision")) :
 				new DateTime(year, month, day, hour, minute, second, dateTimeKind).AddTicks(ticks);
 		}
 		catch (Exception ex)

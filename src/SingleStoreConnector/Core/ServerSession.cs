@@ -1035,7 +1035,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 		}
 		catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.ClientInteractionTimeout)
 		{
-			Log.PingFailed(m_logger, ex, Id, "ClientInteractionTimeout MySqlException");
+			Log.PingFailed(m_logger, ex, Id, "ClientInteractionTimeout SingleStoreException");
 		}
 		catch (SocketException ex)
 		{

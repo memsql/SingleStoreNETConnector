@@ -24,7 +24,7 @@ internal enum ColumnType
 	Bit = 16,
 	Timestamp2 = 17,
 	DateTime2 = 18,
-	GeographyPoint = 0xF3,
+	GeographyPoint = 0xF2,
 	Geography = 0xF4,
 	Json = 0xF5,
 	NewDecimal = 0xF6,

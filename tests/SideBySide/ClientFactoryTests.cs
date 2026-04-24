@@ -1,7 +1,3 @@
-#if BASELINE
-using SingleStoreConnectorFactory = MySql.Data.MySqlClient.MySqlClientFactory;
-#endif
-
 namespace SideBySide;
 
 public class ClientFactoryTests

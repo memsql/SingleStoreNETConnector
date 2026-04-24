@@ -252,7 +252,7 @@ public sealed class SingleStoreBulkCopy
 						if (schema[i].DataTypeName == "YEAR")
 						{
 							// the current code can't distinguish between 0 = 0000 and 0 = 2000
-							throw new NotSupportedException("'YEAR' columns are not supported by MySqlBulkCopy.");
+							throw new NotSupportedException("'YEAR' columns are not supported by SingleStoreBulkCopy.");
 						}
 
 						Log.AddingDefaultColumnMapping(m_logger, i, destinationColumn);

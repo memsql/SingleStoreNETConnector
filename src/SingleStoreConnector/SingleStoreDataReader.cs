@@ -651,7 +651,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 			if ((m_behavior & CommandBehavior.CloseConnection) != 0)
 				await connection.CloseAsync(ioBehavior).ConfigureAwait(false);
 
-			// clear fields (so that MySqlConnection can be GCed if the user doesn't hold a reference to it)
+			// clear fields (so that SingleStoreConnection can be GCed if the user doesn't hold a reference to it)
 			Command = null;
 			m_commandListPosition = default;
 			m_payloadCreator = null;

@@ -341,7 +341,7 @@ public class BulkLoaderAsync : IClassFixture<DatabaseFixture>
 #if !BASELINE
 		await Assert.ThrowsAsync<InvalidOperationException>(async () => { var rowCount = await bl.LoadAsync(); });
 #else
-		await Assert.ThrowsAsync<MySqlException>(async () => { var rowCount = await bl.LoadAsync(fileStream); });
+		await Assert.ThrowsAsync<SingleStoreException>(async () => { var rowCount = await bl.LoadAsync(fileStream); });
 #endif
 	}
 

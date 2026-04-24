@@ -11,7 +11,7 @@ namespace SingleStoreConnector.Authentication.Ed25519;
 public sealed class ParsecAuthenticationPlugin : IAuthenticationPlugin3
 {
 	/// <summary>
-	/// Registers the Parsec authentication plugin with MySqlConnector. You must call this method once before
+	/// Registers the Parsec authentication plugin with SingleStoreConnector. You must call this method once before
 	/// opening a connection that uses Parsec authentication.
 	/// </summary>
 	public static void Install()

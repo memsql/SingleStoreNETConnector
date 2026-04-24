@@ -470,7 +470,7 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 #if !BASELINE
 		Assert.Throws<InvalidOperationException>(() => bl.Load());
 #else
-		Assert.Throws<MySqlException>(() => bl.Load(memoryStream));
+		Assert.Throws<SingleStoreException>(() => bl.Load(memoryStream));
 #endif
 	}
 
@@ -1220,7 +1220,7 @@ create table bulk_load_data_table(a int, b text);", connection))
 		dt.Rows.Add(2, 2001);
 
 		var exception = Assert.Throws<NotSupportedException>(() => bulkCopy.WriteToServer(dt));
-		Assert.Equal("'YEAR' columns are not supported by MySqlBulkCopy.", exception.Message);
+		Assert.Equal("'YEAR' columns are not supported by SingleStoreBulkCopy.", exception.Message);
 	}
 
 	[Fact]
