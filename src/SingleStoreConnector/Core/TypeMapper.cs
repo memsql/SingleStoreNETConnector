@@ -55,10 +55,6 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("DOUBLE", typeDouble, SingleStoreDbType.Double));
 		AddColumnTypeMetadata(new("FLOAT", typeFloat, SingleStoreDbType.Float));
 
-		// vector
-		var typeFloatReadOnlyMemory = AddDbTypeMapping(new(typeof(ReadOnlyMemory<float>), [DbType.Object]));
-		AddColumnTypeMetadata(new("VECTOR", typeFloatReadOnlyMemory, SingleStoreDbType.Vector, binary: true, simpleDataTypeName: "VECTOR", createFormat: "VECTOR({0})"));
-
 		// string
 		var typeFixedString = AddDbTypeMapping(new(typeof(string), [DbType.StringFixedLength, DbType.AnsiStringFixedLength], convert: Convert.ToString!));
 		var typeString = AddDbTypeMapping(new(typeof(string), [DbType.String, DbType.AnsiString, DbType.Xml], convert: Convert.ToString!));
@@ -320,9 +316,6 @@ internal sealed class TypeMapper
 			case ColumnType.Set:
 				return SingleStoreDbType.Set;
 
-			case ColumnType.Vector:
-				return SingleStoreDbType.Vector;
-
 			default:
 				throw new NotImplementedException($"ConvertToSingleStoreDbType for {columnDefinition.ColumnType} is not implemented");
 		}
@@ -360,7 +353,6 @@ internal sealed class TypeMapper
 			SingleStoreDbType.Geography => ColumnType.Geography,
 			SingleStoreDbType.GeographyPoint => ColumnType.GeographyPoint,
 			SingleStoreDbType.Null => ColumnType.Null,
-			SingleStoreDbType.Vector => ColumnType.Vector,
 			_ => throw new NotImplementedException($"ConvertToColumnTypeAndFlags for {dbType} is not implemented"),
 		};
 		return (ushort) ((byte) columnType | (isUnsigned ? 0x8000 : 0));

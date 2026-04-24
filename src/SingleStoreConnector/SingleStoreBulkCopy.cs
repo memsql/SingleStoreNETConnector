@@ -243,7 +243,6 @@ public sealed class SingleStoreBulkCopy
 				{
 					var type = schema[i].DataType;
 					if (type == typeof(byte[]) ||
-					    dataTypeName == "VECTOR" ||
 					    (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
 					{
 						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = UNHEX(%VAR%)");

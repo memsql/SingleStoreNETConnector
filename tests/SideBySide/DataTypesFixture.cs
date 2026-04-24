@@ -238,26 +238,6 @@ values
 ");
 		}
 
-		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.Vector))
-		{
-			Connection.Execute("""
-			                   DROP TABLE IF EXISTS datatypes_vector;
-
-			                   CREATE TABLE datatypes_vector (
-			                       rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-			                       value VECTOR(3) NULL
-			                   );
-
-			                   INSERT INTO datatypes_vector (value)
-			                   VALUES
-			                       (NULL),
-			                       ('[0, 0, 0]'),
-			                       ('[1, 1, 1]'),
-			                       ('[1, 2, 3]'),
-			                       ('[-1, -1, -1]');
-			                   """);
-		}
-
 		Connection.Close();
 	}
 }

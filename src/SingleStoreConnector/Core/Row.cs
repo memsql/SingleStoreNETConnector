@@ -452,7 +452,7 @@ internal sealed class Row
 		var columnType = column.ColumnType;
 		if ((column.ColumnFlags & ColumnFlags.Binary) == 0 ||
 			(columnType != ColumnType.String && columnType != ColumnType.VarString && columnType != ColumnType.TinyBlob &&
-			columnType != ColumnType.Blob && columnType != ColumnType.MediumBlob && columnType != ColumnType.LongBlob && columnType != ColumnType.Vector))
+			columnType != ColumnType.Blob && columnType != ColumnType.MediumBlob && columnType != ColumnType.LongBlob))
 		{
 			throw new InvalidCastException($"Can't convert {columnType} to bytes.");
 		}
