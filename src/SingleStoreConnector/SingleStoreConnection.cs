@@ -572,6 +572,16 @@ namespace SingleStoreConnector
 						m_hasBeenOpened = true;
 						SetState(ConnectionState.Open);
 
+						try
+						{
+							await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+						}
+						catch
+						{
+							await CloseAsync(changeState: true, ioBehavior ?? AsyncIOBehavior).ConfigureAwait(false);
+							throw;
+						}
+
 						if (ConnectionOpenedCallback is { } autoEnlistConnectionOpenedCallback)
 						{
 							cancellationToken.ThrowIfCancellationRequested();
@@ -588,6 +598,16 @@ namespace SingleStoreConnector
 						cancellationToken).ConfigureAwait(false);
 					m_hasBeenOpened = true;
 					SetState(ConnectionState.Open);
+
+					try
+					{
+						await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+					}
+					catch
+					{
+						await CloseAsync(changeState: true, ioBehavior ?? AsyncIOBehavior).ConfigureAwait(false);
+						throw;
+					}
 				}
 				catch (OperationCanceledException ex)
 				{
