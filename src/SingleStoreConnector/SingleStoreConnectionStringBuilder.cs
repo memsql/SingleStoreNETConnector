@@ -827,6 +827,19 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 		set => SingleStoreConnectionStringOption.UseXaTransactions.SetValue(this, value);
 	}
 
+	/// <summary>
+	/// Enables extended data types, by enabling the enable_extended_types_metadata engine variable, that allows the connector to support extended data types, such as VECTOR and BSON
+	/// </summary>
+	[Category("Other")]
+	[DefaultValue(false)]
+	[Description("Enable extended data types engine variable for VECTOR and BSON support.")]
+	[DisplayName("Enable extended data types")]
+	public bool EnableExtendedDataTypes
+	{
+		get => SingleStoreConnectionStringOption.EnableExtendedDataTypes.GetValue(this);
+		set => SingleStoreConnectionStringOption.EnableExtendedDataTypes.SetValue(this, value);
+	}
+
 	// Other Methods
 
 	/// <summary>
@@ -987,6 +1000,7 @@ internal abstract partial class SingleStoreConnectionStringOption
 	public static readonly SingleStoreConnectionStringValueOption<bool> UseAffectedRows;
 	public static readonly SingleStoreConnectionStringValueOption<bool> UseCompression;
 	public static readonly SingleStoreConnectionStringValueOption<bool> UseXaTransactions;
+	public static readonly SingleStoreConnectionStringValueOption<bool> EnableExtendedDataTypes;
 
 	public static SingleStoreConnectionStringOption? TryGetOptionForKey(string key) =>
 		s_options.TryGetValue(key, out var option) ? option : null;
@@ -1299,6 +1313,10 @@ internal abstract partial class SingleStoreConnectionStringOption
 		AddOption(options, UseXaTransactions = new(
 			keys: ["Use XA Transactions", "UseXaTransactions"],
 			defaultValue: true));
+
+		AddOption(options, EnableExtendedDataTypes = new(
+			keys: ["Enable Extended Data Types", "EnableExtendedDataTypes"],
+			defaultValue: false));
 #pragma warning restore SA1118 // Parameter should not span multiple lines
 
 #if NET8_0_OR_GREATER

@@ -513,6 +513,24 @@ namespace SingleStoreConnector
 
 		public new SingleStoreCommand CreateCommand() => (SingleStoreCommand) base.CreateCommand();
 
+		private async Task InitializeSessionAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+		{
+			if (!EnableExtendedDataTypes)
+				return;
+
+			if (Session.S2ServerVersion.Version < new Version(8, 5, 28))
+			{
+				throw new NotSupportedException(
+					"EnableExtendedDataTypes requires SingleStore 8.5.28 or later.");
+			}
+
+			await using var cmd = new SingleStoreCommand(
+				"SET SESSION enable_extended_types_metadata = TRUE;",
+				this);
+
+			await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+		}
+
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		public bool Ping() => PingAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 #pragma warning restore CA2012
@@ -572,6 +590,8 @@ namespace SingleStoreConnector
 						m_hasBeenOpened = true;
 						SetState(ConnectionState.Open);
 
+						await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+
 						if (ConnectionOpenedCallback is { } autoEnlistConnectionOpenedCallback)
 						{
 							cancellationToken.ThrowIfCancellationRequested();
@@ -608,6 +628,8 @@ namespace SingleStoreConnector
 					throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost,
 						"Unable to connect to any of the specified SingleStore hosts.");
 				}
+
+				await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 
 				if (m_connectionSettings.AutoEnlist && System.Transactions.Transaction.Current is not null)
 					EnlistTransaction(System.Transactions.Transaction.Current);
@@ -1074,6 +1096,7 @@ namespace SingleStoreConnector
 		internal bool IgnorePrepare => GetInitializedConnectionSettings().IgnorePrepare;
 		internal bool NoBackslashEscapes => GetInitializedConnectionSettings().NoBackslashEscapes;
 		internal bool TreatTinyAsBoolean => GetInitializedConnectionSettings().TreatTinyAsBoolean;
+		internal bool EnableExtendedDataTypes => GetInitializedConnectionSettings().EnableExtendedDataTypes;
 
 		internal IOBehavior AsyncIOBehavior => GetConnectionSettings().ForceSynchronous
 			? IOBehavior.Synchronous
