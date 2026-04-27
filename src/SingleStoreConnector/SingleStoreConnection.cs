@@ -590,7 +590,15 @@ namespace SingleStoreConnector
 						m_hasBeenOpened = true;
 						SetState(ConnectionState.Open);
 
-						await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+						try
+						{
+							await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+						}
+						catch
+						{
+							await CloseAsync(changeState: true, ioBehavior ?? AsyncIOBehavior).ConfigureAwait(false);
+							throw;
+						}
 
 						if (ConnectionOpenedCallback is { } autoEnlistConnectionOpenedCallback)
 						{
@@ -608,6 +616,16 @@ namespace SingleStoreConnector
 						cancellationToken).ConfigureAwait(false);
 					m_hasBeenOpened = true;
 					SetState(ConnectionState.Open);
+
+					try
+					{
+						await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+					}
+					catch
+					{
+						await CloseAsync(changeState: true, ioBehavior ?? AsyncIOBehavior).ConfigureAwait(false);
+						throw;
+					}
 				}
 				catch (OperationCanceledException ex)
 				{
@@ -628,8 +646,6 @@ namespace SingleStoreConnector
 					throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost,
 						"Unable to connect to any of the specified SingleStore hosts.");
 				}
-
-				await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 
 				if (m_connectionSettings.AutoEnlist && System.Transactions.Transaction.Current is not null)
 					EnlistTransaction(System.Transactions.Transaction.Current);
