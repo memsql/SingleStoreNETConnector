@@ -4,6 +4,23 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector.Protocol.Payloads;
 
+internal enum SingleStoreExtendedTypeCode : byte
+{
+	None = 0,
+	Bson = 1,
+	Vector = 2,
+}
+
+internal enum SingleStoreVectorElementType : byte
+{
+	F32 = 1,
+	F64 = 2,
+	I8 = 3,
+	I16 = 4,
+	I32 = 5,
+	I64 = 6,
+}
+
 internal sealed class ColumnDefinitionPayload
 {
 	public string Name
@@ -76,6 +93,14 @@ internal sealed class ColumnDefinitionPayload
 
 	public byte Decimals { get; private set; }
 
+	public int FixedLengthFieldsLength { get; private set; }
+
+	public SingleStoreExtendedTypeCode ExtendedTypeCode { get; private set; }
+
+	public uint? VectorDimensions { get; private set; }
+
+	public SingleStoreVectorElementType? VectorElementType { get; private set; }
+
 	public static void Initialize(ref ColumnDefinitionPayload payload, ResizableArraySegment<byte> arraySegment)
 	{
 		payload ??= new ColumnDefinitionPayload();
@@ -91,7 +116,12 @@ internal sealed class ColumnDefinitionPayload
 		SkipLengthEncodedByteString(ref reader); // physical table
 		SkipLengthEncodedByteString(ref reader); // name
 		SkipLengthEncodedByteString(ref reader); // physical name
-		reader.ReadByte(0x0C); // length of fixed-length fields, always 0x0C
+
+		FixedLengthFieldsLength = checked((int) reader.ReadLengthEncodedInteger());
+		if (FixedLengthFieldsLength < 12)
+			throw new FormatException(
+				$"Expected fixed-length fields length to be at least 12 bytes, but was {FixedLengthFieldsLength}.");
+
 		CharacterSet = (CharacterSet) reader.ReadUInt16();
 		ColumnLength = reader.ReadUInt32();
 		ColumnType = (ColumnType) reader.ReadByte();
@@ -99,6 +129,38 @@ internal sealed class ColumnDefinitionPayload
 		Decimals = reader.ReadByte(); // 0x00 for integers and static strings, 0x1f for dynamic strings, double, float, 0x00 to 0x51 for decimals
 		reader.ReadByte(0); // reserved byte 1
 		reader.ReadByte(0); // reserved byte 2
+
+		ExtendedTypeCode = SingleStoreExtendedTypeCode.None;
+		VectorDimensions = null;
+		VectorElementType = null;
+
+		var remainingExtendedBytes = FixedLengthFieldsLength - 12;
+		if (remainingExtendedBytes > 0)
+		{
+			ExtendedTypeCode = (SingleStoreExtendedTypeCode) reader.ReadByte();
+			remainingExtendedBytes--;
+
+			switch (ExtendedTypeCode)
+			{
+				case SingleStoreExtendedTypeCode.None:
+				case SingleStoreExtendedTypeCode.Bson:
+					break;
+				case SingleStoreExtendedTypeCode.Vector:
+					if (remainingExtendedBytes < 5)
+						throw new FormatException(
+							$"Expected 5 additional bytes for VECTOR extended metadata, but only {remainingExtendedBytes} remained.");
+
+					VectorDimensions = reader.ReadUInt32();
+					VectorElementType = (SingleStoreVectorElementType) reader.ReadByte();
+					remainingExtendedBytes -= 5;
+					break;
+				default:
+					break;
+			}
+
+			if (remainingExtendedBytes > 0)
+				reader.Offset += remainingExtendedBytes;
+		}
 
 		if (m_readNames)
 		{
@@ -142,4 +204,7 @@ internal sealed class ColumnDefinitionPayload
 	private string? m_table;
 	private string? m_physicalTable;
 	private string? m_physicalName;
+
+	public bool IsBson => ExtendedTypeCode == SingleStoreExtendedTypeCode.Bson;
+	public bool IsVector => ExtendedTypeCode == SingleStoreExtendedTypeCode.Vector;
 }

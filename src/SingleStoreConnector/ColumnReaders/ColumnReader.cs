@@ -8,6 +8,30 @@ internal abstract class ColumnReader
 {
 	public static ColumnReader Create(bool isBinary, ColumnDefinitionPayload columnDefinition, SingleStoreConnection connection)
 	{
+		switch (columnDefinition.ExtendedTypeCode)
+		{
+			case SingleStoreExtendedTypeCode.Bson:
+				return BytesColumnReader.Instance;
+
+			case SingleStoreExtendedTypeCode.Vector:
+				return columnDefinition.VectorElementType switch
+				{
+					SingleStoreVectorElementType.F32 => VectorFloat32ColumnReader.Instance,
+					SingleStoreVectorElementType.F64 => VectorFloat64ColumnReader.Instance,
+					SingleStoreVectorElementType.I8 => VectorInt8ColumnReader.Instance,
+					SingleStoreVectorElementType.I16 => VectorInt16ColumnReader.Instance,
+					SingleStoreVectorElementType.I32 => VectorInt32ColumnReader.Instance,
+					SingleStoreVectorElementType.I64 => VectorInt64ColumnReader.Instance,
+					null => throw new FormatException("VECTOR column is missing VectorElementType metadata."),
+					_ => throw new NotSupportedException(
+						$"Unsupported VECTOR element type: {columnDefinition.VectorElementType}."),
+				};
+
+			case SingleStoreExtendedTypeCode.None:
+			default:
+				break;
+		}
+
 		var isUnsigned = (columnDefinition.ColumnFlags & ColumnFlags.Unsigned) != 0;
 		switch (columnDefinition.ColumnType)
 		{
