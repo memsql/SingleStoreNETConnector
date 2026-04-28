@@ -78,6 +78,13 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("MEDIUMBLOB", typeBinary, SingleStoreDbType.MediumBlob, binary: true, columnSize: 16777215, simpleDataTypeName: "BLOB"));
 		AddColumnTypeMetadata(new("LONGBLOB", typeBinary, SingleStoreDbType.LongBlob, binary: true, columnSize: uint.MaxValue, simpleDataTypeName: "BLOB"));
 
+		// bson
+		AddColumnTypeMetadata(new("BSON", typeBinary, SingleStoreDbType.Bson, binary: true, columnSize: uint.MaxValue, simpleDataTypeName: "BSON", createFormat: "BSON"));
+
+		// vector
+		var typeVectorLogical = new DbTypeMapping(typeof(ReadOnlyMemory<float>), Array.Empty<DbType>());
+		AddColumnTypeMetadata(new("VECTOR", typeVectorLogical, SingleStoreDbType.Vector, simpleDataTypeName: "VECTOR"));
+
 		// spatial
 		AddColumnTypeMetadata(new("GEOGRAPHY", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
 		AddColumnTypeMetadata(new("POINT", typeString, SingleStoreDbType.GeographyPoint, columnSize: 48));
@@ -198,6 +205,15 @@ internal sealed class TypeMapper
 
 	public static SingleStoreDbType ConvertToSingleStoreDbType(ColumnDefinitionPayload columnDefinition, bool treatTinyAsBoolean, bool treatChar48AsGeographyPoint, SingleStoreGuidFormat guidFormat)
 	{
+		switch (columnDefinition.ExtendedTypeCode)
+		{
+			case SingleStoreExtendedTypeCode.Bson:
+				return SingleStoreDbType.Bson;
+
+			case SingleStoreExtendedTypeCode.Vector:
+				return SingleStoreDbType.Vector;
+		}
+
 		var isUnsigned = (columnDefinition.ColumnFlags & ColumnFlags.Unsigned) != 0;
 		if ((columnDefinition.ColumnFlags & ColumnFlags.Enum) != 0)
 			return SingleStoreDbType.Enum;
@@ -326,6 +342,10 @@ internal sealed class TypeMapper
 		var isUnsigned = dbType is SingleStoreDbType.UByte or SingleStoreDbType.UInt16 or SingleStoreDbType.UInt24 or SingleStoreDbType.UInt32 or SingleStoreDbType.UInt64;
 		var columnType = dbType switch
 		{
+			SingleStoreDbType.Vector => throw new NotSupportedException(
+				"Vector parameter binding is not implemented yet; no normal wire ColumnType exists for VECTOR."),
+			SingleStoreDbType.Bson => throw new NotSupportedException(
+				"Bson parameter binding is not implemented yet; no normal wire ColumnType exists for BSON."),
 			SingleStoreDbType.Bool or SingleStoreDbType.Byte or SingleStoreDbType.UByte => ColumnType.Tiny,
 			SingleStoreDbType.Int16 or SingleStoreDbType.UInt16 => ColumnType.Short,
 			SingleStoreDbType.Int24 or SingleStoreDbType.UInt24 => ColumnType.Int24,

@@ -50,4 +50,8 @@ public enum SingleStoreDbType
 	LongText,
 	Text,
 	Guid = 800,
+
+	// SingleStore logical/provider-only types backed by extended metadata.
+	Bson = 801,
+	Vector = 802,
 }
