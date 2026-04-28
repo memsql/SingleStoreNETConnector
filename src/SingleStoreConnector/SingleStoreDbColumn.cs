@@ -13,11 +13,50 @@ public sealed class SingleStoreDbColumn : DbColumn
 		var columnTypeMetadata = TypeMapper.Instance.GetColumnTypeMetadata(mySqlDbType);
 
 		var type = columnTypeMetadata.DbTypeMapping.ClrType;
+		var dataTypeName = columnTypeMetadata.SimpleDataTypeName;
 
+		VectorDimensions = null;
+		VectorElementTypeName = null;
+
+		switch (mySqlDbType)
+		{
+			case SingleStoreDbType.Bson:
+				type = typeof(byte[]);
+				dataTypeName = "BSON";
+				break;
+
+			case SingleStoreDbType.Vector:
+				dataTypeName = "VECTOR";
+
+				VectorDimensions = column.VectorDimensions is { } dims
+					? checked((int) dims)
+					: null;
+
+				VectorElementTypeName = column.VectorElementType?.ToString();
+
+				type = column.VectorElementType switch
+				{
+					SingleStoreVectorElementType.F32 => typeof(ReadOnlyMemory<float>),
+					SingleStoreVectorElementType.F64 => typeof(ReadOnlyMemory<double>),
+					SingleStoreVectorElementType.I8 => typeof(ReadOnlyMemory<sbyte>),
+					SingleStoreVectorElementType.I16 => typeof(ReadOnlyMemory<short>),
+					SingleStoreVectorElementType.I32 => typeof(ReadOnlyMemory<int>),
+					SingleStoreVectorElementType.I64 => typeof(ReadOnlyMemory<long>),
+					null => throw new FormatException("VECTOR column is missing VectorElementType metadata."),
+					_ => throw new NotSupportedException(
+						$"Unsupported VECTOR element type: {column.VectorElementType}."),
+				};
+				break;
+		}
+
+		if (mySqlDbType == SingleStoreDbType.Vector && VectorDimensions is { } vectorDimensions)
+		{
+			ColumnSize = vectorDimensions;
+		}
 		// starting from 7.8 SingleStore returns number of characters (not amount of bytes)
 		// for text types (e.g. Text, TinyText, MediumText, LongText)
 		// (see https://grizzly.internal.memcompute.com/D54237)
-		if (serverVersion >= new Version(7, 8, 0) &&
+		else if (serverVersion >= new Version(7, 8, 0) &&
 		    mySqlDbType is SingleStoreDbType.LongText or SingleStoreDbType.MediumText or SingleStoreDbType.Text or SingleStoreDbType.TinyText)
 		{
 			// overflow may occur here for SingleStoreDbType.LongText
@@ -46,9 +85,13 @@ public sealed class SingleStoreDbColumn : DbColumn
 		ColumnName = column.Name;
 		ColumnOrdinal = ordinal;
 		DataType = (allowZeroDateTime && type == typeof(DateTime)) ? typeof(SingleStoreDateTime) : type;
-		DataTypeName = columnTypeMetadata.SimpleDataTypeName;
+		DataTypeName = dataTypeName;
 		if (mySqlDbType == SingleStoreDbType.String)
 			DataTypeName += string.Format(CultureInfo.InvariantCulture, "({0})", ColumnSize);
+		else if (mySqlDbType == SingleStoreDbType.Vector && column is { VectorDimensions: { } dimensions, VectorElementType: { } elementType })
+		{
+			DataTypeName += string.Format(CultureInfo.InvariantCulture, "({0}, {1})", dimensions, elementType);
+		}
 		IsAliased = column.PhysicalName != column.Name;
 		IsAutoIncrement = (column.ColumnFlags & ColumnFlags.AutoIncrement) != 0;
 		IsExpression = false;
@@ -72,6 +115,10 @@ public sealed class SingleStoreDbColumn : DbColumn
 	}
 
 	public SingleStoreDbType ProviderType { get; }
+
+	public int? VectorDimensions { get; }
+
+	public string? VectorElementTypeName { get; }
 
 	/// <summary>
 	/// Gets the name of the table that the column belongs to. This will be the alias if the table is aliased in the query.
