@@ -234,10 +234,40 @@ public sealed class SingleStoreBulkCopy
 			for (var i = 0; i < schema.Count; i++)
 			{
 				var destinationColumn = reader.GetName(i);
+				var variableName = $"@`temporary_column_dotnet_connector_col{i}`";
+
+				if (schema[i] is not SingleStoreDbColumn singleStoreColumn)
+				{
+					// fallback to existing behavior
+					goto LegacyHandling;
+				}
+
+				switch (singleStoreColumn.ProviderType)
+				{
+					case SingleStoreDbType.Vector:
+					{
+						if (singleStoreColumn.VectorDimensions is not { } dims || string.IsNullOrEmpty(singleStoreColumn.VectorElementTypeName))
+							throw new InvalidOperationException(
+								$"VECTOR destination column '{destinationColumn}' is missing dimension or element type metadata.");
+
+						var expression = $"%COL% = UNHEX(%VAR%):>VECTOR({dims}, {singleStoreColumn.VectorElementTypeName})";
+						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, variableName, expression);
+						continue;
+					}
+
+					case SingleStoreDbType.Bson:
+					{
+						var expression = "%COL% = UNHEX(%VAR%):>BSON";
+						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, variableName, expression);
+						continue;
+					}
+				}
+
+				LegacyHandling:
 				var dataTypeName = schema[i].DataTypeName;
 				if (dataTypeName == "BIT")
 				{
-					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = CAST(%VAR% AS UNSIGNED)");
+					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, variableName, $"%COL% = CAST(%VAR% AS UNSIGNED)");
 				}
 				else
 				{
@@ -245,7 +275,7 @@ public sealed class SingleStoreBulkCopy
 					if (type == typeof(byte[]) ||
 					    (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
 					{
-						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = UNHEX(%VAR%)");
+						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, variableName, $"%COL% = UNHEX(%VAR%)");
 					}
 					else if (addDefaultMappings)
 					{
