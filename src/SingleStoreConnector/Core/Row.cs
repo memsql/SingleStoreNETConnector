@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using SingleStoreConnector.ColumnReaders;
 using SingleStoreConnector.Protocol;
+using SingleStoreConnector.Protocol.Payloads;
 using SingleStoreConnector.Protocol.Serialization;
 #if !NETCOREAPP2_1_OR_GREATER && !NETSTANDARD2_1_OR_GREATER
 using SingleStoreConnector.Utilities;
@@ -449,6 +450,16 @@ internal sealed class Row
 			throw new InvalidCastException("Column is NULL.");
 
 		var column = ResultSet.ColumnDefinitions![ordinal];
+
+		switch (column.ExtendedTypeCode)
+		{
+			case SingleStoreExtendedTypeCode.Bson:
+				return;
+
+			case SingleStoreExtendedTypeCode.Vector:
+				throw new InvalidCastException("Can't convert VECTOR to bytes.");
+		}
+
 		var columnType = column.ColumnType;
 		if ((column.ColumnFlags & ColumnFlags.Binary) == 0 ||
 			(columnType != ColumnType.String && columnType != ColumnType.VarString && columnType != ColumnType.TinyBlob &&
