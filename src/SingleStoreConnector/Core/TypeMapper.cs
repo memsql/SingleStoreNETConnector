@@ -81,9 +81,8 @@ internal sealed class TypeMapper
 		// bson
 		AddColumnTypeMetadata(new("BSON", typeBinary, SingleStoreDbType.Bson, binary: true, columnSize: uint.MaxValue, simpleDataTypeName: "BSON", createFormat: "BSON"));
 
-		// vector
-		var typeVectorLogical = new DbTypeMapping(typeof(ReadOnlyMemory<float>), Array.Empty<DbType>());
-		AddColumnTypeMetadata(new("VECTOR", typeVectorLogical, SingleStoreDbType.Vector, simpleDataTypeName: "VECTOR"));
+		// VECTOR: provider/logical type, blob transport
+		AddColumnTypeMetadata(new("VECTOR", typeBinary, SingleStoreDbType.Vector, binary: true, simpleDataTypeName: "VECTOR"));
 
 		// spatial
 		AddColumnTypeMetadata(new("GEOGRAPHY", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
@@ -209,7 +208,6 @@ internal sealed class TypeMapper
 		{
 			case SingleStoreExtendedTypeCode.Bson:
 				return SingleStoreDbType.Bson;
-
 			case SingleStoreExtendedTypeCode.Vector:
 				return SingleStoreDbType.Vector;
 		}
@@ -342,10 +340,6 @@ internal sealed class TypeMapper
 		var isUnsigned = dbType is SingleStoreDbType.UByte or SingleStoreDbType.UInt16 or SingleStoreDbType.UInt24 or SingleStoreDbType.UInt32 or SingleStoreDbType.UInt64;
 		var columnType = dbType switch
 		{
-			SingleStoreDbType.Vector => throw new NotSupportedException(
-				"Vector parameter binding is not implemented yet; no normal wire ColumnType exists for VECTOR."),
-			SingleStoreDbType.Bson => throw new NotSupportedException(
-				"Bson parameter binding is not implemented yet; no normal wire ColumnType exists for BSON."),
 			SingleStoreDbType.Bool or SingleStoreDbType.Byte or SingleStoreDbType.UByte => ColumnType.Tiny,
 			SingleStoreDbType.Int16 or SingleStoreDbType.UInt16 => ColumnType.Short,
 			SingleStoreDbType.Int24 or SingleStoreDbType.UInt24 => ColumnType.Int24,
@@ -360,6 +354,11 @@ internal sealed class TypeMapper
 			SingleStoreDbType.Blob or SingleStoreDbType.Text => ColumnType.Blob,
 			SingleStoreDbType.MediumBlob or SingleStoreDbType.MediumText => ColumnType.MediumBlob,
 			SingleStoreDbType.LongBlob or SingleStoreDbType.LongText => ColumnType.LongBlob,
+
+			// NEW: transport BSON and VECTOR as BLOB
+			SingleStoreDbType.Bson => ColumnType.Blob,
+			SingleStoreDbType.Vector => ColumnType.Blob,
+
 			SingleStoreDbType.JSON => ColumnType.Json, // TODO: test
 			SingleStoreDbType.Date or SingleStoreDbType.Newdate => ColumnType.Date,
 			SingleStoreDbType.DateTime => ColumnType.DateTime,
