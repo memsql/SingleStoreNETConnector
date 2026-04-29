@@ -97,8 +97,9 @@ public sealed class SingleStoreDbColumn : DbColumn
 		IsExpression = false;
 		IsHidden = false;
 		IsKey = (column.ColumnFlags & ColumnFlags.PrimaryKey) != 0;
-		IsLong = column.ColumnLength > 255 &&
-			((column.ColumnFlags & ColumnFlags.Blob) != 0 || column.ColumnType is ColumnType.TinyBlob or ColumnType.Blob or ColumnType.MediumBlob or ColumnType.LongBlob);
+		IsLong = mySqlDbType != SingleStoreDbType.Vector &&
+		         column.ColumnLength > 255 &&
+		         ((column.ColumnFlags & ColumnFlags.Blob) != 0 || column.ColumnType is ColumnType.TinyBlob or ColumnType.Blob or ColumnType.MediumBlob or ColumnType.LongBlob);
 		IsReadOnly = false;
 		IsUnique = (column.ColumnFlags & ColumnFlags.UniqueKey) != 0;
 		if (column.ColumnType is ColumnType.Decimal or ColumnType.NewDecimal)
