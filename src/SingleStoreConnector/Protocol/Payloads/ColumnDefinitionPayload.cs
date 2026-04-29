@@ -204,7 +204,4 @@ internal sealed class ColumnDefinitionPayload
 	private string? m_table;
 	private string? m_physicalTable;
 	private string? m_physicalName;
-
-	public bool IsBson => ExtendedTypeCode == SingleStoreExtendedTypeCode.Bson;
-	public bool IsVector => ExtendedTypeCode == SingleStoreExtendedTypeCode.Vector;
 }

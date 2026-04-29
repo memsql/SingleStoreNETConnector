@@ -503,17 +503,31 @@ public sealed class SingleStoreBulkCopy
 			{
 				return Utf8Formatter.TryFormat(decimalValue, output, out bytesWritten);
 			}
-			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or float[] or ReadOnlyMemory<float> or Memory<float>)
+			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream or
+			         float[] or ReadOnlyMemory<float> or Memory<float> or
+			         double[] or ReadOnlyMemory<double> or Memory<double> or
+			         sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
+			         short[] or ReadOnlyMemory<short> or Memory<short> or
+			         int[] or ReadOnlyMemory<int> or Memory<int> or
+			         long[] or ReadOnlyMemory<long> or Memory<long>)
 			{
 				var inputSpan = value switch
 				{
 					byte[] byteArray => byteArray.AsSpan(),
 					ArraySegment<byte> arraySegment => arraySegment.AsSpan(),
 					Memory<byte> memory => memory.Span,
-					float[] floatArray => SingleStoreParameter.ConvertFloatsToBytes(floatArray.AsSpan()),
-					Memory<float> memory => SingleStoreParameter.ConvertFloatsToBytes(memory.Span),
-					ReadOnlyMemory<float> memory => SingleStoreParameter.ConvertFloatsToBytes(memory.Span),
-					_ => ((ReadOnlyMemory<byte>) value).Span,
+					ReadOnlyMemory<byte> memory => memory.Span,
+					MemoryStream memoryStream => memoryStream.TryGetBuffer(out var streamBuffer) ? streamBuffer.AsSpan() : memoryStream.ToArray().AsSpan(),
+
+					float[] or ReadOnlyMemory<float> or Memory<float> or
+						double[] or ReadOnlyMemory<double> or Memory<double> or
+						sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
+						short[] or ReadOnlyMemory<short> or Memory<short> or
+						int[] or ReadOnlyMemory<int> or Memory<int> or
+						long[] or ReadOnlyMemory<long> or Memory<long>
+						=> SingleStoreBinaryValueConverter.GetVectorBytes(value),
+
+					_ => throw new NotSupportedException($"Type {value.GetType().Name} not currently supported. Value: {value}")
 				};
 
 				return WriteBytes(inputSpan, ref inputIndex, output, out bytesWritten);
