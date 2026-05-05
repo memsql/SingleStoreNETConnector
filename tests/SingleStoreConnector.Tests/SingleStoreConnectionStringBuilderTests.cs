@@ -92,6 +92,7 @@ public class SingleStoreConnectionStringBuilderTests
 		Assert.False(csb.UseAffectedRows);
 #if !BASELINE
 		Assert.True(csb.UseXaTransactions);
+		Assert.True(csb.EnableExtendedDataTypes);
 #endif
 	}
 
@@ -160,7 +161,8 @@ public class SingleStoreConnectionStringBuilderTests
 				"ssl mode=verifyca;" +
 				"tls version=Tls12, TLS v1.3;" +
 				"Uid=username;" +
-				"useaffectedrows=true",
+				"useaffectedrows=true;" +
+				"enableextendeddatatypes=true",
 		};
 		Assert.True(csb.AllowLoadLocalInfile);
 		Assert.True(csb.AllowPublicKeyRetrieval);
@@ -231,6 +233,7 @@ public class SingleStoreConnectionStringBuilderTests
 #endif
 		Assert.True(csb.UseAffectedRows);
 		Assert.Equal("username", csb.UserID);
+		Assert.True(csb.EnableExtendedDataTypes);
 
 #if !BASELINE
 		Assert.Equal("Server=db-server;Port=1234;User ID=username;Password=Pass1234;Database=schema_name;Load Balance=Random;" +
@@ -245,7 +248,7 @@ public class SingleStoreConnectionStringBuilderTests
 		             "TreatChar48AsGeographyPoint=True;GUID Format=TimeSwapBinary16;Ignore Command Transaction=True;Ignore Prepare=True;Interactive Session=True;" +
 		             "Keep Alive=90;No Backslash Escapes=True;Old Guids=True;Persist Security Info=True;Pipelining=False;Server Redirection Mode=Required;" +
 		             "Server RSA Public Key File=rsa.pem;Server SPN=mariadb/host.example.com@EXAMPLE.COM;Treat Tiny As Boolean=False;" +
-		             "Use Affected Rows=True;Use Compression=True;Use XA Transactions=False",
+		             "Use Affected Rows=True;Use Compression=True;Use XA Transactions=False;Enable Extended Data Types=True",
 			csb.ConnectionString.Replace("Protocol=NamedPipe", "Protocol=Pipe"));
 #endif
 	}

@@ -133,6 +133,11 @@ internal sealed class TypeMapper
 
 	public SingleStoreDbType GetSingleStoreDbTypeForDbType(DbType dbType)
 	{
+		// DbType.Binary is ambiguous because Blob, Binary, VarBinary, Bson, and Vector
+		// all use binary transport. We'll stick to preserving the historical/default inference.
+		if (dbType == DbType.Binary)
+			return SingleStoreDbType.Blob;
+
 		foreach (var pair in m_mySqlDbTypeToColumnTypeMetadata)
 		{
 			if (pair.Value.DbTypeMapping.DbTypes.Contains(dbType))
