@@ -93,32 +93,33 @@ namespace SingleStoreConnector
 #pragma warning restore CA2012
 
 #if NETCOREAPP3_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-	/// <summary>
-	/// Begins a database transaction asynchronously.
-	/// </summary>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A <see cref="Task{SingleStoreTransaction}"/> representing the new database transaction.</returns>
-	/// <remarks>Transactions may not be nested.</remarks>
-	public new ValueTask<SingleStoreTransaction> BeginTransactionAsync(CancellationToken cancellationToken =
- default) => BeginTransactionAsync(IsolationLevel.Unspecified, default, AsyncIOBehavior, cancellationToken);
+		/// <summary>
+		/// Begins a database transaction asynchronously.
+		/// </summary>
+		/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+		/// <returns>A <see cref="Task{SingleStoreTransaction}"/> representing the new database transaction.</returns>
+		/// <remarks>Transactions may not be nested.</remarks>
+		public new ValueTask<SingleStoreTransaction> BeginTransactionAsync(CancellationToken cancellationToken =
+	default) => BeginTransactionAsync(IsolationLevel.Unspecified, default, AsyncIOBehavior, cancellationToken);
 
-	/// <summary>
-	/// Begins a database transaction asynchronously.
-	/// </summary>
-	/// <param name="isolationLevel">The <see cref="IsolationLevel"/> for the transaction.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A <see cref="Task{SingleStoreTransaction}"/> representing the new database transaction.</returns>
-	/// <remarks>Transactions may not be nested.</remarks>
-	public new ValueTask<SingleStoreTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken
- = default) => BeginTransactionAsync(isolationLevel, default, AsyncIOBehavior, cancellationToken);
-	/// <summary>
-	/// Begins a database transaction asynchronously.
-	/// </summary>
-	/// <param name="isolationLevel">The <see cref="IsolationLevel"/> for the transaction.</param>
-	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-	/// <returns>A <see cref="ValueTask{DbTransaction}"/> representing the new database transaction.</returns>
-	protected override async ValueTask<DbTransaction> BeginDbTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken) =>
-		await BeginTransactionAsync(isolationLevel, default, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+		/// <summary>
+		/// Begins a database transaction asynchronously.
+		/// </summary>
+		/// <param name="isolationLevel">The <see cref="IsolationLevel"/> for the transaction.</param>
+		/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+		/// <returns>A <see cref="Task{SingleStoreTransaction}"/> representing the new database transaction.</returns>
+		/// <remarks>Transactions may not be nested.</remarks>
+		public new ValueTask<SingleStoreTransaction> BeginTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken
+	= default) => BeginTransactionAsync(isolationLevel, default, AsyncIOBehavior, cancellationToken);
+
+		/// <summary>
+		/// Begins a database transaction asynchronously.
+		/// </summary>
+		/// <param name="isolationLevel">The <see cref="IsolationLevel"/> for the transaction.</param>
+		/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+		/// <returns>A <see cref="ValueTask{DbTransaction}"/> representing the new database transaction.</returns>
+		protected override async ValueTask<DbTransaction> BeginDbTransactionAsync(IsolationLevel isolationLevel, CancellationToken cancellationToken) =>
+			await BeginTransactionAsync(isolationLevel, default, AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 #else
 		/// <summary>
 		/// Begins a database transaction asynchronously.
@@ -478,7 +479,7 @@ namespace SingleStoreConnector
 
 		public override void Close() => CloseAsync(changeState: true, IOBehavior.Synchronous).GetAwaiter().GetResult();
 #if NETCOREAPP3_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-	public override Task CloseAsync() => CloseAsync(changeState: true, SimpleAsyncIOBehavior);
+		public override Task CloseAsync() => CloseAsync(changeState: true, SimpleAsyncIOBehavior);
 #else
 		public Task CloseAsync() => CloseAsync(changeState: true, SimpleAsyncIOBehavior);
 #endif
@@ -487,7 +488,7 @@ namespace SingleStoreConnector
 		public override void ChangeDatabase(string databaseName) =>
 			ChangeDatabaseAsync(IOBehavior.Synchronous, databaseName, CancellationToken.None).GetAwaiter().GetResult();
 #if NETCOREAPP3_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-	public override Task ChangeDatabaseAsync(string databaseName, CancellationToken cancellationToken =
+		public override Task ChangeDatabaseAsync(string databaseName, CancellationToken cancellationToken =
  default) => ChangeDatabaseAsync(AsyncIOBehavior, databaseName, cancellationToken);
 #else
 		public Task ChangeDatabaseAsync(string databaseName, CancellationToken cancellationToken = default) =>
@@ -512,6 +513,31 @@ namespace SingleStoreConnector
 		}
 
 		public new SingleStoreCommand CreateCommand() => (SingleStoreCommand) base.CreateCommand();
+
+		private async Task InitializeSessionAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+		{
+			var settings = GetInitializedConnectionSettings();
+
+			if (!settings.EnableExtendedDataTypes)
+				return;
+
+			if (Session.S2ServerVersion.Version.CompareTo(S2Versions.SupportsExtendedDataTypes) < 0)
+			{
+				if (settings.EnableExtendedDataTypesWasExplicitlySet)
+				{
+					throw new NotSupportedException(
+						"EnableExtendedDataTypes requires SingleStore 8.5.28 or later.");
+				}
+
+				return;
+			}
+
+			await using var cmd = new SingleStoreCommand(
+				"SET SESSION enable_extended_types_metadata = TRUE;",
+				this);
+
+			await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+		}
 
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		public bool Ping() => PingAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
@@ -888,7 +914,7 @@ namespace SingleStoreConnector
 		}
 
 #if NETCOREAPP3_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-	public override async ValueTask DisposeAsync()
+		public override async ValueTask DisposeAsync()
 #else
 		public async Task DisposeAsync()
 #endif

@@ -149,6 +149,8 @@ internal sealed class ConnectionSettings
 		UseAffectedRows = csb.UseAffectedRows;
 		UseCompression = csb.UseCompression;
 		UseXaTransactions = false;
+		EnableExtendedDataTypes = csb.EnableExtendedDataTypes;
+		EnableExtendedDataTypesWasExplicitlySet = csb.ContainsKey("Enable Extended Data Types");
 
 		static int ToSigned(uint value) => value >= int.MaxValue ? int.MaxValue : (int) value;
 	}
@@ -248,6 +250,8 @@ internal sealed class ConnectionSettings
 	public bool UseAffectedRows { get; }
 	public bool UseCompression { get; }
 	public bool UseXaTransactions { get; }
+	public bool EnableExtendedDataTypes { get; }
+	internal bool EnableExtendedDataTypesWasExplicitlySet { get; }
 
 	public string ConnAttrsExtra { get; set; }
 	public byte[]? ConnectionAttributes { get; set; }
@@ -341,6 +345,8 @@ internal sealed class ConnectionSettings
 		UseAffectedRows = other.UseAffectedRows;
 		UseCompression = other.UseCompression;
 		UseXaTransactions = other.UseXaTransactions;
+		EnableExtendedDataTypes = other.EnableExtendedDataTypes;
+		EnableExtendedDataTypesWasExplicitlySet = other.EnableExtendedDataTypesWasExplicitlySet;
 	}
 
 	private static readonly string[] s_localhostPipeServer = ["."];
