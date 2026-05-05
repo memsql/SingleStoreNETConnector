@@ -211,7 +211,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 	/// </remarks>
 	internal void AppendSqlString(ByteBufferWriter writer, StatementPreparerOptions options)
 	{
-		const byte backslash = 0x5C, quote = 0x27, zeroByte = 0x00;
 		var noBackslashEscapes = (options & StatementPreparerOptions.NoBackslashEscapes) == StatementPreparerOptions.NoBackslashEscapes;
 
 		if (Value is null || Value == DBNull.Value)

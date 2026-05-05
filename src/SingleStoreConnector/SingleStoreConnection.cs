@@ -515,18 +515,25 @@ namespace SingleStoreConnector
 
 		private async Task InitializeSessionAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
 		{
-			if (!EnableExtendedDataTypes)
+			var settings = GetInitializedConnectionSettings();
+
+			if (!settings.EnableExtendedDataTypes)
 				return;
 
-			if (Session.S2ServerVersion.Version < new Version(8, 5, 28))
+			if (Session.S2ServerVersion.Version.CompareTo(S2Versions.SupportsExtendedDataTypes) < 0)
 			{
-				throw new NotSupportedException(
-					"EnableExtendedDataTypes requires SingleStore 8.5.28 or later.");
+				if (settings.EnableExtendedDataTypesWasExplicitlySet)
+				{
+					throw new NotSupportedException(
+						"EnableExtendedDataTypes requires SingleStore 8.5.28 or later.");
+				}
+
+				return;
 			}
 
 			await using var cmd = new SingleStoreCommand(
-				"SET SESSION enable_extended_types_metadata = TRUE;",
-				this);
+	"SET SESSION enable_extended_types_metadata = TRUE;",
+	this);
 
 			await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 		}

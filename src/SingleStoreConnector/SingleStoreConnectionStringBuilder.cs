@@ -831,7 +831,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	/// Enables extended data types, by enabling the enable_extended_types_metadata engine variable, that allows the connector to support extended data types, such as VECTOR and BSON
 	/// </summary>
 	[Category("Other")]
-	[DefaultValue(false)]
+	[DefaultValue(true)]
 	[Description("Enable extended data types engine variable for VECTOR and BSON support.")]
 	[DisplayName("Enable extended data types")]
 	public bool EnableExtendedDataTypes
@@ -1316,7 +1316,7 @@ internal abstract partial class SingleStoreConnectionStringOption
 
 		AddOption(options, EnableExtendedDataTypes = new(
 			keys: ["Enable Extended Data Types", "EnableExtendedDataTypes"],
-			defaultValue: false));
+			defaultValue: true));
 #pragma warning restore SA1118 // Parameter should not span multiple lines
 
 #if NET8_0_OR_GREATER
