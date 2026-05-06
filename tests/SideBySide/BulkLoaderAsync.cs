@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using SingleStoreConnector.Core;
 using Xunit.Sdk;

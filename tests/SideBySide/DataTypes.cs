@@ -1137,6 +1137,13 @@ ORDER BY t.`Key`", Connection);
 	[InlineData("Int64", "datatypes_integers", SingleStoreDbType.Int64, 20, typeof(long), "N", 0, 0)]
 	[InlineData("UInt64", "datatypes_integers", SingleStoreDbType.UInt64, 20, typeof(ulong), "N", 0, 0)]
 	[InlineData("value", "datatypes_json_core", SingleStoreDbType.JSON, int.MaxValue, typeof(string), "LN", 0, 0)]
+	[InlineData("value", "datatypes_vector_f32", SingleStoreDbType.Vector, 3, typeof(ReadOnlyMemory<float>), "N", 0, 0)]
+	[InlineData("value", "datatypes_vector_f64", SingleStoreDbType.Vector, 3, typeof(ReadOnlyMemory<double>), "N", 0, 0)]
+	[InlineData("value", "datatypes_vector_i8", SingleStoreDbType.Vector, 3, typeof(ReadOnlyMemory<sbyte>), "N", 0, 0)]
+	[InlineData("value", "datatypes_vector_i16", SingleStoreDbType.Vector, 3, typeof(ReadOnlyMemory<short>), "N", 0, 0)]
+	[InlineData("value", "datatypes_vector_i32", SingleStoreDbType.Vector, 3, typeof(ReadOnlyMemory<int>), "N", 0, 0)]
+	[InlineData("value", "datatypes_vector_i64", SingleStoreDbType.Vector, 3, typeof(ReadOnlyMemory<long>), "N", 0, 0)]
+	[InlineData("value", "datatypes_bson", SingleStoreDbType.Bson, int.MaxValue, typeof(byte[]), "LN", 0, 0)]
 	[InlineData("Single", "datatypes_reals", SingleStoreDbType.Float, 12, typeof(float), "N", 0, 31)]
 	[InlineData("Double", "datatypes_reals", SingleStoreDbType.Double, 22, typeof(double), "N", 0, 31)]
 	[InlineData("SmallDecimal", "datatypes_reals", SingleStoreDbType.NewDecimal, 7, typeof(decimal), "N", 5, 2)]
@@ -1340,6 +1347,13 @@ create table schema_table({createColumn});");
 	[InlineData("Int64", "datatypes_integers", SingleStoreDbType.Int64, "BIGINT", 20, typeof(long), "N", -1, 0)]
 	[InlineData("UInt64", "datatypes_integers", SingleStoreDbType.UInt64, "BIGINT", 20, typeof(ulong), "N", -1, 0)]
 	[InlineData("value", "datatypes_json_core", SingleStoreDbType.JSON, "JSON", int.MaxValue, typeof(string), "LN", -1, 0)]
+	[InlineData("value", "datatypes_vector_f32", SingleStoreDbType.Vector, "VECTOR(3, F32)", 3, typeof(ReadOnlyMemory<float>), "N", -1, 0)]
+	[InlineData("value", "datatypes_vector_f64", SingleStoreDbType.Vector, "VECTOR(3, F64)", 3, typeof(ReadOnlyMemory<double>), "N", -1, 0)]
+	[InlineData("value", "datatypes_vector_i8", SingleStoreDbType.Vector, "VECTOR(3, I8)", 3, typeof(ReadOnlyMemory<sbyte>), "N", -1, 0)]
+	[InlineData("value", "datatypes_vector_i16", SingleStoreDbType.Vector, "VECTOR(3, I16)", 3, typeof(ReadOnlyMemory<short>), "N", -1, 0)]
+	[InlineData("value", "datatypes_vector_i32", SingleStoreDbType.Vector, "VECTOR(3, I32)", 3, typeof(ReadOnlyMemory<int>), "N", -1, 0)]
+	[InlineData("value", "datatypes_vector_i64", SingleStoreDbType.Vector, "VECTOR(3, I64)", 3, typeof(ReadOnlyMemory<long>), "N", -1, 0)]
+	[InlineData("value", "datatypes_bson", SingleStoreDbType.Bson, "BSON", int.MaxValue, typeof(byte[]), "LN", -1, 0)]
 	[InlineData("Single", "datatypes_reals", SingleStoreDbType.Float, "FLOAT", 12, typeof(float), "N", -1, 31)]
 	[InlineData("Double", "datatypes_reals", SingleStoreDbType.Double, "DOUBLE", 22, typeof(double), "N", -1, 31)]
 	[InlineData("SmallDecimal", "datatypes_reals", SingleStoreDbType.NewDecimal, "DECIMAL", 7, typeof(decimal), "N", 5, 2)]
@@ -1659,6 +1673,99 @@ end;";
 		dataTypeName = "VARCHAR";
 #endif
 		DoQuery("json_core", column, dataTypeName, expected, reader => reader.GetString(0), omitWhereTest: true);
+	}
+
+	[SkippableTheory(ServerFeatures.ExtendedDataTypes)]
+	[InlineData("datatypes_vector_f32", "F32")]
+	[InlineData("datatypes_vector_f64", "F64")]
+	[InlineData("datatypes_vector_i8", "I8")]
+	[InlineData("datatypes_vector_i16", "I16")]
+	[InlineData("datatypes_vector_i32", "I32")]
+	[InlineData("datatypes_vector_i64", "I64")]
+	public void QueryVector(string tableName, string elementType)
+	{
+		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+
+		using var cmd = new SingleStoreCommand($"select value from {tableName} order by rowid;", connection);
+		using var reader = cmd.ExecuteReader();
+
+		Assert.True(reader.Read());
+		Assert.True(reader.IsDBNull(0));
+
+		Assert.True(reader.Read());
+		AssertVectorEquals(reader.GetValue(0), elementType, [0, 0, 0]);
+
+		Assert.True(reader.Read());
+		AssertVectorEquals(reader.GetValue(0), elementType, [1, 1, 1]);
+
+		Assert.True(reader.Read());
+		AssertVectorEquals(reader.GetValue(0), elementType, [1, 2, 3]);
+
+		Assert.True(reader.Read());
+		AssertVectorEquals(reader.GetValue(0), elementType, [-1, -1, -1]);
+
+		Assert.False(reader.Read());
+
+		static void AssertVectorEquals(object actual, string elementType, int[] expected)
+		{
+			switch (elementType)
+			{
+				case "F32":
+					Assert.Equal(expected.Select(x => (float) x).ToArray(), ((ReadOnlyMemory<float>) actual).ToArray());
+					break;
+
+				case "F64":
+					Assert.Equal(expected.Select(x => (double) x).ToArray(), ((ReadOnlyMemory<double>) actual).ToArray());
+					break;
+
+				case "I8":
+					Assert.Equal(expected.Select(x => (sbyte) x).ToArray(), ((ReadOnlyMemory<sbyte>) actual).ToArray());
+					break;
+
+				case "I16":
+					Assert.Equal(expected.Select(x => (short) x).ToArray(), ((ReadOnlyMemory<short>) actual).ToArray());
+					break;
+
+				case "I32":
+					Assert.Equal(expected, ((ReadOnlyMemory<int>) actual).ToArray());
+					break;
+
+				case "I64":
+					Assert.Equal(expected.Select(x => (long) x).ToArray(), ((ReadOnlyMemory<long>) actual).ToArray());
+					break;
+
+				default:
+					throw new ArgumentOutOfRangeException(nameof(elementType));
+			}
+		}
+	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public void QueryBson()
+	{
+		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+
+		using var cmd = new SingleStoreCommand("select value :> json from datatypes_bson order by rowid;", connection);
+		using var reader = cmd.ExecuteReader();
+
+		Assert.True(reader.Read());
+		Assert.True(reader.IsDBNull(0));
+
+		Assert.True(reader.Read());
+		Assert.Contains("\"x\"", reader.GetString(0));
+		Assert.Contains("0", reader.GetString(0));
+
+		Assert.True(reader.Read());
+		Assert.Contains("\"x\"", reader.GetString(0));
+		Assert.Contains("1", reader.GetString(0));
+
+		Assert.True(reader.Read());
+		Assert.Contains("\"x\"", reader.GetString(0));
+		Assert.Contains("42", reader.GetString(0));
+
+		Assert.False(reader.Read());
 	}
 
 	[SkippableTheory(Baseline = "https://bugs.mysql.com/bug.php?id=97067")]
