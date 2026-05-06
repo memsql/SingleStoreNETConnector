@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using SingleStoreConnector.Core;
 using Xunit.Sdk;
@@ -1486,6 +1487,207 @@ create table bulk_load_data_table(
 			Assert.InRange(reader.GetDouble(1), 1.0 - 1e-6, 1.0 + 1e-6);
 
 			Assert.False(reader.Read());
+		}
+	}
+
+	[SkippableTheory(ServerFeatures.ExtendedDataTypes)]
+	[InlineData("byte[]", "F32")]
+	[InlineData("float[]", "F32")]
+	[InlineData("double[]", "F64")]
+	[InlineData("sbyte[]", "I8")]
+	[InlineData("short[]", "I16")]
+	[InlineData("int[]", "I32")]
+	[InlineData("long[]", "I64")]
+	public void BulkCopyDataTableWithVector(string dataType, string vectorElementType)
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("data", GetVectorDataColumnType(dataType)),
+			},
+			Rows =
+			{
+				new object[] { 1, GetVectorDataRowValue([0f, 0f, 0f], dataType) },
+				new object[] { 2, GetVectorDataRowValue([1f, 2f, 3f], dataType) },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		using (var cmd = new SingleStoreCommand($@"drop table if exists bulk_load_vector;
+	create table bulk_load_vector(a int, b vector(3, {vectorElementType}));", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_vector",
+		};
+
+		var result = bulkCopy.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(@"select b from bulk_load_vector order by a;", connection))
+		{
+			using var reader = cmd.ExecuteReader();
+
+			Assert.True(reader.Read());
+			AssertVectorEquals(reader, 0, dataType, [0f, 0f, 0f]);
+
+			Assert.True(reader.Read());
+			AssertVectorEquals(reader, 0, dataType, [1f, 2f, 3f]);
+
+			Assert.False(reader.Read());
+		}
+
+		static Type GetVectorDataColumnType(string dataType) =>
+			dataType switch
+			{
+				"byte[]" => typeof(byte[]),
+				"float[]" => typeof(float[]),
+				"double[]" => typeof(double[]),
+				"sbyte[]" => typeof(sbyte[]),
+				"short[]" => typeof(short[]),
+				"int[]" => typeof(int[]),
+				"long[]" => typeof(long[]),
+				_ => throw new ArgumentOutOfRangeException(nameof(dataType)),
+			};
+
+		static object GetVectorDataRowValue(float[] data, string dataType) =>
+			dataType switch
+			{
+				"byte[]" => MemoryMarshal.Cast<float, byte>(data).ToArray(),
+				"float[]" => data,
+				"double[]" => data.Select(x => (double) x).ToArray(),
+				"sbyte[]" => data.Select(x => (sbyte) x).ToArray(),
+				"short[]" => data.Select(x => (short) x).ToArray(),
+				"int[]" => data.Select(x => (int) x).ToArray(),
+				"long[]" => data.Select(x => (long) x).ToArray(),
+				_ => throw new ArgumentOutOfRangeException(nameof(dataType)),
+			};
+
+		static void AssertVectorEquals(SingleStoreDataReader reader, int ordinal, string dataType, float[] expected)
+		{
+			switch (dataType)
+			{
+				case "byte[]":
+				case "float[]":
+					Assert.Equal(expected, GetVectorArray<float>(reader, ordinal));
+					break;
+
+				case "double[]":
+					Assert.Equal(expected.Select(x => (double) x).ToArray(), GetVectorArray<double>(reader, ordinal));
+					break;
+
+				case "sbyte[]":
+					Assert.Equal(expected.Select(x => (sbyte) x).ToArray(), GetVectorArray<sbyte>(reader, ordinal));
+					break;
+
+				case "short[]":
+					Assert.Equal(expected.Select(x => (short) x).ToArray(), GetVectorArray<short>(reader, ordinal));
+					break;
+
+				case "int[]":
+					Assert.Equal(expected.Select(x => (int) x).ToArray(), GetVectorArray<int>(reader, ordinal));
+					break;
+
+				case "long[]":
+					Assert.Equal(expected.Select(x => (long) x).ToArray(), GetVectorArray<long>(reader, ordinal));
+					break;
+
+				default:
+					throw new ArgumentOutOfRangeException(nameof(dataType));
+			}
+		}
+
+		static T[] GetVectorArray<T>(SingleStoreDataReader reader, int ordinal)
+			where T : unmanaged
+		{
+			return reader.GetValue(ordinal) switch
+			{
+				ReadOnlyMemory<T> memory => memory.ToArray(),
+				byte[] bytes => MemoryMarshal.Cast<byte, T>(bytes).ToArray(),
+				{ } value => throw new NotSupportedException(value.GetType().Name),
+			};
+		}
+	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public void BulkCopyDataTableWithBson()
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("data", typeof(byte[])),
+			},
+			Rows =
+			{
+				new object[] { 1, CreateBsonInt32Document("x", 42) },
+				new object[] { 2, CreateBsonInt32Document("x", 7) },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_bson;
+	create table bulk_load_bson(a int, b bson);", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_bson",
+		};
+
+		var result = bulkCopy.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(@"select b :> json from bulk_load_bson order by a;", connection))
+		{
+			using var reader = cmd.ExecuteReader();
+
+			Assert.True(reader.Read());
+			var firstJson = reader.GetString(0);
+			Assert.Contains("\"x\"", firstJson);
+			Assert.Contains("42", firstJson);
+
+			Assert.True(reader.Read());
+			var secondJson = reader.GetString(0);
+			Assert.Contains("\"x\"", secondJson);
+			Assert.Contains("7", secondJson);
+
+			Assert.False(reader.Read());
+		}
+
+		static byte[] CreateBsonInt32Document(string name, int value)
+		{
+			var nameBytes = Encoding.UTF8.GetBytes(name);
+			var documentLength = 4 + 1 + nameBytes.Length + 1 + 4 + 1;
+			var document = new byte[documentLength];
+
+			BinaryPrimitives.WriteInt32LittleEndian(document.AsSpan(0, 4), documentLength);
+
+			var offset = 4;
+			document[offset++] = 0x10; // int32
+			nameBytes.CopyTo(document.AsSpan(offset));
+			offset += nameBytes.Length;
+			document[offset++] = 0x00;
+
+			BinaryPrimitives.WriteInt32LittleEndian(document.AsSpan(offset, 4), value);
+			offset += 4;
+
+			document[offset] = 0x00;
+			return document;
 		}
 	}
 #endif
