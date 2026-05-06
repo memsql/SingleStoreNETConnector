@@ -238,6 +238,107 @@ values
 ");
 		}
 
+		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.ExtendedDataTypes))
+		{
+			Connection.Execute("""
+		DROP TABLE IF EXISTS datatypes_vector_f32;
+		DROP TABLE IF EXISTS datatypes_vector_f64;
+		DROP TABLE IF EXISTS datatypes_vector_i8;
+		DROP TABLE IF EXISTS datatypes_vector_i16;
+		DROP TABLE IF EXISTS datatypes_vector_i32;
+		DROP TABLE IF EXISTS datatypes_vector_i64;
+
+		CREATE TABLE datatypes_vector_f32 (
+			rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			value VECTOR(3, F32) NULL
+		);
+
+		CREATE TABLE datatypes_vector_f64 (
+			rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			value VECTOR(3, F64) NULL
+		);
+
+		CREATE TABLE datatypes_vector_i8 (
+			rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			value VECTOR(3, I8) NULL
+		);
+
+		CREATE TABLE datatypes_vector_i16 (
+			rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			value VECTOR(3, I16) NULL
+		);
+
+		CREATE TABLE datatypes_vector_i32 (
+			rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			value VECTOR(3, I32) NULL
+		);
+
+		CREATE TABLE datatypes_vector_i64 (
+			rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			value VECTOR(3, I64) NULL
+		);
+
+		INSERT INTO datatypes_vector_f32 (value) VALUES
+			(NULL),
+			('[0, 0, 0]'),
+			('[1, 1, 1]'),
+			('[1, 2, 3]'),
+			('[-1, -1, -1]');
+
+		INSERT INTO datatypes_vector_f64 (value) VALUES
+			(NULL),
+			('[0, 0, 0]'),
+			('[1, 1, 1]'),
+			('[1, 2, 3]'),
+			('[-1, -1, -1]');
+
+		INSERT INTO datatypes_vector_i8 (value) VALUES
+			(NULL),
+			('[0, 0, 0]'),
+			('[1, 1, 1]'),
+			('[1, 2, 3]'),
+			('[-1, -1, -1]');
+
+		INSERT INTO datatypes_vector_i16 (value) VALUES
+			(NULL),
+			('[0, 0, 0]'),
+			('[1, 1, 1]'),
+			('[1, 2, 3]'),
+			('[-1, -1, -1]');
+
+		INSERT INTO datatypes_vector_i32 (value) VALUES
+			(NULL),
+			('[0, 0, 0]'),
+			('[1, 1, 1]'),
+			('[1, 2, 3]'),
+			('[-1, -1, -1]');
+
+		INSERT INTO datatypes_vector_i64 (value) VALUES
+			(NULL),
+			('[0, 0, 0]'),
+			('[1, 1, 1]'),
+			('[1, 2, 3]'),
+			('[-1, -1, -1]');
+		""");
+		}
+
+		if (AppConfig.SupportedFeatures.HasFlag(ServerFeatures.ExtendedDataTypes))
+		{
+			Connection.Execute("""
+		DROP TABLE IF EXISTS datatypes_bson;
+
+		CREATE TABLE datatypes_bson (
+			rowid BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+			value BSON NULL
+		);
+
+		INSERT INTO datatypes_bson (value) VALUES
+			(NULL),
+			('{"x":0}' :> BSON),
+			('{"x":1}' :> BSON),
+			('{"x":42}' :> BSON);
+		""");
+		}
 		Connection.Close();
 	}
 }
