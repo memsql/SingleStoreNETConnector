@@ -186,6 +186,8 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		SourceColumn = other.SourceColumn;
 		SourceColumnNullMapping = other.SourceColumnNullMapping;
 		SourceVersion = other.SourceVersion;
+		VectorDimensions = other.VectorDimensions;
+		VectorElementTypeName = other.VectorElementTypeName;
 	}
 
 	private SingleStoreParameter(SingleStoreParameter other, string parameterName)
@@ -204,6 +206,18 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 	internal SingleStoreParameterCollection? ParameterCollection { get; set; }
 
 	/// <summary>
+	/// Gets or sets the expected number of dimensions for a VECTOR parameter.
+	/// Used for validation when sending VECTOR data to the server.
+	/// </summary>
+	public int? VectorDimensions { get; set; }
+
+	/// <summary>
+	/// Gets or sets the expected element type name for a VECTOR parameter (e.g., "F32", "I64").
+	/// Used for validation when sending VECTOR data to the server.
+	/// </summary>
+	public string? VectorElementTypeName { get; set; }
+
+	/// <summary>
 	/// Appends the string value of the parameter to the writer.
 	/// </summary>
 	/// <remarks>This method escaped the special characters using the options described in https://dev.mysql.com/doc/refman/8.0/en/string-literals.html:
@@ -219,6 +233,11 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else if (SingleStoreDbType == SingleStoreDbType.Vector)
 		{
+			// Validate VECTOR dimensions if metadata is available
+			if (VectorDimensions.HasValue)
+			{
+				VectorValidator.ValidateDimensions(Value!, VectorDimensions, VectorElementTypeName, ParameterName);
+			}
 			WriteBinaryLiteral(writer, noBackslashEscapes, SingleStoreBinaryValueConverter.GetVectorBytes(Value!));
 		}
 		else if (SingleStoreDbType == SingleStoreDbType.Bson)
@@ -650,6 +669,12 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else
 		{
+			// Validate VECTOR dimensions if metadata is available
+			if (SingleStoreDbType == SingleStoreDbType.Vector && VectorDimensions.HasValue)
+			{
+				VectorValidator.ValidateDimensions(Value, VectorDimensions, VectorElementTypeName, ParameterName);
+			}
+
 			AppendBinary(writer, Value, options);
 		}
 	}
