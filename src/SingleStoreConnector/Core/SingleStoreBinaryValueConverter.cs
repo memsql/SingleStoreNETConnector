@@ -37,15 +37,8 @@ internal static class SingleStoreBinaryValueConverter
 		return false;
 	}
 
-	public static ReadOnlySpan<byte> GetBsonBytes(object value)
-	{
-		var bytes = GetRawBytes(value, SingleStoreDbType.Bson);
-
-		// Validate BSON structure
-		BsonValidator.Validate(bytes);
-
-		return bytes;
-	}
+	public static ReadOnlySpan<byte> GetBsonBytes(object value) =>
+		GetRawBytes(value, SingleStoreDbType.Bson);
 
 	public static ReadOnlySpan<byte> GetVectorBytes(object value) =>
 		value switch

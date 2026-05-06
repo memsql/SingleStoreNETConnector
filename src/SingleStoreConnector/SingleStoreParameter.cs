@@ -233,11 +233,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else if (SingleStoreDbType == SingleStoreDbType.Vector)
 		{
-			// Validate VECTOR dimensions if metadata is available
-			if (VectorDimensions.HasValue)
-			{
-				VectorValidator.ValidateDimensions(Value!, VectorDimensions, VectorElementTypeName, ParameterName);
-			}
 			WriteBinaryLiteral(writer, noBackslashEscapes, SingleStoreBinaryValueConverter.GetVectorBytes(Value!));
 		}
 		else if (SingleStoreDbType == SingleStoreDbType.Bson)
@@ -669,12 +664,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else
 		{
-			// Validate VECTOR dimensions if metadata is available
-			if (SingleStoreDbType == SingleStoreDbType.Vector && VectorDimensions.HasValue)
-			{
-				VectorValidator.ValidateDimensions(Value, VectorDimensions, VectorElementTypeName, ParameterName);
-			}
-
 			AppendBinary(writer, Value, options);
 		}
 	}
