@@ -233,7 +233,9 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 		else if (SingleStoreDbType == SingleStoreDbType.Vector)
 		{
-			WriteBinaryLiteral(writer, noBackslashEscapes, SingleStoreBinaryValueConverter.GetVectorBytes(Value!));
+			writer.Write((byte) '\'');
+			writer.WriteAscii(CreateVectorLiteral(Value!));
+			writer.Write((byte) '\'');
 		}
 		else if (SingleStoreDbType == SingleStoreDbType.Bson)
 		{
@@ -672,9 +674,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 	{
 		if (SingleStoreDbType == SingleStoreDbType.Vector)
 		{
-			var bytes = SingleStoreBinaryValueConverter.GetVectorBytes(value);
-			writer.WriteLengthEncodedInteger(unchecked((ulong) bytes.Length));
-			writer.Write(bytes);
+			writer.WriteLengthEncodedAsciiString(CreateVectorLiteral(value));
 			return;
 		}
 
@@ -1071,6 +1071,59 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			if (microseconds != 0)
 				writer.Write(microseconds);
 		}
+	}
+
+	private static string CreateVectorLiteral(object value) =>
+		value switch
+		{
+			float[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<float> values => CreateVectorLiteral(values.Span),
+			Memory<float> values => CreateVectorLiteral(values.Span),
+
+			double[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<double> values => CreateVectorLiteral(values.Span),
+			Memory<double> values => CreateVectorLiteral(values.Span),
+
+			sbyte[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<sbyte> values => CreateVectorLiteral(values.Span),
+			Memory<sbyte> values => CreateVectorLiteral(values.Span),
+
+			short[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<short> values => CreateVectorLiteral(values.Span),
+			Memory<short> values => CreateVectorLiteral(values.Span),
+
+			int[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<int> values => CreateVectorLiteral(values.Span),
+			Memory<int> values => CreateVectorLiteral(values.Span),
+
+			long[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<long> values => CreateVectorLiteral(values.Span),
+			Memory<long> values => CreateVectorLiteral(values.Span),
+
+			byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream
+				=> throw new NotSupportedException(
+					$"Raw byte values for {nameof(SingleStoreDbType.Vector)} are only supported for bulk copy or explicit binary vector serialization; use a numeric array for command parameters."),
+
+			_ => throw new NotSupportedException(
+				$"Parameter type {value.GetType().Name} is not supported for {nameof(SingleStoreDbType.Vector)}."),
+		};
+
+	private static string CreateVectorLiteral<T>(ReadOnlySpan<T> values)
+		where T : IFormattable
+	{
+		var builder = new StringBuilder();
+		builder.Append('[');
+
+		for (var i = 0; i < values.Length; i++)
+		{
+			if (i != 0)
+				builder.Append(',');
+
+			builder.Append(values[i].ToString(null, CultureInfo.InvariantCulture));
+		}
+
+		builder.Append(']');
+		return builder.ToString();
 	}
 
 	private static ReadOnlySpan<byte> BinaryBytes => "_binary'"u8;
