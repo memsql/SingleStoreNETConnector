@@ -1690,6 +1690,71 @@ create table bulk_load_data_table(
 			return document;
 		}
 	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public void BulkCopyDataReaderWithVectorAndBson()
+	{
+		using var connection1 = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection1.Open();
+
+		connection1.Execute("""
+						drop table if exists bulk_copy_extended_source;
+						drop table if exists bulk_copy_extended_destination;
+
+						create table bulk_copy_extended_source(
+						    id int primary key,
+						    vec vector(3, F32),
+						    doc bson
+						);
+
+						create table bulk_copy_extended_destination(
+						    id int primary key,
+						    vec vector(3, F32),
+						    doc bson
+						);
+
+						insert into bulk_copy_extended_source values
+						    (1, '[1, 2, 3]', '{"x": 42}' :> BSON);
+""");
+
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.AllowLoadLocalInfile = true;
+
+		using var connection2 = new SingleStoreConnection(csb.ConnectionString);
+
+		using (var select = new SingleStoreCommand(
+			       "select id, vec, doc from bulk_copy_extended_source order by id;",
+			       connection1))
+		using (var reader = select.ExecuteReader())
+		{
+			var bulkCopy = new SingleStoreBulkCopy(connection2)
+			{
+				DestinationTableName = "bulk_copy_extended_destination",
+			};
+
+			var result = bulkCopy.WriteToServer(reader);
+			Assert.Equal(1, result.RowsInserted);
+			Assert.Empty(result.Warnings);
+		}
+
+		using (var verify = new SingleStoreCommand(
+			       "select vec, doc :> json from bulk_copy_extended_destination where id = 1;",
+			       connection1))
+		using (var verifyReader = verify.ExecuteReader())
+		{
+			Assert.True(verifyReader.Read());
+
+			Assert.Equal(
+				new float[] { 1, 2, 3 },
+				verifyReader.GetFieldValue<ReadOnlyMemory<float>>(0).ToArray());
+
+			var json = verifyReader.GetString(1);
+			Assert.Contains("\"x\"", json);
+			Assert.Contains("42", json);
+
+			Assert.False(verifyReader.Read());
+		}
+	}
 #endif
 
 	internal static string GetConnectionString() => AppConfig.ConnectionString;

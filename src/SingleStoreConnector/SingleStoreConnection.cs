@@ -687,6 +687,7 @@ namespace SingleStoreConnector
 		public async ValueTask ResetConnectionAsync(CancellationToken cancellationToken = default)
 		{
 			await Session.ResetConnectionAsync(AsyncIOBehavior, Database, cancellationToken).ConfigureAwait(false);
+			await InitializeSessionAsync(AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 		}
 
 		[AllowNull]

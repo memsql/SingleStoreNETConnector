@@ -348,5 +348,37 @@ public class ConnectionTests : IClassFixture<DatabaseFixture>
 		}
 		Assert.True(resetSuccess);
 	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public async Task ResetConnectionPreservesExtendedDataTypes()
+	{
+		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		await connection.OpenAsync();
+
+		await connection.ExecuteAsync("""
+					drop table if exists reset_extended_types;
+					create table reset_extended_types(
+						id int primary key,
+						vec vector(3, F32),
+						doc bson
+					);
+
+					insert into reset_extended_types values
+					(1, '[1, 2, 3]', '{"x": 42}' :> BSON);
+""");
+
+		await connection.ResetConnectionAsync();
+
+		using var cmd = new SingleStoreCommand("select vec, doc from reset_extended_types where id = 1;", connection);
+		using var reader = await cmd.ExecuteReaderAsync();
+
+		Assert.True(await reader.ReadAsync());
+
+		Assert.Equal(new float[] { 1, 2, 3 }, reader.GetFieldValue<ReadOnlyMemory<float>>(0).ToArray());
+
+		var schema = reader.GetColumnSchema();
+		Assert.Equal(SingleStoreDbType.Vector, ((SingleStoreDbColumn) schema[0]).ProviderType);
+		Assert.Equal(SingleStoreDbType.Bson, ((SingleStoreDbColumn) schema[1]).ProviderType);
+	}
 #endif
 }

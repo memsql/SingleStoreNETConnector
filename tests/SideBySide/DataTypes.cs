@@ -1768,6 +1768,36 @@ end;";
 		Assert.False(reader.Read());
 	}
 
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public void DisableExtendedDataTypesUsesLegacyMetadata()
+	{
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.EnableExtendedDataTypes = false;
+
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		connection.Open();
+
+		connection.Execute("""
+		                   drop table if exists disable_extended_types;
+                           create table disable_extended_types(
+                           id int primary key,
+                           vec vector(3, F32),
+                           doc bson
+                           );
+
+                           insert into disable_extended_types values
+                           (1, '[1, 2, 3]', '{"x": 42}' :> BSON);
+""");
+
+		using var cmd = new SingleStoreCommand("select vec, doc from disable_extended_types where id = 1;", connection);
+		using var reader = cmd.ExecuteReader();
+
+		Assert.True(reader.Read());
+
+		Assert.NotEqual(SingleStoreDbType.Vector, ((SingleStoreDbColumn) reader.GetColumnSchema()[0]).ProviderType);
+		Assert.NotEqual(SingleStoreDbType.Bson, ((SingleStoreDbColumn) reader.GetColumnSchema()[1]).ProviderType);
+	}
+
 	[SkippableTheory(Baseline = "https://bugs.mysql.com/bug.php?id=97067")]
 	[InlineData(false, "MIN", 0)]
 	[InlineData(false, "MAX", uint.MaxValue)]
