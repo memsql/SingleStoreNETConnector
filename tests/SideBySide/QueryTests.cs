@@ -1708,7 +1708,7 @@ select mysql_query_attribute_string('attr2') as attribute, @param2 as parameter;
 		{
 			ParameterName = "@vec",
 			SingleStoreDbType = SingleStoreDbType.Vector,
-			Value = GetParameterValue(elementType),
+			Value = ExtendedDataTypeTestUtilities.GetVectorParameterValue(elementType),
 		});
 
 		if (prepare)
@@ -1722,53 +1722,8 @@ select mysql_query_attribute_string('attr2') as attribute, @param2 as parameter;
 
 		using var reader = cmd.ExecuteReader();
 		Assert.True(reader.Read());
-		AssertVectorEquals(reader.GetValue(0), elementType);
+		ExtendedDataTypeTestUtilities.AssertVectorEquals(reader.GetValue(0), elementType);
 		Assert.False(reader.Read());
-
-		static object GetParameterValue(string elementType) =>
-			elementType switch
-			{
-				"F32" => new float[] { 1, 2, 3 },
-				"F64" => new double[] { 1, 2, 3 },
-				"I8" => new sbyte[] { 1, 2, 3 },
-				"I16" => new short[] { 1, 2, 3 },
-				"I32" => new int[] { 1, 2, 3 },
-				"I64" => new long[] { 1, 2, 3 },
-				_ => throw new ArgumentOutOfRangeException(nameof(elementType)),
-			};
-
-		static void AssertVectorEquals(object actual, string elementType)
-		{
-			switch (elementType)
-			{
-				case "F32":
-					Assert.Equal(new float[] { 1, 2, 3 }, ((ReadOnlyMemory<float>) actual).ToArray());
-					break;
-
-				case "F64":
-					Assert.Equal(new double[] { 1, 2, 3 }, ((ReadOnlyMemory<double>) actual).ToArray());
-					break;
-
-				case "I8":
-					Assert.Equal(new sbyte[] { 1, 2, 3 }, ((ReadOnlyMemory<sbyte>) actual).ToArray());
-					break;
-
-				case "I16":
-					Assert.Equal(new short[] { 1, 2, 3 }, ((ReadOnlyMemory<short>) actual).ToArray());
-					break;
-
-				case "I32":
-					Assert.Equal(new int[] { 1, 2, 3 }, ((ReadOnlyMemory<int>) actual).ToArray());
-					break;
-
-				case "I64":
-					Assert.Equal(new long[] { 1, 2, 3 }, ((ReadOnlyMemory<long>) actual).ToArray());
-					break;
-
-				default:
-					throw new ArgumentOutOfRangeException(nameof(elementType));
-			}
-		}
 	}
 
 	[SkippableTheory(ServerFeatures.ExtendedDataTypes)]

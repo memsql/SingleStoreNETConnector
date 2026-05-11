@@ -360,7 +360,6 @@ internal sealed class TypeMapper
 			SingleStoreDbType.MediumBlob or SingleStoreDbType.MediumText => ColumnType.MediumBlob,
 			SingleStoreDbType.LongBlob or SingleStoreDbType.LongText => ColumnType.LongBlob,
 
-			// NEW: transport BSON and VECTOR as BLOB
 			SingleStoreDbType.Bson => ColumnType.Blob,
 			SingleStoreDbType.Vector => ColumnType.Blob,
 

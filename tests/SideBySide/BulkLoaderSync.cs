@@ -1505,12 +1505,12 @@ create table bulk_load_data_table(
 			Columns =
 			{
 				new DataColumn("id", typeof(int)),
-				new DataColumn("data", GetVectorDataColumnType(dataType)),
+				new DataColumn("data", ExtendedDataTypeTestUtilities.GetVectorDataColumnType(dataType)),
 			},
 			Rows =
 			{
-				new object[] { 1, GetVectorDataRowValue([0f, 0f, 0f], dataType) },
-				new object[] { 2, GetVectorDataRowValue([1f, 2f, 3f], dataType) },
+				new object[] { 1, ExtendedDataTypeTestUtilities.GetVectorDataRowValue([0f, 0f, 0f], dataType) },
+				new object[] { 2, ExtendedDataTypeTestUtilities.GetVectorDataRowValue([1f, 2f, 3f], dataType) },
 			},
 		};
 
@@ -1537,83 +1537,12 @@ create table bulk_load_data_table(
 			using var reader = cmd.ExecuteReader();
 
 			Assert.True(reader.Read());
-			AssertVectorEquals(reader, 0, dataType, [0f, 0f, 0f]);
+			ExtendedDataTypeTestUtilities.AssertVectorEquals(reader, 0, dataType, [0f, 0f, 0f]);
 
 			Assert.True(reader.Read());
-			AssertVectorEquals(reader, 0, dataType, [1f, 2f, 3f]);
+			ExtendedDataTypeTestUtilities.AssertVectorEquals(reader, 0, dataType, [1f, 2f, 3f]);
 
 			Assert.False(reader.Read());
-		}
-
-		static Type GetVectorDataColumnType(string dataType) =>
-			dataType switch
-			{
-				"byte[]" => typeof(byte[]),
-				"float[]" => typeof(float[]),
-				"double[]" => typeof(double[]),
-				"sbyte[]" => typeof(sbyte[]),
-				"short[]" => typeof(short[]),
-				"int[]" => typeof(int[]),
-				"long[]" => typeof(long[]),
-				_ => throw new ArgumentOutOfRangeException(nameof(dataType)),
-			};
-
-		static object GetVectorDataRowValue(float[] data, string dataType) =>
-			dataType switch
-			{
-				"byte[]" => MemoryMarshal.Cast<float, byte>(data).ToArray(),
-				"float[]" => data,
-				"double[]" => data.Select(x => (double) x).ToArray(),
-				"sbyte[]" => data.Select(x => (sbyte) x).ToArray(),
-				"short[]" => data.Select(x => (short) x).ToArray(),
-				"int[]" => data.Select(x => (int) x).ToArray(),
-				"long[]" => data.Select(x => (long) x).ToArray(),
-				_ => throw new ArgumentOutOfRangeException(nameof(dataType)),
-			};
-
-		static void AssertVectorEquals(SingleStoreDataReader reader, int ordinal, string dataType, float[] expected)
-		{
-			switch (dataType)
-			{
-				case "byte[]":
-				case "float[]":
-					Assert.Equal(expected, GetVectorArray<float>(reader, ordinal));
-					break;
-
-				case "double[]":
-					Assert.Equal(expected.Select(x => (double) x).ToArray(), GetVectorArray<double>(reader, ordinal));
-					break;
-
-				case "sbyte[]":
-					Assert.Equal(expected.Select(x => (sbyte) x).ToArray(), GetVectorArray<sbyte>(reader, ordinal));
-					break;
-
-				case "short[]":
-					Assert.Equal(expected.Select(x => (short) x).ToArray(), GetVectorArray<short>(reader, ordinal));
-					break;
-
-				case "int[]":
-					Assert.Equal(expected.Select(x => (int) x).ToArray(), GetVectorArray<int>(reader, ordinal));
-					break;
-
-				case "long[]":
-					Assert.Equal(expected.Select(x => (long) x).ToArray(), GetVectorArray<long>(reader, ordinal));
-					break;
-
-				default:
-					throw new ArgumentOutOfRangeException(nameof(dataType));
-			}
-		}
-
-		static T[] GetVectorArray<T>(SingleStoreDataReader reader, int ordinal)
-			where T : unmanaged
-		{
-			return reader.GetValue(ordinal) switch
-			{
-				ReadOnlyMemory<T> memory => memory.ToArray(),
-				byte[] bytes => MemoryMarshal.Cast<byte, T>(bytes).ToArray(),
-				{ } value => throw new NotSupportedException(value.GetType().Name),
-			};
 		}
 	}
 
@@ -1721,6 +1650,7 @@ create table bulk_load_data_table(
 		csb.AllowLoadLocalInfile = true;
 
 		using var connection2 = new SingleStoreConnection(csb.ConnectionString);
+		connection2.Open();
 
 		using (var select = new SingleStoreCommand(
 			       "select id, vec, doc from bulk_copy_extended_source order by id;",
