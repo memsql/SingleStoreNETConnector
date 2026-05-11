@@ -351,7 +351,9 @@ public sealed class SingleStoreBulkCopy
 
 		static void AddColumnMapping(ILogger logger, List<SingleStoreBulkCopyColumnMapping> columnMappings, bool addDefaultMappings, int destinationOrdinal, string destinationColumn, string variableName, string expression)
 		{
-			expression = expression.Replace("%COL%", "`" + destinationColumn + "`").Replace("%VAR%", variableName);
+			expression = expression
+				.Replace("%COL%", "`" + destinationColumn.Replace("`", "``") + "`")
+				.Replace("%VAR%", variableName);
 			var columnMapping = columnMappings.FirstOrDefault(x => destinationColumn.Equals(x.DestinationColumn, StringComparison.OrdinalIgnoreCase));
 			if (columnMapping is not null)
 			{
@@ -527,7 +529,7 @@ public sealed class SingleStoreBulkCopy
 						long[] or ReadOnlyMemory<long> or Memory<long>
 						=> SingleStoreBinaryValueConverter.GetVectorBytes(value),
 
-					_ => throw new NotSupportedException($"Type {value.GetType().Name} not currently supported. Value: {value}")
+					_ => throw new NotSupportedException($"Type {value.GetType().Name} not currently supported. Value: {value}"),
 				};
 
 				return WriteBytes(inputSpan, ref inputIndex, output, out bytesWritten);

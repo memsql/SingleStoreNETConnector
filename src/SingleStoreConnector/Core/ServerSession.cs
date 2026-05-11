@@ -802,14 +802,6 @@ internal sealed partial class ServerSession : IServerCapabilities
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			OkPayload.Verify(payload.Span, this);
 
-			// re-enable extended types metadata if needed
-			if (cs.EnableExtendedDataTypes && S2ServerVersion.Version.CompareTo(S2Versions.SupportsExtendedDataTypes) >= 0)
-			{
-				await SendAsync(QueryPayload.Create(SupportsQueryAttributes, Encoding.ASCII.GetBytes("SET SESSION enable_extended_types_metadata = TRUE;")), ioBehavior, cancellationToken).ConfigureAwait(false);
-				payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-				OkPayload.Verify(payload.Span, this);
-			}
-
 			return true;
 		}
 		catch (IOException ex)

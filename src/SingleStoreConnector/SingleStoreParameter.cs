@@ -186,8 +186,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		SourceColumn = other.SourceColumn;
 		SourceColumnNullMapping = other.SourceColumnNullMapping;
 		SourceVersion = other.SourceVersion;
-		VectorDimensions = other.VectorDimensions;
-		VectorElementTypeName = other.VectorElementTypeName;
 	}
 
 	private SingleStoreParameter(SingleStoreParameter other, string parameterName)
@@ -204,18 +202,6 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 	internal string NormalizedParameterName { get; private set; }
 
 	internal SingleStoreParameterCollection? ParameterCollection { get; set; }
-
-	/// <summary>
-	/// Gets or sets the expected number of dimensions for a VECTOR parameter.
-	/// Used for validation when sending VECTOR data to the server.
-	/// </summary>
-	public int? VectorDimensions { get; set; }
-
-	/// <summary>
-	/// Gets or sets the expected element type name for a VECTOR parameter (e.g., "F32", "I64").
-	/// Used for validation when sending VECTOR data to the server.
-	/// </summary>
-	public string? VectorElementTypeName { get; set; }
 
 	/// <summary>
 	/// Appends the string value of the parameter to the writer.

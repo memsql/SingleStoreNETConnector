@@ -150,7 +150,8 @@ internal sealed class ColumnDefinitionPayload
 						throw new FormatException(
 							$"Expected 5 additional bytes for VECTOR extended metadata, but only {remainingExtendedBytes} remained.");
 
-					VectorDimensions = reader.ReadUInt32();
+					var vectorDimensions = reader.ReadUInt32();
+					VectorDimensions = vectorDimensions == 0 ? null : vectorDimensions;
 					VectorElementType = (SingleStoreVectorElementType) reader.ReadByte();
 					remainingExtendedBytes -= 5;
 					break;
