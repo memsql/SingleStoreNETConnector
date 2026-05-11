@@ -1694,51 +1694,18 @@ end;";
 		Assert.True(reader.IsDBNull(0));
 
 		Assert.True(reader.Read());
-		AssertVectorEquals(reader.GetValue(0), elementType, [0, 0, 0]);
+		ExtendedDataTypeTestUtilities.AssertVectorEquals(reader.GetValue(0), elementType, [0, 0, 0]);
 
 		Assert.True(reader.Read());
-		AssertVectorEquals(reader.GetValue(0), elementType, [1, 1, 1]);
+		ExtendedDataTypeTestUtilities.AssertVectorEquals(reader.GetValue(0), elementType, [1, 1, 1]);
 
 		Assert.True(reader.Read());
-		AssertVectorEquals(reader.GetValue(0), elementType, [1, 2, 3]);
+		ExtendedDataTypeTestUtilities.AssertVectorEquals(reader.GetValue(0), elementType, [1, 2, 3]);
 
 		Assert.True(reader.Read());
-		AssertVectorEquals(reader.GetValue(0), elementType, [-1, -1, -1]);
+		ExtendedDataTypeTestUtilities.AssertVectorEquals(reader.GetValue(0), elementType, [-1, -1, -1]);
 
 		Assert.False(reader.Read());
-
-		static void AssertVectorEquals(object actual, string elementType, int[] expected)
-		{
-			switch (elementType)
-			{
-				case "F32":
-					Assert.Equal(expected.Select(x => (float) x).ToArray(), ((ReadOnlyMemory<float>) actual).ToArray());
-					break;
-
-				case "F64":
-					Assert.Equal(expected.Select(x => (double) x).ToArray(), ((ReadOnlyMemory<double>) actual).ToArray());
-					break;
-
-				case "I8":
-					Assert.Equal(expected.Select(x => (sbyte) x).ToArray(), ((ReadOnlyMemory<sbyte>) actual).ToArray());
-					break;
-
-				case "I16":
-					Assert.Equal(expected.Select(x => (short) x).ToArray(), ((ReadOnlyMemory<short>) actual).ToArray());
-					break;
-
-				case "I32":
-					Assert.Equal(expected, ((ReadOnlyMemory<int>) actual).ToArray());
-					break;
-
-				case "I64":
-					Assert.Equal(expected.Select(x => (long) x).ToArray(), ((ReadOnlyMemory<long>) actual).ToArray());
-					break;
-
-				default:
-					throw new ArgumentOutOfRangeException(nameof(elementType));
-			}
-		}
 	}
 
 	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
