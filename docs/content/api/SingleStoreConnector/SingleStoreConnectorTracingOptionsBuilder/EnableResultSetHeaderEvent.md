@@ -1,6 +1,6 @@
 # SingleStoreConnectorTracingOptionsBuilder.EnableResultSetHeaderEvent method
 
-Gets or sets a value indicating whether to enable the "time-to-first-read" event. Default is true to preserve existing behavior.
+Gets or sets a value indicating whether to enable the "read-result-set-header" event. Default is false; set to true to opt in to this event.
 
 ```csharp
 public SingleStoreConnectorTracingOptionsBuilder EnableResultSetHeaderEvent(bool enable = true)
