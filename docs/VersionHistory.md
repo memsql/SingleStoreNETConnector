@@ -2,6 +2,40 @@
 
 ## Release Notes
 
+### 1.4.0
+
+All the changes introduced with MySqlConnector (2.4.0 - 2.5.0):
+
+* Support .NET 10
+
+* **Possibly breaking** SingleStoreConnection.State will be set to ConnectionState.Broken when there is a network error:
+  - Previously it would have been set to ConnectionState.Closed but the connection wasn't truly closed.
+  - Call SingleStoreConnection.Close() to fully close the connection before calling Open() again.
+  - Better yet, call .Dispose() (ideally with a using declaration) and create a new SingleStoreConnection instance to recover from failure.
+
+* **Possibly breaking** SingleStoreConnection.ResetConnectionAsync will consistently throw a SingleStoreException.
+
+* Support VECTOR and BSON data types
+
+* Add SingleStoreConnectorTracingOptions and builder APIs to configure tracing output
+
+* Mark SingleStoreDbType with [DbProviderSpecificTypeProperty(true)]
+
+* Allow loopback connections (e.g., Google Cloud SQL Proxy) to use clear-text password or public key retrieval
+
+* Improve XA transaction rollback handling
+
+* Free large cached payload buffers when returning sessions to the pool to reduce memory usage
+
+* Suppress error-level logging when a command is canceled
+
+* Fix SingleStoreBulkCopy auto-detected column mappings
+
+* Fix extra roundtrip for caching_sha2_password
+
+* Fix cancellation with AWS RDS Proxy
+
+
 ### 1.3.0
 
 All the changes introduced with MySqlConnector (2.3.1 - 2.4.0):

@@ -346,7 +346,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	[Category("Obsolete")]
 	[DefaultValue(true)]
 	[DisplayName("Defer Connection Reset")]
-	[Obsolete("This option is no longer supported in MySqlConnector >= 1.4.0.")]
+	[Obsolete("This option is no longer supported in SingleStoreConnector >= 1.4.0.")]
 	public bool DeferConnectionReset
 	{
 		get => SingleStoreConnectionStringOption.DeferConnectionReset.GetValue(this);
