@@ -1,11 +1,12 @@
 # SingleStoreBatchCommandCollection.Insert method
 
 ```csharp
-public override void Insert(int index, DbBatchCommand item)
+public void Insert(int index, SingleStoreBatchCommand item)
 ```
 
 ## See Also
 
+* class [SingleStoreBatchCommand](../SingleStoreBatchCommand.md)
 * class [SingleStoreBatchCommandCollection](../SingleStoreBatchCommandCollection.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 

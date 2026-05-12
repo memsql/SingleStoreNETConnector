@@ -1,7 +1,7 @@
 # SingleStoreConnection.CloseAsync method
 
 ```csharp
-public override Task CloseAsync()
+public Task CloseAsync()
 ```
 
 ## See Also

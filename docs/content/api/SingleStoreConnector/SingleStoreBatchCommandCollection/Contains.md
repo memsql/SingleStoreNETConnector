@@ -1,11 +1,12 @@
 # SingleStoreBatchCommandCollection.Contains method
 
 ```csharp
-public override bool Contains(DbBatchCommand item)
+public bool Contains(SingleStoreBatchCommand item)
 ```
 
 ## See Also
 
+* class [SingleStoreBatchCommand](../SingleStoreBatchCommand.md)
 * class [SingleStoreBatchCommandCollection](../SingleStoreBatchCommandCollection.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 

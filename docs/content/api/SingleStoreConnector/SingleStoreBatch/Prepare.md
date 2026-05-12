@@ -1,7 +1,7 @@
 # SingleStoreBatch.Prepare method
 
 ```csharp
-public override void Prepare()
+public void Prepare()
 ```
 
 ## See Also

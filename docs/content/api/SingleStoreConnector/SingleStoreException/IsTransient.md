@@ -3,7 +3,7 @@
 Returns `true` if this exception could indicate a transient error condition (that could succeed if retried); otherwise, `false`.
 
 ```csharp
-public override bool IsTransient { get; }
+public bool IsTransient { get; }
 ```
 
 ## See Also

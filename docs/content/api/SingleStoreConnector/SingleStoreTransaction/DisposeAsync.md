@@ -3,7 +3,7 @@
 Asynchronously releases any resources associated with this transaction. If it was not committed, it will be rolled back.
 
 ```csharp
-public override ValueTask DisposeAsync()
+public Task DisposeAsync()
 ```
 
 ## Return Value

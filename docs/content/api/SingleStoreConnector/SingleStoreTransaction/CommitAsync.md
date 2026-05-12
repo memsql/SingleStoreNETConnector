@@ -3,7 +3,7 @@
 Asynchronously commits the database transaction.
 
 ```csharp
-public override Task CommitAsync(CancellationToken cancellationToken = default)
+public Task CommitAsync(CancellationToken cancellationToken = default)
 ```
 
 | parameter | description |

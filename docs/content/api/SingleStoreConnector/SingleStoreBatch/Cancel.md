@@ -1,7 +1,7 @@
 # SingleStoreBatch.Cancel method
 
 ```csharp
-public override void Cancel()
+public void Cancel()
 ```
 
 ## See Also

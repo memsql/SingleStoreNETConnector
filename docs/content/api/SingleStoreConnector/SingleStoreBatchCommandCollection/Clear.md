@@ -1,7 +1,7 @@
 # SingleStoreBatchCommandCollection.Clear method
 
 ```csharp
-public override void Clear()
+public void Clear()
 ```
 
 ## See Also

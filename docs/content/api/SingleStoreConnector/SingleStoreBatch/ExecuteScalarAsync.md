@@ -1,7 +1,7 @@
 # SingleStoreBatch.ExecuteScalarAsync method
 
 ```csharp
-public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default)
+public Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken = default)
 ```
 
 ## See Also

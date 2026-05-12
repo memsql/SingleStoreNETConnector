@@ -5,7 +5,7 @@
 Example code:
 
 ```csharp
-using var connection = new SingleStoreConnection("...;AllowLoadLocalInfile=True");
+await using var connection = new SingleStoreConnection("...;AllowLoadLocalInfile=True");
 await connection.OpenAsync();
 var bulkLoader = new SingleStoreBulkLoader(connection)
 {

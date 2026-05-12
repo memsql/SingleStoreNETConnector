@@ -1,7 +1,7 @@
 # SingleStoreBatch.Dispose method
 
 ```csharp
-public override void Dispose()
+public void Dispose()
 ```
 
 ## See Also

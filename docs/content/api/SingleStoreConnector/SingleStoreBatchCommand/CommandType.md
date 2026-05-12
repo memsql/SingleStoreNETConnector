@@ -1,7 +1,7 @@
 # SingleStoreBatchCommand.CommandType property
 
 ```csharp
-public override CommandType CommandType { get; set; }
+public CommandType CommandType { get; set; }
 ```
 
 ## See Also

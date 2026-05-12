@@ -1,7 +1,7 @@
 # SingleStoreBatchCommand.CreateParameter method
 
 ```csharp
-public override DbParameter CreateParameter()
+public DbParameter CreateParameter()
 ```
 
 ## See Also

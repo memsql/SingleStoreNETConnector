@@ -1,7 +1,7 @@
 # SingleStoreBatch.ExecuteScalar method
 
 ```csharp
-public override object? ExecuteScalar()
+public object? ExecuteScalar()
 ```
 
 ## See Also

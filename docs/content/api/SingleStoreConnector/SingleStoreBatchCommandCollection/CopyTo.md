@@ -1,11 +1,12 @@
 # SingleStoreBatchCommandCollection.CopyTo method
 
 ```csharp
-public override void CopyTo(DbBatchCommand[] array, int arrayIndex)
+public void CopyTo(SingleStoreBatchCommand[] array, int arrayIndex)
 ```
 
 ## See Also
 
+* class [SingleStoreBatchCommand](../SingleStoreBatchCommand.md)
 * class [SingleStoreBatchCommandCollection](../SingleStoreBatchCommandCollection.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 

@@ -1,7 +1,7 @@
 # SingleStoreBatch.ExecuteNonQueryAsync method
 
 ```csharp
-public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
+public Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken = default)
 ```
 
 ## See Also

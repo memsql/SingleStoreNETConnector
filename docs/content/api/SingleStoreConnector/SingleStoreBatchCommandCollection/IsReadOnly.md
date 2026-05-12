@@ -1,7 +1,7 @@
 # SingleStoreBatchCommandCollection.IsReadOnly property
 
 ```csharp
-public override bool IsReadOnly { get; }
+public bool IsReadOnly { get; }
 ```
 
 ## See Also

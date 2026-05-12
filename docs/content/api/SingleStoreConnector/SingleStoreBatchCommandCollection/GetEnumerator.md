@@ -1,11 +1,12 @@
 # SingleStoreBatchCommandCollection.GetEnumerator method
 
 ```csharp
-public override IEnumerator<DbBatchCommand> GetEnumerator()
+public IEnumerator<SingleStoreBatchCommand> GetEnumerator()
 ```
 
 ## See Also
 
+* class [SingleStoreBatchCommand](../SingleStoreBatchCommand.md)
 * class [SingleStoreBatchCommandCollection](../SingleStoreBatchCommandCollection.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 

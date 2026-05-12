@@ -1,7 +1,7 @@
 # SingleStoreBatchCommand.RecordsAffected property
 
 ```csharp
-public override int RecordsAffected { get; }
+public int RecordsAffected { get; }
 ```
 
 ## See Also

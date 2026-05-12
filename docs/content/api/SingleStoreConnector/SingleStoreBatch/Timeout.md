@@ -1,7 +1,7 @@
 # SingleStoreBatch.Timeout property
 
 ```csharp
-public override int Timeout { get; set; }
+public int Timeout { get; set; }
 ```
 
 ## See Also

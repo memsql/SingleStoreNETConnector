@@ -3,8 +3,7 @@
 Asynchronously removes the named transaction savepoint with the specified *savepointName*. No commit or rollback occurs.
 
 ```csharp
-public override Task ReleaseAsync(string savepointName, 
-    CancellationToken cancellationToken = default)
+public Task ReleaseAsync(string savepointName, CancellationToken cancellationToken = default)
 ```
 
 | parameter | description |

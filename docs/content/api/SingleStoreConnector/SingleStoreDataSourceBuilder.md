@@ -13,6 +13,7 @@ public sealed class SingleStoreDataSourceBuilder
 | [SingleStoreDataSourceBuilder](SingleStoreDataSourceBuilder/SingleStoreDataSourceBuilder.md)(…) | Initializes a new [`SingleStoreDataSourceBuilder`](./SingleStoreDataSourceBuilder.md) with the specified connection string. |
 | [ConnectionStringBuilder](SingleStoreDataSourceBuilder/ConnectionStringBuilder.md) { get; } | A [`SingleStoreConnectionStringBuilder`](./SingleStoreConnectionStringBuilder.md) that can be used to configure the connection string on this [`SingleStoreDataSourceBuilder`](./SingleStoreDataSourceBuilder.md). |
 | [Build](SingleStoreDataSourceBuilder/Build.md)() | Builds a [`SingleStoreDataSource`](./SingleStoreDataSource.md) which is ready for use. |
+| [ConfigureTracing](SingleStoreDataSourceBuilder/ConfigureTracing.md)(…) | Configures OpenTelemetry tracing options. |
 | [UseClientCertificatesCallback](SingleStoreDataSourceBuilder/UseClientCertificatesCallback.md)(…) | Sets the callback used to provide client certificates for connecting to a server. |
 | [UseConnectionOpenedCallback](SingleStoreDataSourceBuilder/UseConnectionOpenedCallback.md)(…) | Adds a callback that is invoked when a new [`SingleStoreConnection`](./SingleStoreConnection.md) is opened. |
 | [UseLoggerFactory](SingleStoreDataSourceBuilder/UseLoggerFactory.md)(…) | Sets the ILoggerFactory that will be used for logging. |

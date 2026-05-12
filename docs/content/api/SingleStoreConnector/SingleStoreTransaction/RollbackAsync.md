@@ -3,7 +3,7 @@
 Asynchronously rolls back the database transaction.
 
 ```csharp
-public override Task RollbackAsync(CancellationToken cancellationToken = default)
+public Task RollbackAsync(CancellationToken cancellationToken = default)
 ```
 
 | parameter | description |
@@ -26,8 +26,7 @@ A Task representing the asynchronous operation.
 Asynchronously rolls back the current transaction to the savepoint with the specified *savepointName* without aborting the transaction.
 
 ```csharp
-public override Task RollbackAsync(string savepointName, 
-    CancellationToken cancellationToken = default)
+public Task RollbackAsync(string savepointName, CancellationToken cancellationToken = default)
 ```
 
 | parameter | description |
