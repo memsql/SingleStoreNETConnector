@@ -1,7 +1,3 @@
-#if BASELINE
-using SingleStoreConnectorFactory = MySql.Data.MySqlClient.MySqlClientFactory;
-#endif
-
 namespace SideBySide;
 
 public class ClientFactoryTests
@@ -23,7 +19,6 @@ public class ClientFactoryTests
 	{
 		Assert.IsType<SingleStoreConnectionStringBuilder>(SingleStoreConnectorFactory.Instance.CreateConnectionStringBuilder());
 	}
-
 
 	[Fact]
 	public void CreateParameter()

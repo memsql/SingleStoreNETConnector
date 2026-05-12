@@ -1,7 +1,7 @@
 # SingleStoreBatchCommand.CanCreateParameter property
 
 ```csharp
-public override bool CanCreateParameter { get; }
+public bool CanCreateParameter { get; }
 ```
 
 ## See Also

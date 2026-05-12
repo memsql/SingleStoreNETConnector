@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace SideBySide;
 
 public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
@@ -88,7 +90,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	}
 
 	[SkippableTheory(ServerFeatures.StoredProcedures)]
-	// [InlineData("FUNCTION", false)] see PLAT-6053
+	//// [InlineData("FUNCTION", false)] see PLAT-6053
 	[InlineData("PROCEDURE", true)]
 	[InlineData("PROCEDURE", false)]
 	public async Task StoredProcedureEchoException(string procedureType, bool prepare)
@@ -207,8 +209,8 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		var reader = (SingleStoreDataReader) await cmd.ExecuteReaderAsync();
 		var result = await reader.ReadAsync();
 		Assert.True(result);
-        Assert.Equal(DBNull.Value, reader.GetValue(0));
-        Assert.Equal(DBNull.Value, reader.GetValue(1));
+		Assert.Equal(DBNull.Value, reader.GetValue(0));
+		Assert.Equal(DBNull.Value, reader.GetValue(1));
 	}
 
 	[Theory]
@@ -304,12 +306,20 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		{
 		    var reader = (SingleStoreDataReader) await cmd.ExecuteReaderAsync();
 		    var result = await reader.ReadAsync();
+
 		    Assert.True(result);
-			Assert.Equal(2 * (double) cmd.Parameters["@radius"].Value, reader.GetDouble("diameter"));
-			Assert.Equal(2.0 * Math.PI * (double) cmd.Parameters["@radius"].Value, reader.GetDouble("circumference"));
-			Assert.Equal(Math.PI * Math.Pow((double) cmd.Parameters["@radius"].Value, 2), reader.GetDouble("area"));
-			Assert.Equal(reader.GetDouble("area") * (double) cmd.Parameters["@height"].Value, reader.GetDouble("volume"));
-		} else {
+
+		    var radius = (double)cmd.Parameters["@radius"].Value;
+		    var height = (double)cmd.Parameters["@height"].Value;
+		    var area = reader.GetDouble("area");
+
+		    Assert.Equal(2 * radius, reader.GetDouble("diameter"));
+		    Assert.Equal(2.0 * Math.PI * radius, reader.GetDouble("circumference"));
+		    Assert.Equal(Math.PI * Math.Pow(radius, 2), area);
+		    Assert.Equal(area * height, reader.GetDouble("volume"));
+		}
+		else
+		{
 			var result = await ExecuteCommandAsync(cmd, executorType);
 			if (executorType != "NonQuery")
 				Assert.Equal((string) cmd.Parameters["@name"].Value + "circle", result);
@@ -409,7 +419,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 			ParameterName = "high",
 			DbType = DbType.Int32,
 			Direction = ParameterDirection.Input,
-			Value = 1
+			Value = 1,
 		};
 		while ((int) parameter.Value < 8)
 		{
@@ -546,11 +556,11 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 #endif
 	[InlineData("char(30)", 30)]
 	[InlineData("varchar(50)", 50)]
-	// These return nonzero sizes for some versions of MySQL Server 8.0
-	// [InlineData("bit", 0)]
-	// [InlineData("tinyint", 0)]
-	// [InlineData("bigint", 0)]
-	// [InlineData("bigint unsigned", 0)]
+	//// These return nonzero sizes for some versions of MySQL Server 8.0
+	//// [InlineData("bit", 0)]
+	//// [InlineData("tinyint", 0)]
+	//// [InlineData("bigint", 0)]
+	//// [InlineData("bigint unsigned", 0)]
 	public void DeriveParametersParameterSize(string parameterType, int expectedSize)
 	{
 		var csb = AppConfig.CreateConnectionStringBuilder();
@@ -575,7 +585,7 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	[InlineData("bit(1)", SingleStoreDbType.Bit)]
 #if BASELINE
 	[InlineData("bool", SingleStoreDbType.Byte)]
-	[InlineData("tinyint(1)", MySqlDbType.Byte)]
+	[InlineData("tinyint(1)", SingleStoreDbType.Byte)]
 #else
 	[InlineData("bool", SingleStoreDbType.Bool)]
 	[InlineData("tinyint(1)", SingleStoreDbType.Bool)]
@@ -737,6 +747,65 @@ END;", connection))
 		}
 	}
 
+#if !BASELINE
+	[Theory]
+	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", false)]
+	[InlineData(SingleStoreGuidFormat.Binary16, "BINARY(16)", "X'BABD8384C908499C9D95C02ADA94A970'", true)]
+	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", false)]
+	[InlineData(SingleStoreGuidFormat.Char32, "CHAR(32)", "'BABD8384C908499C9D95C02ADA94A970'", true)]
+	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", false)]
+	[InlineData(SingleStoreGuidFormat.Char36, "CHAR(36)", "'BABD8384-C908-499C-9D95-C02ADA94A970'", true)]
+	public void StoredProcedureReturnsGuid(SingleStoreGuidFormat guidFormat, string columnDefinition, string columnValue, bool prepare)
+	{
+		if (prepare)
+		{
+			return; // SingleStore does not currently support preparing ECHO proc()
+		}
+
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.GuidFormat = guidFormat;
+		csb.Pooling = false;
+
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		connection.Open();
+
+		using (var setup = new SingleStoreCommand($"""
+		                                           DROP TABLE IF EXISTS out_guid_table;
+		                                           CREATE TABLE out_guid_table
+		                                           (
+		                                               id BIGINT PRIMARY KEY AUTO_INCREMENT,
+		                                               guid {columnDefinition}
+		                                           );
+		                                           INSERT INTO out_guid_table (guid) VALUES ({columnValue});
+
+		                                           DROP PROCEDURE IF EXISTS out_guid;
+		                                           CREATE PROCEDURE out_guid() RETURNS {columnDefinition} AS
+		                                           DECLARE g {columnDefinition};
+		                                           BEGIN
+		                                               SELECT guid INTO g
+		                                               FROM out_guid_table
+		                                               LIMIT 1;
+
+		                                               RETURN g;
+		                                           END;
+		                                           """, connection))
+		{
+			setup.ExecuteNonQuery();
+		}
+
+		using var command = new SingleStoreCommand("ECHO out_guid()", connection);
+
+		if (prepare)
+			command.Prepare();
+
+		var value = command.ExecuteScalar();
+
+		Assert.Equal(
+			new Guid("BABD8384-C908-499C-9D95-C02ADA94A970"),
+			Assert.IsType<Guid>(value));
+	}
+#endif
+
 	private static string NormalizeSpaces(string input)
 	{
 		input = input.Replace('\r', ' ');
@@ -758,5 +827,5 @@ END;", connection))
 		return connection;
 	}
 
-	readonly DatabaseFixture m_database;
+	private readonly DatabaseFixture m_database;
 }

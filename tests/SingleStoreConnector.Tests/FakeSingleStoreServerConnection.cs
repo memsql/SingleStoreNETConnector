@@ -312,6 +312,6 @@ internal sealed class FakeSingleStoreServerConnection
 		writer.WriteRaw(message);
 	}
 
-	readonly FakeSingleStoreServer m_server;
-	readonly int m_connectionId;
+	private readonly FakeSingleStoreServer m_server;
+	private readonly int m_connectionId;
 }

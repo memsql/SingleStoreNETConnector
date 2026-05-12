@@ -161,7 +161,7 @@ public class BulkLoaderAsync : IClassFixture<DatabaseFixture>
 		await connection.OpenAsync();
 		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
 		{
-			Timeout = 3, //Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
+			Timeout = 3, // Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
 			FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile + "-junk",
 			TableName = m_testTable,
 			CharacterSet = "UTF8",
@@ -198,7 +198,7 @@ public class BulkLoaderAsync : IClassFixture<DatabaseFixture>
 		}
 		catch (Exception exception)
 		{
-			//We know that the exception is not a SingleStoreException, just use the assertion to fail the test
+			// We know that the exception is not a SingleStoreException, just use the assertion to fail the test
 			Assert.IsType<SingleStoreException>(exception);
 		}
 	}
@@ -341,7 +341,7 @@ public class BulkLoaderAsync : IClassFixture<DatabaseFixture>
 #if !BASELINE
 		await Assert.ThrowsAsync<InvalidOperationException>(async () => { var rowCount = await bl.LoadAsync(); });
 #else
-		await Assert.ThrowsAsync<MySqlException>(async () => { var rowCount = await bl.LoadAsync(fileStream); });
+		await Assert.ThrowsAsync<SingleStoreException>(async () => { var rowCount = await bl.LoadAsync(fileStream); });
 #endif
 	}
 
@@ -649,11 +649,129 @@ create table bulk_load_data_table(str varchar(5), number tinyint);", connection)
 		var bulkCopy = new SingleStoreBulkCopy(connection);
 		await Assert.ThrowsAsync<ArgumentNullException>(async () => await bulkCopy.WriteToServerAsync(default(DbDataReader)));
 	}
+
+	[Fact]
+	public async Task BulkCopyGeographyAsync()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		await connection.OpenAsync();
+
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("geo_data", typeof(SingleStoreGeography)),
+			},
+			Rows =
+			{
+				new object[] { new SingleStoreGeography("LINESTRING(0.00000000 0.00000000, 1.00000000 1.00000000, 2.00000000 2.00000000)") },
+				new object[] { new SingleStoreGeography("POLYGON((0.00000000 0.00000000, 1.00000000 0.00000000, 1.00000000 1.00000000, 0.00000000 1.00000000, 0.00000000 0.00000000))") },
+			},
+		};
+
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create rowstore table bulk_load_data_table(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    geo_data GEOGRAPHY NOT NULL
+);", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var bc = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_data_table",
+			ColumnMappings =
+			{
+				new()
+				{
+					SourceOrdinal = 0,
+					DestinationColumn = "geo_data",
+				},
+			},
+		};
+
+		var result = await bc.WriteToServerAsync(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand("select geo_data from bulk_load_data_table order by id;", connection))
+		using (var reader = await cmd.ExecuteReaderAsync())
+		{
+			Assert.True(await reader.ReadAsync());
+			Assert.Equal("LINESTRING(0.00000000 0.00000000, 1.00000000 1.00000000, 2.00000000 2.00000000)", reader.GetString(0));
+			Assert.True(await reader.ReadAsync());
+			Assert.Equal("POLYGON((0.00000000 0.00000000, 1.00000000 0.00000000, 1.00000000 1.00000000, 0.00000000 1.00000000, 0.00000000 0.00000000))", reader.GetString(0));
+			Assert.False(await reader.ReadAsync());
+		}
+	}
+
+	[Fact]
+	public async Task BulkCopyGeographyPointAsync()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		await connection.OpenAsync();
+
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("point_data", typeof(SingleStoreGeographyPoint)),
+			},
+			Rows =
+			{
+				new object[] { new SingleStoreGeographyPoint("POINT(0.00000000 0.00000000)") },
+				new object[] { new SingleStoreGeographyPoint("POINT(1.00000000 1.00000000)") },
+			},
+		};
+
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create table bulk_load_data_table(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    point_data GEOGRAPHYPOINT NOT NULL
+);", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var bc = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_data_table",
+			ColumnMappings =
+			{
+				new()
+				{
+					SourceOrdinal = 0,
+					DestinationColumn = "point_data",
+				},
+			},
+		};
+
+		var result = await bc.WriteToServerAsync(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(
+			       "select GEOGRAPHY_LONGITUDE(point_data), GEOGRAPHY_LATITUDE(point_data) from bulk_load_data_table order by id;",
+			       connection))
+		using (var reader = await cmd.ExecuteReaderAsync())
+		{
+			Assert.True(await reader.ReadAsync());
+			Assert.InRange(reader.GetDouble(0), -1e-6, 1e-6);
+			Assert.InRange(reader.GetDouble(1), -1e-6, 1e-6);
+
+			Assert.True(await reader.ReadAsync());
+			Assert.InRange(reader.GetDouble(0), 1.0 - 1e-6, 1.0 + 1e-6);
+			Assert.InRange(reader.GetDouble(1), 1.0 - 1e-6, 1.0 + 1e-6);
+
+			Assert.False(await reader.ReadAsync());
+		}
+	}
 #endif
 
 	private static string GetConnectionString() => BulkLoaderSync.GetConnectionString();
 	private static string GetLocalConnectionString() => BulkLoaderSync.GetLocalConnectionString();
 
-	readonly string m_testTable;
-	readonly byte[] m_memoryStreamBytes;
+	private readonly string m_testTable;
+	private readonly byte[] m_memoryStreamBytes;
 }

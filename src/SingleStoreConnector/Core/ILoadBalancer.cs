@@ -34,7 +34,7 @@ internal sealed class RandomLoadBalancer : ILoadBalancer
 		return shuffled;
 #else
 		var shuffled = new List<string>(hosts);
-		// from https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
+		//// from https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_modern_algorithm
 		for (var i = hosts.Count - 1; i >= 1; i--)
 		{
 			int j;
@@ -52,7 +52,6 @@ internal sealed class RandomLoadBalancer : ILoadBalancer
 		m_random = new();
 		m_lock = new();
 	}
-
 
 	private readonly Random m_random;
 #if NET9_0_OR_GREATER

@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/tools/">
+    <Project Path="tools/SchemaCollectionGenerator/SchemaCollectionGenerator.csproj" />
+  </Folder>
+  <Project Path="src/SingleStoreConnector.Authentication.Ed25519/SingleStoreConnector.Authentication.Ed25519.csproj" />
+  <Project Path="src/SingleStoreConnector.DependencyInjection/SingleStoreConnector.DependencyInjection.csproj" />
+  <Project Path="src/SingleStoreConnector.Logging.log4net/SingleStoreConnector.Logging.log4net.csproj" />
+  <Project Path="src/SingleStoreConnector.Logging.Microsoft.Extensions.Logging/SingleStoreConnector.Logging.Microsoft.Extensions.Logging.csproj" />
+  <Project Path="src/SingleStoreConnector.Logging.NLog/SingleStoreConnector.Logging.NLog.csproj" />
+  <Project Path="src/SingleStoreConnector.Logging.Serilog/SingleStoreConnector.Logging.Serilog.csproj" />
+  <Project Path="src/SingleStoreConnector/SingleStoreConnector.csproj" />
+  <Project Path="tests/Conformance.Tests/Conformance.Tests.csproj" />
+  <Project Path="tests/SideBySide/SideBySide.csproj" />
+  <Project Path="tests/SingleStoreConnector.DependencyInjection.Tests/SingleStoreConnector.DependencyInjection.Tests.csproj" />
+  <Project Path="tests/SingleStoreConnector.NativeAot.Tests/SingleStoreConnector.NativeAot.Tests.csproj" />
+  <Project Path="tests/SingleStoreConnector.Tests/SingleStoreConnector.Tests.csproj" />
+</Solution>

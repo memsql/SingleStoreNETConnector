@@ -4,7 +4,7 @@ namespace SideBySide;
 
 public class SingleStoreDataSourceTests : IClassFixture<DatabaseFixture>
 {
-	public SingleStoreDataSourceTests(DatabaseFixture _)
+	public SingleStoreDataSourceTests(DatabaseFixture ignoredFixture)
 	{
 	}
 

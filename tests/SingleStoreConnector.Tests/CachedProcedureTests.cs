@@ -4,9 +4,9 @@ public class CachedProcedureTests
 {
 	[Theory]
 	[MemberData(nameof(CreateParseableParameters))]
-	public void ParseParameters(string sql, object[] expected)
+	public void ParseParameters(string sql, SingleStoreGuidFormat guidFormat, object[] expected)
 	{
-		var actual = CachedProcedure.ParseParameters(sql);
+		var actual = CachedProcedure.ParseParameters(sql, guidFormat);
 		Assert.Equal(expected.Length, actual.Count);
 		for (int i = 0; i < expected.Length; i++)
 		{
@@ -25,106 +25,118 @@ public class CachedProcedureTests
 		{
 			new object[]
 			{
-				"", new object[0],
+				"", SingleStoreGuidFormat.Binary16, new object[0],
 			},
 			[
-				"/* no, parameters */", new object[0],
+				"/* no, parameters */", SingleStoreGuidFormat.Binary16, new object[0],
 			],
 			[
-				"IN test INT", new object[]
+				"IN test INT", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "test", "INT", false, 0),
+					new CachedParameter(1, "IN", "test", "INT", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"IN test INT UNSIGNED", new object[]
+				"IN test INT UNSIGNED", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "test", "INT", true, 0),
+					new CachedParameter(1, "IN", "test", "INT", true, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"-- IN ignored INT UNSIGNED,\r\nIN notignored INT", new object[]
+				"-- IN ignored INT UNSIGNED,\r\nIN notignored INT", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "notignored", "INT", false, 0),
+					new CachedParameter(1, "IN", "notignored", "INT", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"IN param1 INT,\r\nIN param2 INT", new object[]
+				"IN param1 INT,\r\nIN param2 INT", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "INT", false, 0),
-					new CachedParameter(2, "IN", "param2", "INT", false, 0),
+					new CachedParameter(1, "IN", "param1", "INT", false, 0, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(2, "IN", "param2", "INT", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"IN /* ignored BIGINT,\r\nIN*/ param1 INT", new object[]
+				"IN /* ignored BIGINT,\r\nIN*/ param1 INT", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "INT", false, 0),
+					new CachedParameter(1, "IN", "param1", "INT", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"IN param1 INT(11)", new object[]
+				"IN param1 INT(11)", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "INT", false, 11),
+					new CachedParameter(1, "IN", "param1", "INT", false, 11, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"param1 BIGINT(21) UNSIGNED ZEROFILL", new object[]
+				"param1 BIGINT(21) UNSIGNED ZEROFILL", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "BIGINT", true, 21),
+					new CachedParameter(1, "IN", "param1", "BIGINT", true, 21, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"param1 VARCHAR(63)", new object[]
+				"param1 VARCHAR(63)", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "VARCHAR", false, 63),
+					new CachedParameter(1, "IN", "param1", "VARCHAR", false, 63, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"param1 VARCHAR(63) CHARSET latin1", new object[]
+				"param1 VARCHAR(63) CHARSET latin1", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "VARCHAR", false, 63),
+					new CachedParameter(1, "IN", "param1", "VARCHAR", false, 63, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"param1 VARCHAR(63) COLLATE utf8bin", new object[]
+				"param1 VARCHAR(63) COLLATE utf8bin", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "VARCHAR", false, 63),
+					new CachedParameter(1, "IN", "param1", "VARCHAR", false, 63, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"param1 VARCHAR(63) CHARACTER SET latin1 COLLATE latin1_bin", new object[]
+				"param1 VARCHAR(63) CHARACTER SET latin1 COLLATE latin1_bin", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "VARCHAR", false, 63),
+					new CachedParameter(1, "IN", "param1", "VARCHAR", false, 63, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"`par``am` INT", new object[]
+				"`par``am` INT", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "par`am", "INT", false, 0),
+					new CachedParameter(1, "IN", "par`am", "INT", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"IN input enum ('One', 'Two', 'Three')", new object[]
+				"IN input enum ('One', 'Two', 'Three')", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "input", "ENUM", false, 0),
+					new CachedParameter(1, "IN", "input", "ENUM", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"OUT param DECIMAL(10,5)", new object[]
+				"OUT param DECIMAL(10,5)", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "OUT", "param", "DECIMAL", false, 0),
+					new CachedParameter(1, "OUT", "param", "DECIMAL", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"INOUT param LONGTEXT", new object[]
+				"INOUT param LONGTEXT", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "INOUT", "param", "LONGTEXT", false, 0),
+					new CachedParameter(1, "INOUT", "param", "LONGTEXT", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
-				"ColSet set('set1','set2','set3')", new object[]
+				"OUT param1 BINARY(16)", SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "ColSet", "SET", false, 0),
+					new CachedParameter(1, "OUT", "param1", "BINARY", false, 16, SingleStoreGuidFormat.Binary16),
+				}
+			],
+			[
+				"OUT param1 CHAR(36)", SingleStoreGuidFormat.Char36, new object[]
+				{
+					new CachedParameter(1, "OUT", "param1", "CHAR", false, 36, SingleStoreGuidFormat.Char36),
+				}
+			],
+			[
+				"ColSet set('set1','set2','set3')", SingleStoreGuidFormat.Binary16, new object[]
+				{
+					new CachedParameter(1, "IN", "ColSet", "SET", false, 0, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
@@ -135,14 +147,14 @@ param3 DECIMAL(20,10),
 inout param4 VARCHAR(63) CHARSET latin1,
 param5 bigint(20) unsigned zerofill,
 out param6 bool",
-				new object[]
+				SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "DATETIME", false, 6),
-					new CachedParameter(2, "OUT", "param2", "INT", false, 0),
-					new CachedParameter(3, "IN", "param3", "DECIMAL", false, 0),
-					new CachedParameter(4, "INOUT", "param4", "VARCHAR", false, 63),
-					new CachedParameter(5, "IN", "param5", "BIGINT", true, 20),
-					new CachedParameter(6, "OUT", "param6", "TINYINT", false, 1),
+					new CachedParameter(1, "IN", "param1", "DATETIME", false, 6, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(2, "OUT", "param2", "INT", false, 0, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(3, "IN", "param3", "DECIMAL", false, 0, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(4, "INOUT", "param4", "VARCHAR", false, 63, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(5, "IN", "param5", "BIGINT", true, 20, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(6, "OUT", "param6", "TINYINT", false, 1, SingleStoreGuidFormat.Binary16),
 				}
 			],
 			[
@@ -153,12 +165,12 @@ param3 real(20,10),
 -- ignored INT
 param4 INTEGER(3)
 ",
-				new object[]
+				SingleStoreGuidFormat.Binary16, new object[]
 				{
-					new CachedParameter(1, "IN", "param1", "TINYINT", false, 1),
-					new CachedParameter(2, "IN", "param2", "VARCHAR", false, 0),
-					new CachedParameter(3, "IN", "param3", "DOUBLE", false, 20),
-					new CachedParameter(4, "IN", "param4", "INT", false, 3),
+					new CachedParameter(1, "IN", "param1", "TINYINT", false, 1, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(2, "IN", "param2", "VARCHAR", false, 0, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(3, "IN", "param3", "DOUBLE", false, 20, SingleStoreGuidFormat.Binary16),
+					new CachedParameter(4, "IN", "param4", "INT", false, 3, SingleStoreGuidFormat.Binary16),
 				}
 			],
 		};

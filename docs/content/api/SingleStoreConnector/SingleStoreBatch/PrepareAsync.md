@@ -1,7 +1,7 @@
 # SingleStoreBatch.PrepareAsync method
 
 ```csharp
-public override Task PrepareAsync(CancellationToken cancellationToken = default)
+public Task PrepareAsync(CancellationToken cancellationToken = default)
 ```
 
 ## See Also

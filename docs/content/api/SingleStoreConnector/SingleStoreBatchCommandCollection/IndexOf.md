@@ -1,11 +1,12 @@
 # SingleStoreBatchCommandCollection.IndexOf method
 
 ```csharp
-public override int IndexOf(DbBatchCommand item)
+public int IndexOf(SingleStoreBatchCommand item)
 ```
 
 ## See Also
 
+* class [SingleStoreBatchCommand](../SingleStoreBatchCommand.md)
 * class [SingleStoreBatchCommandCollection](../SingleStoreBatchCommandCollection.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 

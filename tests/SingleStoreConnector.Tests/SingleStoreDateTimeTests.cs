@@ -7,7 +7,7 @@ public class SingleStoreDateTimeTests
 	[Fact]
 	public void NewSingleStoreDateTimeIsNotValidDateTime()
 	{
-		var msdt = new SingleStoreDateTime();
+		var msdt = default(SingleStoreDateTime);
 		Assert.False(msdt.IsValidDateTime);
 	}
 
@@ -52,7 +52,7 @@ public class SingleStoreDateTimeTests
 	[Fact]
 	public void GetDateTimeForInvalidDate()
 	{
-		var msdt = new SingleStoreDateTime();
+		var msdt = default(SingleStoreDateTime);
 		Assert.False(msdt.IsValidDateTime);
 		Assert.Throws<SingleStoreConversionException>(() => msdt.GetDateTime());
 	}
@@ -60,7 +60,7 @@ public class SingleStoreDateTimeTests
 	[Fact]
 	public void SetMicrosecond()
 	{
-		var msdt = new SingleStoreDateTime();
+		var msdt = default(SingleStoreDateTime);
 		Assert.Equal(0, msdt.Microsecond);
 		msdt.Microsecond = 123456;
 		Assert.Equal(123, msdt.Millisecond);
@@ -93,7 +93,7 @@ public class SingleStoreDateTimeTests
 	[Fact]
 	public void NotConvertibleToDateTime()
 	{
-		IConvertible convertible = new SingleStoreDateTime();
+		IConvertible convertible = default(SingleStoreDateTime);
 #if !BASELINE
 		Assert.Throws<InvalidCastException>(() => convertible.ToDateTime(CultureInfo.InvariantCulture));
 #else
@@ -104,7 +104,7 @@ public class SingleStoreDateTimeTests
 	[Fact]
 	public void NotConvertToDateTime()
 	{
-		object obj = new SingleStoreDateTime();
+		object obj = default(SingleStoreDateTime);
 #if !BASELINE
 		Assert.Throws<InvalidCastException>(() => Convert.ToDateTime(obj));
 #else
@@ -115,7 +115,7 @@ public class SingleStoreDateTimeTests
 	[Fact]
 	public void NotChangeTypeToDateTime()
 	{
-		object obj = new SingleStoreDateTime();
+		object obj = default(SingleStoreDateTime);
 #if !BASELINE
 		Assert.Throws<InvalidCastException>(() => Convert.ChangeType(obj, TypeCode.DateTime));
 #else
@@ -134,7 +134,7 @@ public class SingleStoreDateTimeTests
 	[Fact]
 	public void InvalidDateTimeConvertibleToString()
 	{
-		IConvertible convertible = new SingleStoreDateTime();
+		IConvertible convertible = default(SingleStoreDateTime);
 		Assert.Equal("0000-00-00", convertible.ToString(CultureInfo.InvariantCulture));
 	}
 #endif
@@ -255,6 +255,6 @@ public class SingleStoreDateTimeTests
 	}
 #endif
 
-	static readonly SingleStoreDateTime s_mySqlDateTime = new(2018, 6, 9, 12, 34, 56, 123456);
-	static readonly DateTime s_dateTime = new DateTime(2018, 6, 9, 12, 34, 56, 123).AddTicks(4560);
+	private static readonly SingleStoreDateTime s_mySqlDateTime = new(2018, 6, 9, 12, 34, 56, 123456);
+	private static readonly DateTime s_dateTime = new DateTime(2018, 6, 9, 12, 34, 56, 123).AddTicks(4560);
 }

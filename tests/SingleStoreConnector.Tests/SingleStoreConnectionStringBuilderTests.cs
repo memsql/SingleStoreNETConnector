@@ -160,7 +160,7 @@ public class SingleStoreConnectionStringBuilderTests
 				"ssl mode=verifyca;" +
 				"tls version=Tls12, TLS v1.3;" +
 				"Uid=username;" +
-				"useaffectedrows=true"
+				"useaffectedrows=true",
 		};
 		Assert.True(csb.AllowLoadLocalInfile);
 		Assert.True(csb.AllowPublicKeyRetrieval);
@@ -169,7 +169,7 @@ public class SingleStoreConnectionStringBuilderTests
 		Assert.False(csb.AutoEnlist);
 #if !BASELINE
 		Assert.Equal(-1, csb.CancellationTimeout);
-		// Connector/NET treats "CertificateFile" (client certificate) and "SslCa" (server CA) as aliases
+		//// Connector/NET treats "CertificateFile" (client certificate) and "SslCa" (server CA) as aliases
 		Assert.Equal("file.pfx", csb.CertificateFile);
 #endif
 		Assert.Equal("Pass2345", csb.CertificatePassword);
@@ -589,8 +589,6 @@ public class SingleStoreConnectionStringBuilderTests
 			Password = "foo;=bar,baz",
 		};
 		Assert.Equal("Password=\"foo;=bar,baz\"", builder.ConnectionString, StringComparer.OrdinalIgnoreCase);
-#if !BASELINE // https://bugs.mysql.com/bug.php?id=111797
 		using var connection = new SingleStoreConnection(builder.ConnectionString);
-#endif
 	}
 }

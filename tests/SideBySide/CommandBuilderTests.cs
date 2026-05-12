@@ -136,11 +136,11 @@ insert into command_builder_delete values(1, 'one'), (2, 'two');
 	[Theory]
 	[InlineData("test", "`test`")]
 	[InlineData("te`st", "`te``st`")]
-	[InlineData("`test`", "```test```"
 #if BASELINE
-		, Skip = "Doesn't quote leading quotes"
+	[InlineData("`test`", "```test```", Skip = "Doesn't quote leading quotes")]
+#else
+	[InlineData("`test`", "```test```")]
 #endif
-	)]
 	public void QuoteIdentifier(string input, string expected)
 	{
 		var cb = new SingleStoreCommandBuilder();
@@ -158,5 +158,5 @@ insert into command_builder_delete values(1, 'one'), (2, 'two');
 		Assert.Equal(expected, cb.UnquoteIdentifier(input));
 	}
 
-	readonly DatabaseFixture m_database;
+	private readonly DatabaseFixture m_database;
 }

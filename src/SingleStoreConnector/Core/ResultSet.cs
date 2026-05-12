@@ -167,7 +167,7 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 						ContainsCommandParameters = true;
 					WarningCount = 0;
 					State = ResultSetState.ReadResultSetHeader;
-					if (DataReader.Activity is { IsAllDataRequested: true })
+					if (DataReader.Activity is { IsAllDataRequested: true } && (Command?.Connection!.SingleStoreDataSource?.TracingOptions.EnableResultSetHeaderEvent ?? SingleStoreConnectorTracingOptions.Default.EnableResultSetHeaderEvent))
 						DataReader.Activity.AddEvent(new ActivityEvent("read-result-set-header"));
 					break;
 				}
@@ -332,12 +332,8 @@ internal sealed class ResultSet(SingleStoreDataReader dataReader)
 
 	public int GetOrdinal(string name)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(name);
-#else
-		if (name is null)
-			throw new ArgumentNullException(nameof(name));
-#endif
+
 		if (!HasResultSet)
 			throw new InvalidOperationException("There is no current result set.");
 

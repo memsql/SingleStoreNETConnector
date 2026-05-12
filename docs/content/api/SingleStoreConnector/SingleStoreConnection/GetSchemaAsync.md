@@ -3,7 +3,7 @@
 Asynchronously returns schema information for the data source of this [`SingleStoreConnection`](../SingleStoreConnection.md).
 
 ```csharp
-public override Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
+public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
 ```
 
 | parameter | description |
@@ -30,7 +30,7 @@ The proposed ADO.NET API that this is based on is not finalized; this API may ch
 Asynchronously returns schema information for the data source of this [`SingleStoreConnection`](../SingleStoreConnection.md).
 
 ```csharp
-public override Task<DataTable> GetSchemaAsync(string collectionName, 
+public Task<DataTable> GetSchemaAsync(string collectionName, 
     CancellationToken cancellationToken = default)
 ```
 
@@ -59,7 +59,7 @@ The proposed ADO.NET API that this is based on is not finalized; this API may ch
 Asynchronously returns schema information for the data source of this [`SingleStoreConnection`](../SingleStoreConnection.md).
 
 ```csharp
-public override Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictionValues, 
+public Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictionValues, 
     CancellationToken cancellationToken = default)
 ```
 

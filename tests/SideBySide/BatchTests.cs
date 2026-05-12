@@ -182,8 +182,8 @@ public class BatchTests : IClassFixture<DatabaseFixture>
 	[InlineData(";")]
 	[InlineData(";\n")]
 	[InlineData("; -- ")]
-	// [InlineData(" -- ")]  TODO: uncomment if DB-53659 is done
 	[InlineData(" # ")]
+	//// [InlineData(" -- ")]  TODO: uncomment if DB-53659 is done
 	public void ExecuteBatch(string suffix)
 	{
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
@@ -343,7 +343,7 @@ insert into batch_single_row(id) values(1),(2),(3);", connection))
 	private static string GetIgnoreCommandTransactionConnectionString() =>
 		new SingleStoreConnectionStringBuilder(AppConfig.ConnectionString)
 		{
-			IgnoreCommandTransaction = true
+			IgnoreCommandTransaction = true,
 		}.ConnectionString;
 }
 #endif

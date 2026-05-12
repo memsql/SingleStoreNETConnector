@@ -79,31 +79,25 @@ public class RedirectionTests : IClassFixture<DatabaseFixture>, IDisposable
 				Assert.Equal(proxy.ListenPort, db.SessionEndPoint!.Port);
 				db.Close();
 			}
-
-		} finally{
-			m_database.Connection.Execute(
-				$"set @@global.redirect_url=\"\"");
+		}
+		finally
+		{
+			m_database.Connection.Execute($"set @@global.redirect_url=\"\"");
 		}
 		SingleStoreConnection.ClearAllPools();
+
 		// ensure that when required, throwing error if no redirection
 		csb.ServerRedirectionMode = SingleStoreServerRedirectionMode.Required;
 		using (var db = new SingleStoreConnection(csb.ConnectionString))
 		{
-			try
-			{
-				db.Open();
-				Assert.Fail("must have thrown error");
-			}
-			catch (SingleStoreException ex)
-			{
-				Assert.Equal((int) SingleStoreErrorCode.UnableToConnectToHost, ex.Number);
-			}
+			var exception = Assert.Throws<SingleStoreException>(db.Open);
+			Assert.Equal(SingleStoreErrorCode.UnableToConnectToHost, exception.ErrorCode);
 		}
 
 		StopProxy();
 	}
 
-    protected void StartProxy()
+	protected void StartProxy()
     {
 	    var csb = AppConfig.CreateConnectionStringBuilder();
 	    proxy = new ServerConfiguration( csb.Server, (int)csb.Port );
@@ -111,36 +105,38 @@ public class RedirectionTests : IClassFixture<DatabaseFixture>, IDisposable
 	    serverThread.Start( proxy );
     }
 
-    protected void StopProxy()
+	protected void StopProxy()
     {
 	    proxy.RunServer = false;
 	    proxy.ServerSocket.Close();
     }
 
-    private class ServerConfiguration {
-
-        public IPAddress RemoteAddress;
-        public int    RemotePort;
-        public int    ListenPort;
-        public Socket ServerSocket;
-        public ServerConfiguration(String remoteAddress, int remotePort) {
+	private class ServerConfiguration
+	{
+		public IPAddress RemoteAddress { get; set; }
+		public int RemotePort { get; set; }
+		public int ListenPort { get; set; }
+		public Socket ServerSocket { get; set; }
+		public ServerConfiguration(string remoteAddress, int remotePort) {
 			var ipHostEntry = Dns.GetHostEntry(remoteAddress);
 			RemoteAddress = ipHostEntry.AddressList[0];
-            RemotePort    = remotePort;
-            ListenPort    = 0;
+			RemotePort = remotePort;
+			ListenPort = 0;
         }
-        public bool RunServer = true;
+		public bool RunServer { get; set; } = true;
     }
 
-    private static void ServerThread(Object configObj) {
-        ServerConfiguration config = (ServerConfiguration)configObj;
-        Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+	private static void ServerThread(object configObj)
+	{
+		ServerConfiguration config = (ServerConfiguration)configObj;
+		Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-        serverSocket.Bind( new IPEndPoint( IPAddress.Any, 0 ) );
-        serverSocket.Listen(1);
-        config.ListenPort = ((IPEndPoint) serverSocket.LocalEndPoint).Port;
-        config.ServerSocket = serverSocket;
-        while( config.RunServer ) {
+		serverSocket.Bind( new IPEndPoint( IPAddress.Any, 0 ) );
+		serverSocket.Listen(1);
+		config.ListenPort = ((IPEndPoint) serverSocket.LocalEndPoint).Port;
+		config.ServerSocket = serverSocket;
+		while (config.RunServer)
+		{
 			try
 			{
 				Socket client = serverSocket.Accept();
@@ -151,43 +147,50 @@ public class RedirectionTests : IClassFixture<DatabaseFixture>, IDisposable
 			{
 				return;
 			}
-        }
-    }
+		}
+	}
 
-    private class ClientContext {
-        public ServerConfiguration Config;
-        public Socket              Client;
-    }
+	private class ClientContext
+	{
+		public ServerConfiguration Config { get; set; }
+		public Socket Client { get; set; }
+	}
 
-    private static void ClientThread(Object contextObj) {
-        ClientContext context = (ClientContext)contextObj;
-        Socket              client = context.Client;
-        ServerConfiguration config = context.Config;
-        IPEndPoint remoteEndPoint = new IPEndPoint( config.RemoteAddress, config.RemotePort );
-        Socket remote = new Socket( remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-        remote.Connect( remoteEndPoint );
-        Byte[] buffer = new Byte[4096];
-        for(;;) {
-	        if (!config.RunServer)
-	        {
-		        remote.Close();
-		        client.Close();
-		        return;
-	        }
-            if( client.Available > 0 ) {
-                var count = client.Receive( buffer );
-                if( count == 0 ) return;
-                remote.Send( buffer, count, SocketFlags.None );
-            }
-            if( remote.Available > 0 ) {
-                var count = remote.Receive( buffer );
-                if( count == 0 ) return;
-                client.Send( buffer, count, SocketFlags.None );
-            }
-        }
-    }
+	private static void ClientThread(object contextObj)
+	{
+		ClientContext context = (ClientContext) contextObj;
+		Socket client = context.Client;
+		ServerConfiguration config = context.Config;
+		IPEndPoint remoteEndPoint = new IPEndPoint(config.RemoteAddress, config.RemotePort);
+		Socket remote = new Socket(remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+		remote.Connect(remoteEndPoint);
+		var buffer = new byte[4096];
+		while (true)
+		{
+			if (!config.RunServer)
+			{
+				remote.Close();
+				client.Close();
+				return;
+			}
+			if (client.Available > 0)
+			{
+				var count = client.Receive(buffer);
+				if (count == 0)
+					return;
+				remote.Send(buffer, count, SocketFlags.None);
+			}
+			if (remote.Available > 0)
+			{
+				var count = remote.Receive(buffer);
+				if (count == 0)
+					return;
+				client.Send(buffer, count, SocketFlags.None);
+			}
+		}
+	}
 
-	readonly DatabaseFixture m_database;
+	private readonly DatabaseFixture m_database;
 	private ServerConfiguration proxy;
 }
 #endif

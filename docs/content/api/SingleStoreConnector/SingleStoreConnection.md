@@ -12,7 +12,7 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 | --- | --- |
 | [SingleStoreConnection](SingleStoreConnection/SingleStoreConnection.md)() | The default constructor. |
 | [SingleStoreConnection](SingleStoreConnection/SingleStoreConnection.md)(…) |  |
-| override [CanCreateBatch](SingleStoreConnection/CanCreateBatch.md) { get; } |  |
+| [CanCreateBatch](SingleStoreConnection/CanCreateBatch.md) { get; } |  |
 | override [ConnectionString](SingleStoreConnection/ConnectionString.md) { get; set; } |  |
 | override [ConnectionTimeout](SingleStoreConnection/ConnectionTimeout.md) { get; } | Gets the time (in seconds) to wait while trying to establish a connection before terminating the attempt and generating an error. This value is controlled by [`ConnectionTimeout`](./SingleStoreConnectionStringBuilder/ConnectionTimeout.md), which defaults to 15 seconds. |
 | override [Database](SingleStoreConnection/Database.md) { get; } |  |
@@ -29,18 +29,18 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 | [BeginTransaction](SingleStoreConnection/BeginTransaction.md)(…) | Begins a database transaction. (2 methods) |
 | [BeginTransactionAsync](SingleStoreConnection/BeginTransactionAsync.md)(…) | Begins a database transaction asynchronously. (3 methods) |
 | override [ChangeDatabase](SingleStoreConnection/ChangeDatabase.md)(…) |  |
-| override [ChangeDatabaseAsync](SingleStoreConnection/ChangeDatabaseAsync.md)(…) |  |
+| [ChangeDatabaseAsync](SingleStoreConnection/ChangeDatabaseAsync.md)(…) |  |
 | [Clone](SingleStoreConnection/Clone.md)() |  |
 | [CloneWith](SingleStoreConnection/CloneWith.md)(…) | Returns an unopened copy of this connection with a new connection string. If the `Password` in *connectionString* is not set, the password from this connection will be used. This allows creating a new connection with the same security information while changing other options, such as database or pooling. |
 | override [Close](SingleStoreConnection/Close.md)() |  |
-| override [CloseAsync](SingleStoreConnection/CloseAsync.md)() |  |
+| [CloseAsync](SingleStoreConnection/CloseAsync.md)() |  |
 | [CreateBatch](SingleStoreConnection/CreateBatch.md)() | Creates a [`SingleStoreBatch`](./SingleStoreBatch.md) object for executing batched commands. |
 | [CreateCommand](SingleStoreConnection/CreateCommand.md)() |  |
-| override [DisposeAsync](SingleStoreConnection/DisposeAsync.md)() |  |
+| [DisposeAsync](SingleStoreConnection/DisposeAsync.md)() |  |
 | override [EnlistTransaction](SingleStoreConnection/EnlistTransaction.md)(…) |  |
 | override [GetSchema](SingleStoreConnection/GetSchema.md)() | Returns schema information for the data source of this [`SingleStoreConnection`](./SingleStoreConnection.md). |
 | override [GetSchema](SingleStoreConnection/GetSchema.md)(…) | Returns schema information for the data source of this [`SingleStoreConnection`](./SingleStoreConnection.md). (2 methods) |
-| override [GetSchemaAsync](SingleStoreConnection/GetSchemaAsync.md)(…) | Asynchronously returns schema information for the data source of this [`SingleStoreConnection`](./SingleStoreConnection.md). (3 methods) |
+| [GetSchemaAsync](SingleStoreConnection/GetSchemaAsync.md)(…) | Asynchronously returns schema information for the data source of this [`SingleStoreConnection`](./SingleStoreConnection.md). (3 methods) |
 | override [Open](SingleStoreConnection/Open.md)() |  |
 | override [OpenAsync](SingleStoreConnection/OpenAsync.md)(…) |  |
 | [Ping](SingleStoreConnection/Ping.md)() |  |
@@ -57,8 +57,6 @@ public sealed class SingleStoreConnection : DbConnection, ICloneable
 | --- | --- |
 | override [DbProviderFactory](SingleStoreConnection/DbProviderFactory.md) { get; } |  |
 | override [BeginDbTransaction](SingleStoreConnection/BeginDbTransaction.md)(…) | Begins a database transaction. |
-| override [BeginDbTransactionAsync](SingleStoreConnection/BeginDbTransactionAsync.md)(…) | Begins a database transaction asynchronously. |
-| override [CreateDbBatch](SingleStoreConnection/CreateDbBatch.md)() |  |
 | override [CreateDbCommand](SingleStoreConnection/CreateDbCommand.md)() |  |
 | override [Dispose](SingleStoreConnection/Dispose.md)(…) |  |
 

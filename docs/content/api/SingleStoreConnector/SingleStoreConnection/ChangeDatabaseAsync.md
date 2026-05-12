@@ -1,8 +1,7 @@
 # SingleStoreConnection.ChangeDatabaseAsync method
 
 ```csharp
-public override Task ChangeDatabaseAsync(string databaseName, 
-    CancellationToken cancellationToken = default)
+public Task ChangeDatabaseAsync(string databaseName, CancellationToken cancellationToken = default)
 ```
 
 ## See Also

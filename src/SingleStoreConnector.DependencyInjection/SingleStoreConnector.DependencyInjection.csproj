@@ -8,7 +8,7 @@
     <Title>SingleStoreConnector Dependency Injection Helpers</Title>
     <Description>Provides extension methods for integrating SingleStoreConnector with .NET dependency injection.</Description>
     <Copyright>Copyright 2022 Bradley Grainger</Copyright>
-    <Copyright>Copyright 2022-2025 SingleStore Inc.</Copyright>
+    <Copyright>Copyright 2022-2026 SingleStore Inc.</Copyright>
     <Authors>Bradley Grainger</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>singlestoreconnector;dependency injection;iservicecollection</PackageTags>

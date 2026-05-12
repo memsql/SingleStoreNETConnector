@@ -66,7 +66,7 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 			}
 #endif
 			sw.Stop();
-			// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+			//// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		}
 
 		Assert.Equal(connectionState, m_connection.State);
@@ -92,7 +92,7 @@ public class CommandTimeoutTests : IClassFixture<DatabaseFixture>, IDisposable
 			}
 #endif
 			sw.Stop();
-			// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 700); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+			//// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 700); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		}
 
 		Assert.Equal(connectionState, m_connection.State);
@@ -133,7 +133,7 @@ end;", m_connection))
 		}
 #endif
 		sw.Stop();
-		// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+		//// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 	}
 
 	[SkippableFact(ServerFeatures.Timeout)]
@@ -161,7 +161,7 @@ end;", m_connection))
 #endif
 
 			sw.Stop();
-			// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+			//// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		}
 
 		Assert.Equal(connectionState, m_connection.State);
@@ -191,7 +191,7 @@ end;", m_connection))
 #endif
 
 			sw.Stop();
-			// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 550); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+			//// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 550); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		}
 
 		Assert.Equal(connectionState, m_connection.State);
@@ -239,7 +239,6 @@ end;", m_connection))
 		Assert.Equal(ConnectionState.Open, m_connection.State);
 	}
 
-
 	[Fact]
 	public void TransactionCommandTimeoutWithSleepSync()
 	{
@@ -261,7 +260,7 @@ end;", m_connection))
 			}
 #endif
 			sw.Stop();
-			// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
+			//// TestUtilities.AssertDuration(sw, cmd.CommandTimeout * 1000 - 100, 500); commented out due to flakiness — execution can complete too quickly/slow depending on system/load.
 		}
 
 		Assert.Equal(connectionState, m_connection.State);
@@ -293,6 +292,6 @@ end;", m_connection))
 		Assert.Equal(connectionState, m_connection.State);
 	}
 
-	readonly DatabaseFixture m_database;
-	readonly SingleStoreConnection m_connection;
+	private readonly DatabaseFixture m_database;
+	private readonly SingleStoreConnection m_connection;
 }

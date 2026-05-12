@@ -95,7 +95,7 @@ create table insert_time(value TIME({precision}));");
 			using (var reader = command.ExecuteReader())
 			{
 				Assert.True(reader.Read());
-				if(precision == 0)
+				if (precision == 0)
 					Assert.Equal(TimeSpan.Zero, reader.GetValue(0));
 				else
 					Assert.Equal(TimeSpan.FromMilliseconds(10), reader.GetValue(0));
@@ -113,7 +113,7 @@ create table insert_time(value TIME({precision}));");
 	{
 		m_database.Connection.Execute(@"drop table if exists insert_datetimeoffset;
 create table insert_datetimeoffset(rowid integer not null primary key auto_increment, datetimeoffset1 datetime null);");
-		var value = new DateTimeOffsetValues { datetimeoffset1 = new DateTimeOffset(2017, 1, 2, 3, 4, 5, TimeSpan.FromMinutes(678)) };
+		var value = new DateTimeOffsetValues { DateTimeOffset1 = new DateTimeOffset(2017, 1, 2, 3, 4, 5, TimeSpan.FromMinutes(678)) };
 
 		m_database.Connection.Open();
 		try
@@ -124,7 +124,7 @@ create table insert_datetimeoffset(rowid integer not null primary key auto_incre
 			{
 				ParameterName = "@datetimeoffset1",
 				DbType = DbType.DateTimeOffset,
-				Value = value.datetimeoffset1
+				Value = value.DateTimeOffset1,
 			});
 			Assert.Equal(1, cmd.ExecuteNonQuery());
 		}
@@ -137,7 +137,7 @@ create table insert_datetimeoffset(rowid integer not null primary key auto_incre
 
 		DateTime.SpecifyKind(datetime, DateTimeKind.Utc);
 
-		Assert.Equal(value.datetimeoffset1.Value.UtcDateTime, datetime);
+		Assert.Equal(value.DateTimeOffset1.Value.UtcDateTime, datetime);
 	}
 
 	[SkippableFact(Baseline = "https://bugs.mysql.com/bug.php?id=91199")]
@@ -145,7 +145,7 @@ create table insert_datetimeoffset(rowid integer not null primary key auto_incre
 	{
 		m_database.Connection.Execute(@"drop table if exists insert_mysqldatetime;
 create table insert_mysqldatetime(rowid integer not null primary key auto_increment, ts timestamp(6) null);");
-		var value = new DateTimeOffsetValues { datetimeoffset1 = new DateTimeOffset(2017, 1, 2, 3, 4, 5, TimeSpan.FromMinutes(678)) };
+		var value = new DateTimeOffsetValues { DateTimeOffset1 = new DateTimeOffset(2017, 1, 2, 3, 4, 5, TimeSpan.FromMinutes(678)) };
 
 		m_database.Connection.Open();
 		try
@@ -178,7 +178,7 @@ create rowstore table insert_singlestoregeography(rowid integer not null primary
 			using var cmd = m_database.Connection.CreateCommand();
 			cmd.CommandText = @"insert into insert_singlestoregeography(shape) values(@shape);";
 			cmd.Parameters.AddWithValue("@shape", new SingleStoreGeography("POLYGON((3 3,4 3,4 4,3 4,3 3))"));
-			if(prepare)
+			if (prepare)
 				cmd.Prepare();
 			Assert.Equal(1, cmd.ExecuteNonQuery());
 		}
@@ -460,40 +460,39 @@ create table insert_enum_value2(rowid integer not null primary key auto_incremen
 		{
 			m_database.Connection.Close();
 		}
-
 	}
 
-	enum Enum16 : short
+	private enum Enum16 : short
 	{
 		Off,
 		On,
 	}
 
-	enum Enum32 : int
+	private enum Enum32 : int
 	{
 		Off,
 		On,
 	}
 
-	enum Enum64 : long
+	private enum Enum64 : long
 	{
 		Off,
 		On,
 	}
 
-	class DateTimeOffsetValues
+	private class DateTimeOffsetValues
 	{
-		public DateTimeOffset? datetimeoffset1 { get; set; }
+		public DateTimeOffset? DateTimeOffset1 { get; set; }
 	}
 
-	class ColorEnumValues
+	private class ColorEnumValues
 	{
 		public string Varchar { get; set; }
 		public string String { get; set; }
 		public int Int { get; set; }
 	}
 
-	class EnumValues
+	private class EnumValues
 	{
 		public Enum16? Enum16 { get; set; }
 		public Enum32? Enum32 { get; set; }
@@ -514,17 +513,17 @@ create table insert_mysql_enums(
 		Assert.Equal(new[] { "blue" }, m_database.Connection.Query<string>(@"select color from insert_mysql_enums"));
 	}
 
-	enum SingleStoreSize
+	private enum SingleStoreSize
 	{
 		None,
 		XSmall,
 		Small,
 		Medium,
 		Large,
-		XLarge
+		XLarge,
 	}
 
-	enum SingleStoreColor
+	private enum SingleStoreColor
 	{
 		None,
 		Red,
@@ -533,7 +532,7 @@ create table insert_mysql_enums(
 		Green,
 		Blue,
 		Indigo,
-		Violet
+		Violet,
 	}
 
 	[Fact]
@@ -547,7 +546,6 @@ create table insert_mysql_set(
 		m_database.Connection.Execute(@"insert into insert_mysql_set(value) values('""one""'), ('""two""'), ('""one"",""two""'), ('""four""'), ('""four"",""one""'), ('""four"",""two""'), ('""four"",""two"",""one""'), ('""eight""');");
 		Assert.Equal(new[] { "\"one\"", "\"one\",\"two\"", "\"one\",\"four\"", "\"one\",\"two\",\"four\"" }, m_database.Connection.Query<string>(@"select value from insert_mysql_set where JSON_ARRAY_CONTAINS_STRING(concat('[', value, ']'), 'one') order by rowid"));
 	}
-
 
 #if !BASELINE
 	[Theory]
@@ -588,5 +586,5 @@ value mediumblob null
 	}
 #endif
 
-	readonly DatabaseFixture m_database;
+	private readonly DatabaseFixture m_database;
 }

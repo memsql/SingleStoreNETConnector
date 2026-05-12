@@ -88,6 +88,44 @@ internal static class Utility
 	}
 #endif
 
+#if NET5_0_OR_GREATER
+	/// <summary>
+	/// Loads a RSA key from PEM bytes.
+	/// </summary>
+	public static void LoadRsaParameters(byte[] key, RSA rsa)
+	{
+#if NET10_0_OR_GREATER
+		if (!PemEncoding.TryFindUtf8(key, out var pemFields))
+			throw new FormatException("Unrecognized PEM data: " + Encoding.ASCII.GetString(key.AsSpan(0, Math.Min(key.Length, 80))));
+		var isPrivate = key.AsSpan()[pemFields.Label].SequenceEqual("RSA PRIVATE KEY"u8);
+
+		var keyBytes = key.AsSpan()[pemFields.Base64Data];
+		var bufferLength = keyBytes.Length / 4 * 3;
+		byte[]? buffer = null;
+		Span<byte> bufferBytes = bufferLength > 1024 ?
+			(Span<byte>) (buffer = ArrayPool<byte>.Shared.Rent(bufferLength)) :
+			stackalloc byte[bufferLength];
+		try
+		{
+			if (Base64.DecodeFromUtf8(keyBytes, bufferBytes, out _, out var bytesWritten) != OperationStatus.Done)
+				throw new FormatException("The input is not a valid Base-64 string.");
+			if (isPrivate)
+				rsa.ImportRSAPrivateKey(bufferBytes[..bytesWritten], out var _);
+			else
+				rsa.ImportSubjectPublicKeyInfo(bufferBytes[..bytesWritten], out var _);
+		}
+		finally
+		{
+			if (buffer is not null)
+				ArrayPool<byte>.Shared.Return(buffer);
+		}
+#else
+		LoadRsaParameters(Encoding.ASCII.GetString(key), rsa);
+#endif
+	}
+#endif
+
+#if !NET10_0_OR_GREATER
 	/// <summary>
 	/// Loads a RSA key from a PEM string.
 	/// </summary>
@@ -97,6 +135,11 @@ internal static class Utility
 	public static RSAParameters GetRsaParameters(string key)
 #endif
 	{
+#if NET5_0_OR_GREATER
+		if (!PemEncoding.TryFind(key, out var pemFields))
+			throw new FormatException(string.Concat("Unrecognized PEM data: ", key.AsSpan(0, Math.Min(key.Length, 80))));
+		var isPrivate = key.AsSpan()[pemFields.Label].SequenceEqual("RSA PRIVATE KEY");
+#else
 		const string beginRsaPrivateKey = "-----BEGIN RSA PRIVATE KEY-----";
 		const string endRsaPrivateKey = "-----END RSA PRIVATE KEY-----";
 		const string beginPublicKey = "-----BEGIN PUBLIC KEY-----";
@@ -135,9 +178,14 @@ internal static class Utility
 #else
 			throw new FormatException($"Missing expected '{pemFooter}' PEM footer: " + key[Math.Max(key.Length - 80, 0)..]);
 #endif
+#endif
 
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+#if NET5_0_OR_GREATER
+		var keyChars = key.AsSpan()[pemFields.Base64Data];
+#else
 		var keyChars = key.AsSpan()[keyStartIndex..keyEndIndex];
+#endif
 		var bufferLength = keyChars.Length / 4 * 3;
 		byte[]? buffer = null;
 		Span<byte> bufferBytes = bufferLength > 1024 ?
@@ -166,6 +214,7 @@ internal static class Utility
 		return GetRsaParameters(System.Convert.FromBase64String(key), isPrivate);
 #endif
 	}
+#endif
 
 #if !NET5_0_OR_GREATER
 	// Derived from: https://stackoverflow.com/a/32243171/, https://stackoverflow.com/a/26978561/, http://luca.ntop.org/Teaching/Appunti/asn1.html
@@ -351,7 +400,7 @@ internal static class Utility
 			var uri = new Uri(redirectUrl);
 			host = uri.Host;
 			if (string.IsNullOrEmpty(host)) return false;
-			if (host.StartsWith('[') && host.EndsWith("]", StringComparison.InvariantCulture)) host = host.Substring(1, host.Length - 2);
+			if (host.StartsWith('[') && host.EndsWith("]", StringComparison.Ordinal)) host = host.Substring(1, host.Length - 2);
 
 			port = uri.Port;
 			user = Uri.UnescapeDataString(uri.UserInfo.Split(':')[0]);
@@ -361,7 +410,7 @@ internal static class Utility
 				var q = uri.Query.Substring(1);
 				foreach (var token in q.Split('&'))
 				{
-					if (token.StartsWith("user=", StringComparison.InvariantCulture))
+					if (token.StartsWith("user=", StringComparison.Ordinal))
 					{
 						user = Uri.UnescapeDataString(token.Substring(5));
 					}

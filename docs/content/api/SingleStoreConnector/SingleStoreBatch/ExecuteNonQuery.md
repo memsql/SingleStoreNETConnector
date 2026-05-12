@@ -1,7 +1,7 @@
 # SingleStoreBatch.ExecuteNonQuery method
 
 ```csharp
-public override int ExecuteNonQuery()
+public int ExecuteNonQuery()
 ```
 
 ## See Also

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using SingleStoreConnector.Core;
 using Xunit.Sdk;
 
@@ -180,7 +181,7 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		connection.Open();
 		SingleStoreBulkLoader bl = new SingleStoreBulkLoader(connection)
 		{
-			Timeout = 3, //Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
+			Timeout = 3, // Set a short timeout for this test because the file not found exception takes a long time otherwise, the timeout does not change the result
 			FileName = AppConfig.SingleStoreBulkLoaderLocalCsvFile + "-junk",
 			TableName = m_testTable,
 			CharacterSet = "UTF8",
@@ -217,7 +218,7 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 		}
 		catch (Exception exception)
 		{
-			//We know that the exception is not a SingleStoreException, just use the assertion to fail the test
+			// We know that the exception is not a SingleStoreException, just use the assertion to fail the test
 			Assert.IsType<SingleStoreException>(exception);
 		}
 	}
@@ -469,7 +470,7 @@ public class BulkLoaderSync : IClassFixture<DatabaseFixture>
 #if !BASELINE
 		Assert.Throws<InvalidOperationException>(() => bl.Load());
 #else
-		Assert.Throws<MySqlException>(() => bl.Load(memoryStream));
+		Assert.Throws<SingleStoreException>(() => bl.Load(memoryStream));
 #endif
 	}
 
@@ -672,7 +673,6 @@ create table bulk_load_data_table(a int, time1 time, time2 time(6));", connectio
 		}
 	}
 #endif
-
 
 	public static IEnumerable<object[]> GetBulkCopyData() =>
 		new object[][]
@@ -1066,7 +1066,7 @@ create table bulk_load_data_table(a int, b text);", connection))
 				new object[] { 1, 100, "a", "A", new byte[] { 0x33, 0x30 } },
 				new object[] { 2, 200, "bb", "BB", new byte[] { 0x33, 0x31 } },
 				new object[] { 3, 300, "ccc", "CCC", new byte[] { 0x33, 0x32 } },
-			}
+			},
 		};
 
 		var result = bulkCopy.WriteToServer(dataTable);
@@ -1120,7 +1120,7 @@ create table bulk_load_data_table(a int, b text);", connection))
 				new object[] { 1 },
 				new object[] { 2 },
 				new object[] { 3 },
-			}
+			},
 		};
 
 		Assert.Throws<InvalidOperationException>(() => bulkCopy.WriteToServer(dataTable));
@@ -1157,10 +1157,70 @@ create table bulk_load_data_table(a int, b text);", connection))
 				new object[] { 1 },
 				new object[] { 2 },
 				new object[] { 3 },
-			}
+			},
 		};
 
 		Assert.Throws<InvalidOperationException>(() => bulkCopy.WriteToServer(dataTable));
+	}
+
+	[Fact]
+	public void BulkCopyToTableWithYear()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = """
+		                  DROP TABLE IF EXISTS bulk_copy_year;
+		                  CREATE TABLE bulk_copy_year(int_value int NULL, year_value year NULL)
+		                  """;
+		cmd.ExecuteNonQuery();
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_copy_year",
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "int_value", null),
+			},
+		};
+
+		var dt = new DataTable();
+		dt.Columns.Add("numbers");
+		dt.Rows.Add(1);
+		dt.Rows.Add(2);
+
+		var result = bulkCopy.WriteToServer(dt);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+	}
+
+	[Fact]
+	public void BulkCopyToTableWithYearNotSupported()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = """
+		                  DROP TABLE IF EXISTS bulk_copy_year;
+		                  CREATE TABLE bulk_copy_year(int_value int NULL, year_value year NULL)
+		                  """;
+		cmd.ExecuteNonQuery();
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_copy_year",
+		};
+
+		var dt = new DataTable();
+		dt.Columns.Add("numbers");
+		dt.Columns.Add("year");
+		dt.Rows.Add(1, 2000);
+		dt.Rows.Add(2, 2001);
+
+		var exception = Assert.Throws<NotSupportedException>(() => bulkCopy.WriteToServer(dt));
+		Assert.Equal("'YEAR' columns are not supported by SingleStoreBulkCopy.", exception.Message);
 	}
 
 	[Fact]
@@ -1174,7 +1234,7 @@ create table bulk_copy_duplicate_pk(id integer primary key, value text not null)
 
 		var bcp = new SingleStoreBulkCopy(connection)
 		{
-			DestinationTableName = "bulk_copy_duplicate_pk"
+			DestinationTableName = "bulk_copy_duplicate_pk",
 		};
 
 		var dataTable = new DataTable()
@@ -1189,7 +1249,7 @@ create table bulk_copy_duplicate_pk(id integer primary key, value text not null)
 				new object[] { 1, "a" },
 				new object[] { 1, "b" },
 				new object[] { 3, "c" },
-			}
+			},
 		};
 
 		var ex = Assert.Throws<SingleStoreException>(() => bcp.WriteToServer(dataTable));
@@ -1310,6 +1370,124 @@ create table bulk_load_data_table(a int not null primary key auto_increment, b t
 		using (var cmd = new SingleStoreCommand("select b from bulk_load_data_table;", connection))
 			Assert.Equal(expected, cmd.ExecuteScalar());
 	}
+
+	[Fact]
+	public void BulkCopyGeography()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("geo_data", typeof(SingleStoreGeography)),
+			},
+			Rows =
+			{
+				new object[] { new SingleStoreGeography("LINESTRING(0.00000000 0.00000000, 1.00000000 1.00000000, 2.00000000 2.00000000)") },
+				new object[] { new SingleStoreGeography("POLYGON((0.00000000 0.00000000, 1.00000000 0.00000000, 1.00000000 1.00000000, 0.00000000 1.00000000, 0.00000000 0.00000000))") },
+			},
+		};
+
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create rowstore table bulk_load_data_table(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    geo_data GEOGRAPHY NOT NULL
+);", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bc = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_data_table",
+			ColumnMappings =
+			{
+				new()
+				{
+					SourceOrdinal = 0,
+					DestinationColumn = "geo_data",
+				},
+			},
+		};
+
+		var result = bc.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand("select geo_data from bulk_load_data_table order by id;", connection))
+		using (var reader = cmd.ExecuteReader())
+		{
+			Assert.True(reader.Read());
+			Assert.Equal("LINESTRING(0.00000000 0.00000000, 1.00000000 1.00000000, 2.00000000 2.00000000)", reader.GetString(0));
+			Assert.True(reader.Read());
+			Assert.Equal("POLYGON((0.00000000 0.00000000, 1.00000000 0.00000000, 1.00000000 1.00000000, 0.00000000 1.00000000, 0.00000000 0.00000000))", reader.GetString(0));
+			Assert.False(reader.Read());
+		}
+	}
+
+	[Fact]
+	public void BulkCopyGeographyPoint()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("point_data", typeof(SingleStoreGeographyPoint)),
+			},
+			Rows =
+			{
+				new object[] { new SingleStoreGeographyPoint("POINT(0.00000000 0.00000000)") },
+				new object[] { new SingleStoreGeographyPoint("POINT(1.00000000 1.00000000)") },
+			},
+		};
+
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_data_table;
+create table bulk_load_data_table(
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    point_data GEOGRAPHYPOINT NOT NULL
+);", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bc = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_data_table",
+			ColumnMappings =
+			{
+				new()
+				{
+					SourceOrdinal = 0,
+					DestinationColumn = "point_data",
+				},
+			},
+		};
+
+		var result = bc.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(
+			       "select GEOGRAPHY_LONGITUDE(point_data), GEOGRAPHY_LATITUDE(point_data) from bulk_load_data_table order by id;",
+			       connection))
+		using (var reader = cmd.ExecuteReader())
+		{
+			Assert.True(reader.Read());
+			Assert.InRange(reader.GetDouble(0), -1e-6, 1e-6);
+			Assert.InRange(reader.GetDouble(1), -1e-6, 1e-6);
+
+			Assert.True(reader.Read());
+			Assert.InRange(reader.GetDouble(0), 1.0 - 1e-6, 1.0 + 1e-6);
+			Assert.InRange(reader.GetDouble(1), 1.0 - 1e-6, 1.0 + 1e-6);
+
+			Assert.False(reader.Read());
+		}
+	}
 #endif
 
 	internal static string GetConnectionString() => AppConfig.ConnectionString;
@@ -1321,6 +1499,6 @@ create table bulk_load_data_table(a int not null primary key auto_increment, b t
 		return csb.ConnectionString;
 	}
 
-	readonly string m_testTable;
-	readonly byte[] m_memoryStreamBytes;
+	private readonly string m_testTable;
+	private readonly byte[] m_memoryStreamBytes;
 }

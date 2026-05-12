@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Buffers.Text;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -83,6 +84,11 @@ internal sealed partial class ServerSession : IServerCapabilities
 		LastReturnedTimestamp = Stopwatch.GetTimestamp();
 		if (Pool is null)
 			return default;
+
+		// if the payload cache is too large, discard it rather than keeping it alive in the pool; see https://github.com/mysql-net/MySqlConnector/issues/1587
+		if (m_payloadCache.Array?.Length > ProtocolUtility.MaxPacketSize + 1)
+			m_payloadCache.ArraySegment = default;
+
 		MetricsReporter.RecordUseTime(Pool, Utility.GetElapsedSeconds(LastLeasedTimestamp, LastReturnedTimestamp));
 		LastLeasedTimestamp = 0;
 		return Pool.ReturnAsync(ioBehavior, this);
@@ -431,13 +437,13 @@ internal sealed partial class ServerSession : IServerCapabilities
 			ServerCapabilities = initialHandshake.ProtocolCapabilities & ~(ProtocolCapabilities.MariaDbCacheMetadata | ProtocolCapabilities.QueryAttributes);
 
 			// if PluginAuth is supported, then use the specified auth plugin; else, fall back to protocol capabilities to determine the auth type to use
-			m_currentAuthenticationMethod = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.PluginAuth) != 0 ? initialHandshake.AuthPluginName! :
+			var currentAuthenticationMethod = (initialHandshake.ProtocolCapabilities & ProtocolCapabilities.PluginAuth) != 0 ? initialHandshake.AuthPluginName! :
 				(initialHandshake.ProtocolCapabilities & ProtocolCapabilities.SecureConnection) == 0 ? "mysql_old_password" :
 				"mysql_native_password";
-			Log.ServerSentAuthPluginName(m_logger, Id, m_currentAuthenticationMethod);
-			if (m_currentAuthenticationMethod is not "mysql_native_password" and not "sha256_password" and not "caching_sha2_password")
+			Log.ServerSentAuthPluginName(m_logger, Id, currentAuthenticationMethod);
+			if (currentAuthenticationMethod is not "mysql_native_password" and not "sha256_password" and not "caching_sha2_password")
 			{
-				Log.UnsupportedAuthenticationMethod(m_logger, Id, m_currentAuthenticationMethod);
+				Log.UnsupportedAuthenticationMethod(m_logger, Id, currentAuthenticationMethod);
 				throw new NotSupportedException($"Authentication method '{initialHandshake.AuthPluginName}' is not supported.");
 			}
 
@@ -484,7 +490,16 @@ internal sealed partial class ServerSession : IServerCapabilities
 				cs.ConnectionAttributes = CreateConnectionAttributes(cs.ApplicationName, cs.ConnAttrsExtra);
 
 			var password = GetPassword(cs, connection);
-			using (var handshakeResponsePayload = HandshakeResponse41Payload.Create(initialHandshake, cs, password, m_useCompression, m_characterSet, m_supportsConnectionAttributes ? cs.ConnectionAttributes : null))
+
+			// send a caching_sha2_password response if the server advertised support in the initial handshake
+			var useCachingSha2 = initialHandshake.AuthPluginName == "caching_sha2_password";
+			byte[] authenticationResponse;
+			if (useCachingSha2)
+				authenticationResponse = AuthenticationUtility.CreateScrambleResponse(Utility.TrimZeroByte(initialHandshake.AuthPluginData.AsSpan()), password);
+			else
+				AuthenticationUtility.CreateResponseAndPasswordHash(password, initialHandshake.AuthPluginData, out authenticationResponse, out m_passwordHash);
+
+			using (var handshakeResponsePayload = HandshakeResponse41Payload.Create(initialHandshake, cs, authenticationResponse, m_useCompression, m_characterSet, m_supportsConnectionAttributes ? cs.ConnectionAttributes : null))
 				await SendReplyAsync(handshakeResponsePayload, ioBehavior, cancellationToken).ConfigureAwait(false);
 			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
@@ -493,6 +508,27 @@ internal sealed partial class ServerSession : IServerCapabilities
 			{
 				payload = await SwitchAuthenticationAsync(cs, password, payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 			}
+
+			// check if caching_sha2_password response was sent
+			if (useCachingSha2 && payload.HeaderByte == CachingSha2ServerResponsePayload.Signature)
+			{
+				// process a successful response, or fall back to sending the password if the server doesn't have it
+				var cachingSha2ServerResponsePayload = CachingSha2ServerResponsePayload.Create(payload.Span);
+				if (cachingSha2ServerResponsePayload.Succeeded)
+				{
+					payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+				}
+				else if (!m_isSecureConnection && password.Length != 0)
+				{
+					var publicKey = await GetRsaPublicKeyAsync(currentAuthenticationMethod, cs, ioBehavior, cancellationToken).ConfigureAwait(false);
+					payload = await SendEncryptedPasswordAsync(AuthPluginData, publicKey, password, ioBehavior, cancellationToken).ConfigureAwait(false);
+				}
+				else
+				{
+					payload = await SendClearPasswordAsync(password, ioBehavior, cancellationToken).ConfigureAwait(false);
+				}
+			}
+
 			var ok = OkPayload.Create(payload.Span, this);
 
 			if (m_sslPolicyErrors != SslPolicyErrors.None)
@@ -514,7 +550,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 					// there is no shared secret that can be used to validate the certificate
 					Log.CertificateErrorNoPassword(m_logger, Id, m_sslPolicyErrors);
 				}
-				else if (ValidateFingerprint(ok.StatusInfo, initialHandshake.AuthPluginData.AsSpan(0, 20), password))
+				else if (ValidateFingerprint(ok.StatusInfo, initialHandshake.AuthPluginData.AsSpan(0, 20)))
 				{
 					Log.CertificateErrorValidThumbprint(m_logger, Id, m_sslPolicyErrors);
 					ignoreCertificateError = true;
@@ -566,36 +602,20 @@ internal sealed partial class ServerSession : IServerCapabilities
 	/// </summary>
 	/// <param name="validationHash">The validation hash received from the server.</param>
 	/// <param name="challenge">The auth plugin data from the initial handshake.</param>
-	/// <param name="password">The user's password.</param>
 	/// <returns><c>true</c> if the validation hash matches the locally-computed value; otherwise, <c>false</c>.</returns>
-	private bool ValidateFingerprint(byte[]? validationHash, ReadOnlySpan<byte> challenge, string password)
+	private bool ValidateFingerprint(byte[]? validationHash, ReadOnlySpan<byte> challenge)
 	{
 		// expect 0x01 followed by 64 hex characters giving a SHA2 hash
 		if (validationHash?.Length != 65 || validationHash[0] != 1)
 			return false;
 
-		byte[]? passwordHashResult = null;
-		switch (m_currentAuthenticationMethod)
-		{
-			case "mysql_native_password":
-				passwordHashResult = AuthenticationUtility.HashPassword([], password, onlyHashPassword: true);
-				break;
-
-			case "client_ed25519":
-				AuthenticationPlugins.TryGetPlugin(m_currentAuthenticationMethod, out var ed25519Plugin);
-				if (ed25519Plugin is IAuthenticationPlugin2 plugin2)
-					passwordHashResult = plugin2.CreatePasswordHash(password, challenge);
-				break;
-		}
-		if (passwordHashResult is null)
+		// the authentication plugin must have provided a password hash (via IAuthenticationPlugin3) that we saved for future use
+		if (m_passwordHash is null)
 			return false;
 
-		Span<byte> combined = stackalloc byte[32 + challenge.Length + passwordHashResult.Length];
-		passwordHashResult.CopyTo(combined);
-		challenge.CopyTo(combined[passwordHashResult.Length..]);
-		m_remoteCertificateSha2Thumbprint!.CopyTo(combined[(passwordHashResult.Length + challenge.Length)..]);
-
+		// hash password hash || scramble || certificate thumbprint
 		Span<byte> hashBytes = stackalloc byte[32];
+		Span<byte> combined = [.. m_passwordHash, .. challenge, .. m_remoteCertificateSha2Thumbprint!];
 #if NET5_0_OR_GREATER
 		SHA256.TryHashData(combined, hashBytes, out _);
 #else
@@ -608,6 +628,9 @@ internal sealed partial class ServerSession : IServerCapabilities
 
 		static bool TryConvertFromHexString(ReadOnlySpan<byte> hexChars, Span<byte> data)
 		{
+#if NET10_0_OR_GREATER
+			return Convert.FromHexString(hexChars, data, out _, out _) == OperationStatus.Done;
+#else
 			ReadOnlySpan<byte> hexDigits = "0123456789ABCDEFabcdef"u8;
 			for (var i = 0; i < hexChars.Length; i += 2)
 			{
@@ -622,6 +645,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 				data[i / 2] = (byte) ((high << 4) | low);
 			}
 			return true;
+#endif
 		}
 	}
 
@@ -694,22 +718,40 @@ internal sealed partial class ServerSession : IServerCapabilities
 		return session;
 	}
 
+	private async Task SendAndVerifyOkAsync(
+		Func<ValueTask> sendAsync,
+		IOBehavior ioBehavior,
+		CancellationToken cancellationToken)
+	{
+		await sendAsync().ConfigureAwait(false);
+
+		var response = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+		OkPayload.Verify(response.Span, this);
+	}
+
 	public async Task ResetConnectionAsync(IOBehavior ioBehavior, string targetDatabase = "", CancellationToken cancellationToken = default)
 	{
 		if (S2ServerVersion.Version.CompareTo(S2Versions.SupportsResetConnection) < 0)
 			throw new InvalidOperationException("Resetting connection is not supported in SingleStore " + S2ServerVersion.OriginalString);
 
 		Log.ResettingConnection(m_logger, Id);
-		await SendAsync(ResetConnectionPayload.Instance, ioBehavior, cancellationToken).ConfigureAwait(false);
-		var payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-		OkPayload.Verify(payload.Span, this);
+
+		await SendAndVerifyOkAsync(
+			() => SendAsync(ResetConnectionPayload.Instance, ioBehavior, cancellationToken),
+			ioBehavior,
+			cancellationToken).ConfigureAwait(false);
 
 		if (targetDatabase.Length > 0)
 		{
 			var useDb = $"USE {targetDatabase}";
-			await SendAsync(QueryPayload.Create(SupportsQueryAttributes, Encoding.ASCII.GetBytes(useDb)), ioBehavior, cancellationToken).ConfigureAwait(false);
-			payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
-			OkPayload.Verify(payload.Span, this);
+
+			await SendAndVerifyOkAsync(
+				() => SendAsync(
+					QueryPayload.Create(SupportsQueryAttributes, Encoding.ASCII.GetBytes(useDb)),
+					ioBehavior,
+					cancellationToken),
+				ioBehavior,
+				cancellationToken).ConfigureAwait(false);
 		}
 	}
 
@@ -743,8 +785,8 @@ internal sealed partial class ServerSession : IServerCapabilities
 					DatabaseOverride = null;
 				}
 				var password = GetPassword(cs, connection);
-				var hashedPassword = AuthenticationUtility.CreateAuthenticationResponse(AuthPluginData!, password);
-				using (var changeUserPayload = ChangeUserPayload.Create(cs.UserID, hashedPassword, cs.Database, m_characterSet, m_supportsConnectionAttributes ? cs.ConnectionAttributes : null))
+				AuthenticationUtility.CreateResponseAndPasswordHash(password, AuthPluginData, out var nativeResponse, out m_passwordHash);
+				using (var changeUserPayload = ChangeUserPayload.Create(cs.UserID, nativeResponse, cs.Database, m_characterSet, m_supportsConnectionAttributes ? cs.ConnectionAttributes : null))
 					await SendAsync(changeUserPayload, ioBehavior, cancellationToken).ConfigureAwait(false);
 				payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 				if (payload.HeaderByte == AuthenticationMethodSwitchRequestPayload.Signature)
@@ -792,18 +834,17 @@ internal sealed partial class ServerSession : IServerCapabilities
 		// if the server didn't support the hashed password; rehash with the new challenge
 		var switchRequest = AuthenticationMethodSwitchRequestPayload.Create(payload.Span);
 		Log.SwitchingToAuthenticationMethod(m_logger, Id, switchRequest.Name);
-		m_currentAuthenticationMethod = switchRequest.Name;
 		switch (switchRequest.Name)
 		{
 			case "mysql_native_password":
 				AuthPluginData = switchRequest.Data;
-				var hashedPassword = AuthenticationUtility.CreateAuthenticationResponse(AuthPluginData, password);
-				payload = new(hashedPassword);
+				AuthenticationUtility.CreateResponseAndPasswordHash(password, AuthPluginData, out var nativeResponse, out m_passwordHash);
+				payload = new(nativeResponse);
 				await SendReplyAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 				return await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			case "mysql_clear_password":
-				if (!m_isSecureConnection)
+				if (!m_isSecureConnection && !m_isLoopbackConnection)
 				{
 					Log.NeedsSecureConnection(m_logger, Id, switchRequest.Name);
 					throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, $"Authentication method '{switchRequest.Name}' requires a secure connection.");
@@ -850,9 +891,31 @@ internal sealed partial class ServerSession : IServerCapabilities
 				throw new NotSupportedException("'MySQL Server is requesting the insecure pre-4.1 auth mechanism (mysql_old_password). The user password must be upgraded; see https://dev.mysql.com/doc/refman/5.7/en/account-upgrades.html.");
 
 			case "client_ed25519":
-				if (!AuthenticationPlugins.TryGetPlugin(switchRequest.Name, out var ed25519Plugin))
+				if (!AuthenticationPlugins.TryGetPlugin(switchRequest.Name, out var ed25519Plugin) || ed25519Plugin is not IAuthenticationPlugin3 ed25519Plugin3)
 					throw new NotSupportedException("You must install the SingleStoreConnector.Authentication.Ed25519 package and call Ed25519AuthenticationPlugin.Install to use client_ed25519 authentication.");
-				payload = new(ed25519Plugin.CreateResponse(password, switchRequest.Data));
+				ed25519Plugin3.CreateResponseAndPasswordHash(password, switchRequest.Data, out var ed25519Response, out m_passwordHash);
+				payload = new(ed25519Response);
+				await SendReplyAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
+				return await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+
+			case "parsec":
+				if (!AuthenticationPlugins.TryGetPlugin(switchRequest.Name, out var parsecPlugin) || parsecPlugin is not IAuthenticationPlugin3 parsecPlugin3)
+					throw new NotSupportedException("You must install the SingleStoreConnector.Authentication.Ed25519 package and call ParsecAuthenticationPlugin.Install to use parsec authentication.");
+				payload = new([]);
+				await SendReplyAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
+				payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+				var extendedSalt = payload.Span;
+
+				// MariaDB 11.8.4 sends an extra 0x01 byte at the beginning of ext-salt: https://github.com/mysql-net/MySqlConnector/issues/1606
+				if (extendedSalt.Length > 2 && extendedSalt[0] == 1 && extendedSalt[1] == 'P')
+					extendedSalt = extendedSalt[1..];
+
+				Span<byte> combinedData = stackalloc byte[switchRequest.Data.Length + extendedSalt.Length];
+				switchRequest.Data.CopyTo(combinedData);
+				extendedSalt.CopyTo(combinedData.Slice(switchRequest.Data.Length));
+
+				parsecPlugin3.CreateResponseAndPasswordHash(password, combinedData, out var parsecResponse, out m_passwordHash);
+				payload = new(parsecResponse);
 				await SendReplyAsync(payload, ioBehavior, cancellationToken).ConfigureAwait(false);
 				return await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
@@ -875,7 +938,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 
 	private async Task<PayloadData> SendEncryptedPasswordAsync(
 		byte[] switchRequestData,
-		string rsaPublicKey,
+		byte[] rsaPublicKey,
 		string password,
 		IOBehavior ioBehavior,
 		CancellationToken cancellationToken)
@@ -896,7 +959,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 		RSAParameters rsaParameters;
 		try
 		{
-			rsaParameters = Utility.GetRsaParameters(rsaPublicKey);
+			rsaParameters = Utility.GetRsaParameters(Encoding.ASCII.GetString(rsaPublicKey));
 		}
 		catch (Exception ex)
 		{
@@ -923,13 +986,13 @@ internal sealed partial class ServerSession : IServerCapabilities
 		return await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 	}
 
-	private async Task<string> GetRsaPublicKeyAsync(string switchRequestName, ConnectionSettings cs, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<byte[]> GetRsaPublicKeyAsync(string switchRequestName, ConnectionSettings cs, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (cs.ServerRsaPublicKeyFile.Length != 0)
 		{
 			try
 			{
-				return File.ReadAllText(cs.ServerRsaPublicKeyFile);
+				return File.ReadAllBytes(cs.ServerRsaPublicKeyFile);
 			}
 			catch (IOException ex)
 			{
@@ -938,14 +1001,14 @@ internal sealed partial class ServerSession : IServerCapabilities
 			}
 		}
 
-		if (cs.AllowPublicKeyRetrieval)
+		if (cs.AllowPublicKeyRetrieval|| m_isLoopbackConnection)
 		{
 			// request the RSA public key
 			var payloadContent = switchRequestName == "caching_sha2_password" ? (byte) 0x02 : (byte) 0x01;
 			await SendReplyAsync(new PayloadData([payloadContent]), ioBehavior, cancellationToken).ConfigureAwait(false);
 			var payload = await ReceiveReplyAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 			var publicKeyPayload = AuthenticationMoreDataPayload.Create(payload.Span);
-			return Encoding.ASCII.GetString(publicKeyPayload.Data);
+			return publicKeyPayload.Data;
 		}
 
 		Log.CouldNotUseAuthenticationMethodForRsa(m_logger, Id, switchRequestName);
@@ -972,7 +1035,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 		}
 		catch (SingleStoreException ex) when (ex.ErrorCode == SingleStoreErrorCode.ClientInteractionTimeout)
 		{
-			Log.PingFailed(m_logger, ex, Id, "ClientInteractionTimeout MySqlException");
+			Log.PingFailed(m_logger, ex, Id, "ClientInteractionTimeout SingleStoreException");
 		}
 		catch (SocketException ex)
 		{
@@ -1243,6 +1306,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 					m_socket.NoDelay = true;
 					m_stream = m_tcpClient.GetStream();
 					m_socket.SetKeepAlive(cs.Keepalive);
+					m_isLoopbackConnection = IPAddress.IsLoopback(ipAddress);
 				}
 				catch (ObjectDisposedException) when (cancellationToken.IsCancellationRequested)
 				{
@@ -1671,7 +1735,8 @@ internal sealed partial class ServerSession : IServerCapabilities
 		}
 		catch (Exception ex)
 		{
-			Log.CouldNotInitializeTlsConnection(m_logger, ex, Id);
+			if (ex is not OperationCanceledException)
+				Log.CouldNotInitializeTlsConnection(m_logger, ex, Id);
 			sslStream.Dispose();
 			ShutdownSocket();
 			HostName = "";
@@ -1808,6 +1873,13 @@ internal sealed partial class ServerSession : IServerCapabilities
 				HostName.EndsWith(".mysql.database.chinacloudapi.cn", StringComparison.OrdinalIgnoreCase);
 		}
 
+		// detect AWS RDS Proxy, if hostname like <name>.proxy-<random-chars>.<region>.rds.amazonaws.com
+		if (HostName.EndsWith(".rds.amazonaws.com", StringComparison.OrdinalIgnoreCase) &&
+		    HostName.AsSpan().Contains(".proxy-".AsSpan(), StringComparison.OrdinalIgnoreCase))
+		{
+			return true;
+		}
+
 		return false;
 	}
 
@@ -1940,7 +2012,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 		lock (m_lock)
 			m_state = State.Failed;
 		if (OwningConnection is not null && OwningConnection.TryGetTarget(out var connection))
-			connection.SetState(ConnectionState.Closed);
+			connection.SetState(ConnectionState.Broken);
 	}
 
 	private void VerifyState(State state)
@@ -2137,7 +2209,11 @@ internal sealed partial class ServerSession : IServerCapabilities
 	private static readonly PayloadData s_selectConnectionIdVersionWithAttributesPayload = QueryPayload.Create(true, "SELECT CONNECTION_ID(), VERSION(), @@memsql_version, @@aggregator_id;"u8);
 
 	private readonly ILogger m_logger;
+#if NET9_0_OR_GREATER
+	private readonly Lock m_lock;
+#else
 	private readonly object m_lock;
+#endif
 	private readonly ArraySegmentHolder<byte> m_payloadCache;
 	private readonly ActivityTagsCollection m_activityTags;
 	private State m_state;
@@ -2149,12 +2225,13 @@ internal sealed partial class ServerSession : IServerCapabilities
 	private IPayloadHandler? m_payloadHandler;
 	private bool m_useCompression;
 	private bool m_isSecureConnection;
+	private bool m_isLoopbackConnection;
 	private bool m_supportsConnectionAttributes;
 	private bool m_supportsPipelining;
 	private CharacterSet m_characterSet;
 	private PayloadData m_setNamesPayload;
 	private Dictionary<string, PreparedStatements>? m_preparedStatements;
-	private string? m_currentAuthenticationMethod;
+	private byte[]? m_passwordHash;
 	private byte[]? m_remoteCertificateSha2Thumbprint;
 	private SslPolicyErrors m_sslPolicyErrors;
 }

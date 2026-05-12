@@ -1,7 +1,7 @@
 # SingleStoreBatchCommandCollection.Count property
 
 ```csharp
-public override int Count { get; }
+public int Count { get; }
 ```
 
 ## See Also

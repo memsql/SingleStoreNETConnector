@@ -3,7 +3,7 @@
 A `SQLSTATE` code identifying the kind of error.
 
 ```csharp
-public override string? SqlState { get; }
+public string? SqlState { get; }
 ```
 
 ## Remarks

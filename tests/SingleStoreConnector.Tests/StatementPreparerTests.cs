@@ -209,7 +209,6 @@ SELECT @'var' as R")]
 			[new StringBuilder("\"AB\\ab'"), @"'""AB\\ab'''"],
 		};
 
-
 	[Theory]
 	[InlineData(StatementPreparerOptions.GuidFormatChar36, "'61626364-6566-6768-696a-6b6c6d6e6f70'")]
 	[InlineData(StatementPreparerOptions.GuidFormatChar32, "'6162636465666768696a6b6c6d6e6f70'")]

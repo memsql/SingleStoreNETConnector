@@ -7,7 +7,7 @@ When using MariaDB (10.2 or later), the commands will be sent in a single batch,
 Example usage:
 
 ```csharp
-using var connection = new SingleStoreConnection("...connection string...");
+await using var connection = new SingleStoreConnection("...connection string...");
 await connection.OpenAsync();
 
 using var batch = new SingleStoreBatch(connection)
@@ -42,7 +42,7 @@ using var batch = new SingleStoreBatch(connection)
 ```
 
 ```csharp
-public sealed class SingleStoreBatch : DbBatch
+public sealed class SingleStoreBatch : IDisposable
 ```
 
 ## Public Members
@@ -53,29 +53,18 @@ public sealed class SingleStoreBatch : DbBatch
 | [SingleStoreBatch](SingleStoreBatch/SingleStoreBatch.md)(…) | Initializes a new [`SingleStoreBatch`](./SingleStoreBatch.md) object, setting the [`Connection`](./SingleStoreBatch/Connection.md) and [`Transaction`](./SingleStoreBatch/Transaction.md) if specified. |
 | [BatchCommands](SingleStoreBatch/BatchCommands.md) { get; } | The collection of commands that will be executed in the batch. |
 | [Connection](SingleStoreBatch/Connection.md) { get; set; } |  |
-| override [Timeout](SingleStoreBatch/Timeout.md) { get; set; } |  |
+| [Timeout](SingleStoreBatch/Timeout.md) { get; set; } |  |
 | [Transaction](SingleStoreBatch/Transaction.md) { get; set; } |  |
-| override [Cancel](SingleStoreBatch/Cancel.md)() |  |
-| override [Dispose](SingleStoreBatch/Dispose.md)() |  |
-| override [ExecuteNonQuery](SingleStoreBatch/ExecuteNonQuery.md)() |  |
-| override [ExecuteNonQueryAsync](SingleStoreBatch/ExecuteNonQueryAsync.md)(…) |  |
+| [Cancel](SingleStoreBatch/Cancel.md)() |  |
+| [Dispose](SingleStoreBatch/Dispose.md)() |  |
+| [ExecuteNonQuery](SingleStoreBatch/ExecuteNonQuery.md)() |  |
+| [ExecuteNonQueryAsync](SingleStoreBatch/ExecuteNonQueryAsync.md)(…) |  |
 | [ExecuteReader](SingleStoreBatch/ExecuteReader.md)(…) | Executes all the commands in the batch, returning a [`SingleStoreDataReader`](./SingleStoreDataReader.md) that can iterate over the result sets. If multiple resultsets are returned, use [`NextResult`](./SingleStoreDataReader/NextResult.md) to access them. |
 | [ExecuteReaderAsync](SingleStoreBatch/ExecuteReaderAsync.md)(…) | Executes all the commands in the batch, returning a [`SingleStoreDataReader`](./SingleStoreDataReader.md) that can iterate over the result sets. If multiple resultsets are returned, use [`NextResultAsync`](./SingleStoreDataReader/NextResultAsync.md) to access them. |
-| override [ExecuteScalar](SingleStoreBatch/ExecuteScalar.md)() |  |
-| override [ExecuteScalarAsync](SingleStoreBatch/ExecuteScalarAsync.md)(…) |  |
-| override [Prepare](SingleStoreBatch/Prepare.md)() |  |
-| override [PrepareAsync](SingleStoreBatch/PrepareAsync.md)(…) |  |
-
-## Protected Members
-
-| name | description |
-| --- | --- |
-| override [DbBatchCommands](SingleStoreBatch/DbBatchCommands.md) { get; } |  |
-| override [DbConnection](SingleStoreBatch/DbConnection.md) { get; set; } |  |
-| override [DbTransaction](SingleStoreBatch/DbTransaction.md) { get; set; } |  |
-| override [CreateDbBatchCommand](SingleStoreBatch/CreateDbBatchCommand.md)() |  |
-| override [ExecuteDbDataReader](SingleStoreBatch/ExecuteDbDataReader.md)(…) |  |
-| override [ExecuteDbDataReaderAsync](SingleStoreBatch/ExecuteDbDataReaderAsync.md)(…) |  |
+| [ExecuteScalar](SingleStoreBatch/ExecuteScalar.md)() |  |
+| [ExecuteScalarAsync](SingleStoreBatch/ExecuteScalarAsync.md)(…) |  |
+| [Prepare](SingleStoreBatch/Prepare.md)() |  |
+| [PrepareAsync](SingleStoreBatch/PrepareAsync.md)(…) |  |
 
 ## Remarks
 

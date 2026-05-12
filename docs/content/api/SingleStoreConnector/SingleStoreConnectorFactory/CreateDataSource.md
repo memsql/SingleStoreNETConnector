@@ -3,7 +3,7 @@
 Creates a new [`SingleStoreDataSource`](../SingleStoreDataSource.md) object.
 
 ```csharp
-public override DbDataSource CreateDataSource(string connectionString)
+public DbDataSource CreateDataSource(string connectionString)
 ```
 
 | parameter | description |
@@ -12,6 +12,7 @@ public override DbDataSource CreateDataSource(string connectionString)
 
 ## See Also
 
+* class [DbDataSource](../../System.Data.Common/DbDataSource.md)
 * class [SingleStoreConnectorFactory](../SingleStoreConnectorFactory.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 

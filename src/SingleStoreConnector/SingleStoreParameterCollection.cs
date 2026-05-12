@@ -25,24 +25,14 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 
 	public override int Add(object value)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(value);
-#else
-		if (value is null)
-			throw new ArgumentNullException(nameof(value));
-#endif
 		AddParameter((SingleStoreParameter) value, m_parameters.Count);
 		return m_parameters.Count - 1;
 	}
 
 	public SingleStoreParameter Add(SingleStoreParameter parameter)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(parameter);
-#else
-		if (parameter is null)
-			throw new ArgumentNullException(nameof(parameter));
-#endif
 		AddParameter(parameter, m_parameters.Count);
 		return parameter;
 	}
@@ -135,12 +125,7 @@ public sealed class SingleStoreParameterCollection : DbParameterCollection, IEnu
 
 	protected override void SetParameter(int index, DbParameter value)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(value);
-#else
-		if (value is null)
-			throw new ArgumentNullException(nameof(value));
-#endif
 		var newParameter = (SingleStoreParameter) value;
 		var oldParameter = m_parameters[index];
 		if (oldParameter.NormalizedParameterName is not null)

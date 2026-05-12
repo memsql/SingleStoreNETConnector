@@ -1,11 +1,12 @@
 # SingleStoreBatchCommandCollection.Add method
 
 ```csharp
-public override void Add(DbBatchCommand item)
+public void Add(SingleStoreBatchCommand item)
 ```
 
 ## See Also
 
+* class [SingleStoreBatchCommand](../SingleStoreBatchCommand.md)
 * class [SingleStoreBatchCommandCollection](../SingleStoreBatchCommandCollection.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 

@@ -1,7 +1,7 @@
 # SingleStoreBatchCommandCollection.RemoveAt method
 
 ```csharp
-public override void RemoveAt(int index)
+public void RemoveAt(int index)
 ```
 
 ## See Also

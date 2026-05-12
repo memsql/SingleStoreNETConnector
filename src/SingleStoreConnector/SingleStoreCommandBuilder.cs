@@ -12,12 +12,7 @@ public sealed class SingleStoreCommandBuilder : DbCommandBuilder
 
 	private static async Task DeriveParametersAsync(IOBehavior ioBehavior, SingleStoreCommand command, CancellationToken cancellationToken)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(command);
-#else
-		if (command is null)
-			throw new ArgumentNullException(nameof(command));
-#endif
 		if (command.CommandType != CommandType.StoredProcedure)
 			throw new ArgumentException($"SingleStoreCommand.CommandType must be StoredProcedure not {command.CommandType}", nameof(command));
 		if (string.IsNullOrWhiteSpace(command.CommandText))

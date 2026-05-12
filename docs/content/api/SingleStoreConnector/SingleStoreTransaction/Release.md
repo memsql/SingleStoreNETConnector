@@ -3,7 +3,7 @@
 Removes the named transaction savepoint with the specified *savepointName*. No commit or rollback occurs.
 
 ```csharp
-public override void Release(string savepointName)
+public void Release(string savepointName)
 ```
 
 | parameter | description |

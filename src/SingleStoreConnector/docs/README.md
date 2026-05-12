@@ -15,16 +15,16 @@ var builder = new SingleStoreConnectionStringBuilder
 };
 
 // open a connection asynchronously
-using var connection = new SingleStoreConnection(builder.ConnectionString);
+await using var connection = new SingleStoreConnection(builder.ConnectionString);
 await connection.OpenAsync();
 
 // create a DB command and set the SQL statement with parameters
-using var command = connection.CreateCommand();
+await using var command = connection.CreateCommand();
 command.CommandText = @"SELECT * FROM orders WHERE order_id = @OrderId;";
 command.Parameters.AddWithValue("@OrderId", orderId);
 
 // execute the command and read the results
-using var reader = await command.ExecuteReaderAsync();
+await using var reader = await command.ExecuteReaderAsync();
 while (reader.Read())
 {
 	var id = reader.GetInt32("order_id");

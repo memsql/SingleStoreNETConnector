@@ -18,7 +18,7 @@ public override void Rollback()
 Rolls back the current transaction to the savepoint with the specified *savepointName* without aborting the transaction.
 
 ```csharp
-public override void Rollback(string savepointName)
+public void Rollback(string savepointName)
 ```
 
 | parameter | description |

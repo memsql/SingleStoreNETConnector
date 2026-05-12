@@ -450,12 +450,7 @@ namespace SingleStoreConnector
 		private void TakeSessionFrom(SingleStoreConnection other)
 		{
 #if DEBUG
-#if NET6_0_OR_GREATER
-		ArgumentNullException.ThrowIfNull(other);
-#else
-			if (other is null)
-				throw new ArgumentNullException(nameof(other));
-#endif
+			ArgumentNullException.ThrowIfNull(other);
 			if (m_session is not null)
 				throw new InvalidOperationException("This connection must not have a session");
 			if (other.m_session is null)
@@ -537,7 +532,7 @@ namespace SingleStoreConnector
 			{
 			}
 
-			SetState(ConnectionState.Closed);
+			SetState(ConnectionState.Broken);
 			return false;
 		}
 
@@ -749,12 +744,7 @@ namespace SingleStoreConnector
 		private static async Task ClearPoolAsync(SingleStoreConnection connection, IOBehavior ioBehavior,
 			CancellationToken cancellationToken)
 		{
-#if NET6_0_OR_GREATER
-		ArgumentNullException.ThrowIfNull(connection);
-#else
-			if (connection is null)
-				throw new ArgumentNullException(nameof(connection));
-#endif
+			ArgumentNullException.ThrowIfNull(connection);
 
 			var pool = ConnectionPool.GetPool(connection.m_connectionString, null, createIfNotFound: false);
 			if (pool is not null)
@@ -1102,12 +1092,7 @@ namespace SingleStoreConnector
 
 		internal void SetActiveReader(SingleStoreDataReader dataReader)
 		{
-#if NET6_0_OR_GREATER
-		ArgumentNullException.ThrowIfNull(dataReader);
-#else
-			if (dataReader is null)
-				throw new ArgumentNullException(nameof(dataReader));
-#endif
+			ArgumentNullException.ThrowIfNull(dataReader);
 			if (m_activeReader is not null)
 				throw new InvalidOperationException("Can't replace active reader.");
 			m_activeReader = dataReader;
@@ -1151,8 +1136,7 @@ namespace SingleStoreConnector
 				// (from the connection string, if non-zero), or a combination of both
 				if (connectionSettings.ConnectionTimeout != 0)
 					timeoutSource = new CancellationTokenSource(TimeSpan.FromMilliseconds(Math.Max(1,
-						connectionSettings.ConnectionTimeoutMilliseconds -
-						Utility.GetElapsedMilliseconds(startingTimestamp))));
+						connectionSettings.ConnectionTimeoutMilliseconds - Utility.GetElapsedMilliseconds(startingTimestamp))));
 				if (cancellationToken.CanBeCanceled && timeoutSource is not null)
 					linkedSource =
 						CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutSource.Token);
@@ -1218,6 +1202,8 @@ namespace SingleStoreConnector
 		internal SslProtocols SslProtocol => m_session!.SslProtocol;
 
 		internal IPEndPoint? SessionEndPoint => m_session!.IPEndPoint;
+
+		internal SingleStoreDataSource? SingleStoreDataSource => m_dataSource;
 
 		internal void SetState(ConnectionState newState)
 		{

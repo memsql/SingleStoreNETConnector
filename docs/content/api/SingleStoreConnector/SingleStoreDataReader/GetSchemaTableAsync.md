@@ -3,7 +3,7 @@
 Returns a DataTable that contains metadata about the columns in the result set.
 
 ```csharp
-public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+public Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 ```
 
 | parameter | description |

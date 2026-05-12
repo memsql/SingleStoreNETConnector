@@ -27,7 +27,7 @@ namespace SingleStoreConnector;
 /// var dataTable = GetDataTableFromExternalSource();
 ///
 /// // open the connection
-/// using var connection = new SingleStoreConnection("...;AllowLoadLocalInfile=True");
+/// await using var connection = new SingleStoreConnection("...;AllowLoadLocalInfile=True");
 /// await connection.OpenAsync();
 ///
 /// // bulk copy the data
@@ -52,12 +52,7 @@ public sealed class SingleStoreBulkCopy
 	/// <param name="transaction">(Optional) The <see cref="SingleStoreTransaction"/> to use.</param>
 	public SingleStoreBulkCopy(SingleStoreConnection connection, SingleStoreTransaction? transaction = null)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(connection);
-#else
-		if (connection is null)
-			throw new ArgumentNullException(nameof(connection));
-#endif
 		m_connection = connection;
 		m_transaction = transaction;
 		m_logger = m_connection.LoggingConfiguration.BulkCopyLogger;
@@ -117,12 +112,7 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public SingleStoreBulkCopyResult WriteToServer(DataTable dataTable)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(dataTable);
-#else
-		if (dataTable is null)
-			throw new ArgumentNullException(nameof(dataTable));
-#endif
 		m_valuesEnumerator = DataRowsValuesEnumerator.Create(dataTable);
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		return WriteToServerAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
@@ -138,12 +128,7 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public async ValueTask<SingleStoreBulkCopyResult> WriteToServerAsync(DataTable dataTable, CancellationToken cancellationToken = default)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(dataTable);
-#else
-		if (dataTable is null)
-			throw new ArgumentNullException(nameof(dataTable));
-#endif
 		m_valuesEnumerator = DataRowsValuesEnumerator.Create(dataTable);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
 	}
@@ -158,12 +143,7 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public SingleStoreBulkCopyResult WriteToServer(IEnumerable<DataRow> dataRows, int columnCount)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(dataRows);
-#else
-		if (dataRows is null)
-			throw new ArgumentNullException(nameof(dataRows));
-#endif
 		m_valuesEnumerator = new DataRowsValuesEnumerator(dataRows, columnCount);
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		return WriteToServerAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
@@ -181,12 +161,7 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public async ValueTask<SingleStoreBulkCopyResult> WriteToServerAsync(IEnumerable<DataRow> dataRows, int columnCount, CancellationToken cancellationToken = default)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(dataRows);
-#else
-		if (dataRows is null)
-			throw new ArgumentNullException(nameof(dataRows));
-#endif
 		m_valuesEnumerator = new DataRowsValuesEnumerator(dataRows, columnCount);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
 	}
@@ -199,12 +174,7 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public SingleStoreBulkCopyResult WriteToServer(IDataReader dataReader)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(dataReader);
-#else
-		if (dataReader is null)
-			throw new ArgumentNullException(nameof(dataReader));
-#endif
 		m_valuesEnumerator = DataReaderValuesEnumerator.Create(dataReader);
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		return WriteToServerAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
@@ -220,12 +190,7 @@ public sealed class SingleStoreBulkCopy
 	/// <returns>A <see cref="SingleStoreBulkCopyResult"/> with the result of the bulk copy operation.</returns>
 	public async ValueTask<SingleStoreBulkCopyResult> WriteToServerAsync(IDataReader dataReader, CancellationToken cancellationToken = default)
 	{
-#if NET6_0_OR_GREATER
 		ArgumentNullException.ThrowIfNull(dataReader);
-#else
-		if (dataReader is null)
-			throw new ArgumentNullException(nameof(dataReader));
-#endif
 		m_valuesEnumerator = DataReaderValuesEnumerator.Create(dataReader);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, cancellationToken).ConfigureAwait(false);
 	}
@@ -266,27 +231,30 @@ public sealed class SingleStoreBulkCopy
 		using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly, ioBehavior, cancellationToken).ConfigureAwait(false))
 		{
 			var schema = reader.GetColumnSchema();
-			for (var i = 0; i < Math.Min(m_valuesEnumerator!.FieldCount, schema.Count); i++)
+			for (var i = 0; i < schema.Count; i++)
 			{
 				var destinationColumn = reader.GetName(i);
-				if (schema[i].DataTypeName == "BIT")
+				var dataTypeName = schema[i].DataTypeName;
+				if (dataTypeName == "BIT")
 				{
 					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = CAST(%VAR% AS UNSIGNED)");
-				}
-				else if (schema[i].DataTypeName == "YEAR")
-				{
-					// the current code can't distinguish between 0 = 0000 and 0 = 2000
-					throw new NotSupportedException("'YEAR' columns are not supported by SingleStoreBulkLoader.");
 				}
 				else
 				{
 					var type = schema[i].DataType;
-					if (type == typeof(byte[]) || (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
+					if (type == typeof(byte[]) ||
+					    (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
 					{
 						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = UNHEX(%VAR%)");
 					}
 					else if (addDefaultMappings)
 					{
+						if (schema[i].DataTypeName == "YEAR")
+						{
+							// the current code can't distinguish between 0 = 0000 and 0 = 2000
+							throw new NotSupportedException("'YEAR' columns are not supported by SingleStoreBulkCopy.");
+						}
+
 						Log.AddingDefaultColumnMapping(m_logger, i, destinationColumn);
 						columnMappings.Add(new(i, destinationColumn));
 					}
@@ -295,7 +263,7 @@ public sealed class SingleStoreBulkCopy
 		}
 
 		// set columns and expressions from the column mappings
-		for (var i = 0; i < m_valuesEnumerator.FieldCount; i++)
+		for (var i = 0; i < m_valuesEnumerator!.FieldCount; i++)
 		{
 			var columnMapping = columnMappings.FirstOrDefault(x => x.SourceOrdinal == i);
 			if (columnMapping is null)
@@ -505,13 +473,16 @@ public sealed class SingleStoreBulkCopy
 			{
 				return Utf8Formatter.TryFormat(decimalValue, output, out bytesWritten);
 			}
-			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte>)
+			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or float[] or ReadOnlyMemory<float> or Memory<float>)
 			{
 				var inputSpan = value switch
 				{
 					byte[] byteArray => byteArray.AsSpan(),
 					ArraySegment<byte> arraySegment => arraySegment.AsSpan(),
 					Memory<byte> memory => memory.Span,
+					float[] floatArray => SingleStoreParameter.ConvertFloatsToBytes(floatArray.AsSpan()),
+					Memory<float> memory => SingleStoreParameter.ConvertFloatsToBytes(memory.Span),
+					ReadOnlyMemory<float> memory => SingleStoreParameter.ConvertFloatsToBytes(memory.Span),
 					_ => ((ReadOnlyMemory<byte>) value).Span,
 				};
 

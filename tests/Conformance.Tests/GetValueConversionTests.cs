@@ -21,7 +21,6 @@ public class GetValueConversionTests : GetValueConversionTestBase<SelectValueFix
 	public override void GetValue_for_Boolean() => TestGetValue(DbType.Boolean, ValueKind.One, (sbyte)1);
 	public override void GetFieldType_for_Boolean() => TestGetFieldType(DbType.Boolean, ValueKind.One, typeof(sbyte));
 
-
 	// GetBoolean allows conversions from any integral type and decimal for backwards compatibility
 	public override void GetBoolean_throws_for_maximum_Byte() => TestGetValue(DbType.Byte, ValueKind.Maximum, x => x.GetBoolean(0), true);
 	public override void GetBoolean_throws_for_maximum_Byte_with_GetFieldValue() => TestGetValue(DbType.Byte, ValueKind.Maximum, x => x.GetFieldValue<bool>(0), true);
@@ -279,7 +278,6 @@ public class GetValueConversionTests : GetValueConversionTestBase<SelectValueFix
 	public override void GetByte_throws_for_zero_Decimal() => TestGetValue(DbType.Decimal, ValueKind.Zero, x => x.GetByte(0), (byte) 0);
 	public override void GetByte_throws_for_zero_Decimal_with_GetFieldValue() => TestGetValue(DbType.Decimal, ValueKind.Zero, x => x.GetFieldValue<byte>(0), (byte) 0);
 	public override Task GetByte_throws_for_zero_Decimal_with_GetFieldValueAsync() => TestGetValueAsync(DbType.Decimal, ValueKind.Zero, x => x.GetFieldValueAsync<byte>(0), (byte) 0);
-
 
 	// the minimum date permitted by MySQL is 1000-01-01; override the minimum value for DateTime tests
 	public override void GetDateTime_for_minimum_Date() => TestGetValue(DbType.Date, ValueKind.Minimum, x => x.GetDateTime(0), new DateTime(1000, 1, 1));

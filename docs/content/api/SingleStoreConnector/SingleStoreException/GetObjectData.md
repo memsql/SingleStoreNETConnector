@@ -3,6 +3,7 @@
 Sets the SerializationInfo with information about the exception.
 
 ```csharp
+[EditorBrowsable(EditorBrowsableState.Never)]
 public override void GetObjectData(SerializationInfo info, StreamingContext context)
 ```
 

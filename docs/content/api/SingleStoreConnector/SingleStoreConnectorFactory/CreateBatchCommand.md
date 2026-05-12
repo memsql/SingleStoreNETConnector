@@ -3,11 +3,12 @@
 Creates a new [`SingleStoreBatchCommand`](../SingleStoreBatchCommand.md) object.
 
 ```csharp
-public override DbBatchCommand CreateBatchCommand()
+public SingleStoreBatchCommand CreateBatchCommand()
 ```
 
 ## See Also
 
+* class [SingleStoreBatchCommand](../SingleStoreBatchCommand.md)
 * class [SingleStoreConnectorFactory](../SingleStoreConnectorFactory.md)
 * namespace [SingleStoreConnector](../../SingleStoreConnector.md)
 

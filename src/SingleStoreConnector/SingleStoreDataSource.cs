@@ -19,12 +19,13 @@ public sealed class SingleStoreDataSource : DbDataSource
 	/// <exception cref="ArgumentNullException">Thrown if <paramref name="connectionString"/> is <c>null</c>.</exception>
 	public SingleStoreDataSource(string connectionString)
 		: this(connectionString ?? throw new ArgumentNullException(nameof(connectionString)),
-			SingleStoreConnectorLoggingConfiguration.NullConfiguration, null, null, null, null, default, default, default)
+			SingleStoreConnectorLoggingConfiguration.NullConfiguration, null, null, null, null, null, default, default, default)
 	{
 	}
 
 	internal SingleStoreDataSource(string connectionString,
 		SingleStoreConnectorLoggingConfiguration loggingConfiguration,
+		SingleStoreConnectorTracingOptions? tracingOptions,
 		string? name,
 		Func<X509CertificateCollection, ValueTask>? clientCertificatesCallback,
 		RemoteCertificateValidationCallback? remoteCertificateValidationCallback,
@@ -35,6 +36,7 @@ public sealed class SingleStoreDataSource : DbDataSource
 	{
 		m_connectionString = connectionString;
 		LoggingConfiguration = loggingConfiguration;
+		TracingOptions = tracingOptions ?? SingleStoreConnectorTracingOptions.Default;
 		Name = name;
 		m_clientCertificatesCallback = clientCertificatesCallback;
 		m_remoteCertificateValidationCallback = remoteCertificateValidationCallback;
@@ -207,6 +209,8 @@ public sealed class SingleStoreDataSource : DbDataSource
 	internal ConnectionPool? Pool { get; }
 
 	internal SingleStoreConnectorLoggingConfiguration LoggingConfiguration { get; }
+
+	internal SingleStoreConnectorTracingOptions TracingOptions { get; }
 
 	internal string? Name { get; }
 

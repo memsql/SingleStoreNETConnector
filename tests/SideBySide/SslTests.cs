@@ -259,6 +259,20 @@ public class SslTests : IClassFixture<DatabaseFixture>
 		using var connection = new SingleStoreConnection(csb.ConnectionString);
 		await connection.OpenAsync();
 	}
+
+	[SkippableFact(ServerFeatures.TlsFingerprintValidation | ServerFeatures.ParsecAuthentication)]
+	public async Task ConnectZeroConfigurationSslParsec()
+	{
+		SingleStoreConnector.Authentication.Ed25519.ParsecAuthenticationPlugin.Install();
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.CertificateFile = null;
+		csb.SslMode = SingleStoreSslMode.VerifyFull;
+		csb.SslCa = "";
+		csb.UserID = "parsec-user";
+		csb.Password = "P@rs3c-Pa55";
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		await connection.OpenAsync();
+	}
 #endif
 
 	[SkippableFact(ConfigSettings.RequiresSsl)]
@@ -316,5 +330,5 @@ public class SslTests : IClassFixture<DatabaseFixture>
 	}
 #endif
 
-	readonly DatabaseFixture m_database;
+	private readonly DatabaseFixture m_database;
 }

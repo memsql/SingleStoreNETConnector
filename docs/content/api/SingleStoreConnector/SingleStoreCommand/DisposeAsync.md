@@ -1,7 +1,7 @@
 # SingleStoreCommand.DisposeAsync method
 
 ```csharp
-public override ValueTask DisposeAsync()
+public Task DisposeAsync()
 ```
 
 ## See Also

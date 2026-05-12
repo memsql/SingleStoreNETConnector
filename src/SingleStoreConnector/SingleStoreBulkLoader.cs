@@ -9,7 +9,7 @@ namespace SingleStoreConnector;
 /// <para><see cref="SingleStoreBulkLoader"/> lets you efficiently load a SingleStore Server Table with data from a CSV or TSV file or <see cref="Stream"/>.</para>
 /// <para>Example code:</para>
 /// <code>
-/// using var connection = new SingleStoreConnection("...;AllowLoadLocalInfile=True");
+/// await using var connection = new SingleStoreConnection("...;AllowLoadLocalInfile=True");
 /// await connection.OpenAsync();
 /// var bulkLoader = new SingleStoreBulkLoader(connection)
 /// {
@@ -183,7 +183,7 @@ public sealed class SingleStoreBulkLoader
 		else
 		{
 			if (!Local)
-				throw new InvalidOperationException("Local must be true to use SourceStream, SourceDataTable, or SourceDataReader.");
+				throw new InvalidOperationException("Local must be true to use SourceStream.");
 
 			FileName = GenerateSourceFileName();
 			AddSource(FileName, Source!);

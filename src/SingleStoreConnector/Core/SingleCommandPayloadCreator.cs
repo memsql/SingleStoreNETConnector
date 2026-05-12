@@ -1,3 +1,6 @@
+using System.Buffers;
+using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using SingleStoreConnector.Logging;
 using SingleStoreConnector.Protocol;
 using SingleStoreConnector.Protocol.Serialization;
@@ -58,6 +61,7 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 			{
 				commandListPosition.CommandIndex++;
 				commandListPosition.PreparedStatementIndex = 0;
+				commandListPosition.PreparedStatements = null;
 			}
 		}
 		return true;
@@ -214,8 +218,24 @@ internal sealed class SingleCommandPayloadCreator : ICommandPayloadCreator
 					break;
 				case ParameterDirection.Output:
 					outParameters.Add(param);
-					outParameterNames.Add(outName);
 					argParameterNames.Add(outName);
+
+					// special handling for GUIDs to ensure that the result set has a type and length that will be autodetected as a GUID
+					switch (param.SingleStoreDbType, param.Size)
+					{
+						case (SingleStoreDbType.Guid, 16):
+							outParameterNames.Add($"CAST({outName} AS BINARY(16))");
+							break;
+						case (SingleStoreDbType.Guid, 32):
+							outParameterNames.Add($"CAST({outName} AS CHAR(32))");
+							break;
+						case (SingleStoreDbType.Guid, 36):
+							outParameterNames.Add($"CAST({outName} AS CHAR(36))");
+							break;
+						default:
+							outParameterNames.Add(outName);
+							break;
+					}
 					break;
 				case ParameterDirection.ReturnValue:
 					returnParameter = param;

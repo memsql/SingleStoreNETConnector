@@ -1,7 +1,7 @@
 # SingleStoreBatchCommand class
 
 ```csharp
-public sealed class SingleStoreBatchCommand : DbBatchCommand
+public sealed class SingleStoreBatchCommand
 ```
 
 ## Public Members
@@ -10,18 +10,12 @@ public sealed class SingleStoreBatchCommand : DbBatchCommand
 | --- | --- |
 | [SingleStoreBatchCommand](SingleStoreBatchCommand/SingleStoreBatchCommand.md)() | The default constructor. |
 | [SingleStoreBatchCommand](SingleStoreBatchCommand/SingleStoreBatchCommand.md)(…) |  |
-| override [CanCreateParameter](SingleStoreBatchCommand/CanCreateParameter.md) { get; } |  |
-| override [CommandText](SingleStoreBatchCommand/CommandText.md) { get; set; } |  |
-| override [CommandType](SingleStoreBatchCommand/CommandType.md) { get; set; } |  |
+| [CanCreateParameter](SingleStoreBatchCommand/CanCreateParameter.md) { get; } |  |
+| [CommandText](SingleStoreBatchCommand/CommandText.md) { get; set; } |  |
+| [CommandType](SingleStoreBatchCommand/CommandType.md) { get; set; } |  |
 | [Parameters](SingleStoreBatchCommand/Parameters.md) { get; } |  |
-| override [RecordsAffected](SingleStoreBatchCommand/RecordsAffected.md) { get; } |  |
-| override [CreateParameter](SingleStoreBatchCommand/CreateParameter.md)() |  |
-
-## Protected Members
-
-| name | description |
-| --- | --- |
-| override [DbParameterCollection](SingleStoreBatchCommand/DbParameterCollection.md) { get; } |  |
+| [RecordsAffected](SingleStoreBatchCommand/RecordsAffected.md) { get; } |  |
+| [CreateParameter](SingleStoreBatchCommand/CreateParameter.md)() |  |
 
 ## See Also
 

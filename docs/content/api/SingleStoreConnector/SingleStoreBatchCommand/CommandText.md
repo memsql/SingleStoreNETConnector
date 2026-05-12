@@ -1,7 +1,7 @@
 # SingleStoreBatchCommand.CommandText property
 
 ```csharp
-public override string CommandText { get; set; }
+public string CommandText { get; set; }
 ```
 
 ## See Also

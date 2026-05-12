@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using SingleStoreConnector.Protocol;
 
 namespace SideBySide;
@@ -1387,6 +1388,7 @@ FROM query_bit;", connection);
 		Assert.True(await reader.NextResultAsync());
 
 		Assert.True(await reader.ReadAsync());
+
 		// MySQL returns ulong, MariaDB returns decimal; GetBoolean will coerce both
 		Assert.True(reader.GetBoolean(0));
 		Assert.False(await reader.ReadAsync());
@@ -1413,7 +1415,7 @@ insert into datatypes_tinyint1(value) values(0), (1), (2), (-1), (-128), (127);"
 
 		using var reader = command.ExecuteReader();
 
-		int[] expected = {-128, -1, 0, 1, 2, 127};
+		int[] expected = { -128, -1, 0, 1, 2, 127 };
 
 		for (int i = 0; i < expected.Length; i++)
 		{
@@ -1663,7 +1665,7 @@ select mysql_query_attribute_string('attr2') as attribute, @param2 as parameter;
 	[Fact]
 	public void ServerDoesNotSendMariaDbCacheMetadataOrQueryAttributes()
 	{
-		using var connection =  new SingleStoreConnection(AppConfig.ConnectionString);
+		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
 		connection.Open();
 
 		var serverCapabilities = connection.Session.ServerCapabilities;
@@ -1676,13 +1678,13 @@ select mysql_query_attribute_string('attr2') as attribute, @param2 as parameter;
 			"Server should not send QueryAttributes capability flag.");
 	}
 
-	class BoolTest
+	private class BoolTest
 	{
 		public int Id { get; set; }
 		public bool? IsBold { get; set; }
 	}
 
-	class UseReaderWithoutDisposingThreadData
+	private class UseReaderWithoutDisposingThreadData
 	{
 		public UseReaderWithoutDisposingThreadData(List<Exception> exceptions, SingleStoreConnectionStringBuilder csb)
 		{
@@ -1695,10 +1697,10 @@ select mysql_query_attribute_string('attr2') as attribute, @param2 as parameter;
 		public SingleStoreConnectionStringBuilder ConnectionStringBuilder { get; }
 	}
 
-	enum TestLongEnum : long
+	private enum TestLongEnum : long
 	{
 		Value = long.MaxValue,
 	}
 
-	readonly DatabaseFixture m_database;
+	private readonly DatabaseFixture m_database;
 }

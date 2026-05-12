@@ -16,7 +16,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 | override [RecordsAffected](SingleStoreDataReader/RecordsAffected.md) { get; } | Gets the number of rows changed, inserted, or deleted by execution of the SQL statement. |
 | override [VisibleFieldCount](SingleStoreDataReader/VisibleFieldCount.md) { get; } |  |
 | override [Close](SingleStoreDataReader/Close.md)() |  |
-| override [DisposeAsync](SingleStoreDataReader/DisposeAsync.md)() |  |
+| [DisposeAsync](SingleStoreDataReader/DisposeAsync.md)() |  |
 | override [GetBoolean](SingleStoreDataReader/GetBoolean.md)(…) |  |
 | [GetBoolean](SingleStoreDataReader/GetBoolean.md)(…) |  |
 | override [GetByte](SingleStoreDataReader/GetByte.md)(…) |  |
@@ -27,9 +27,8 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 | [GetChar](SingleStoreDataReader/GetChar.md)(…) |  |
 | override [GetChars](SingleStoreDataReader/GetChars.md)(…) |  |
 | [GetColumnSchema](SingleStoreDataReader/GetColumnSchema.md)() | Returns metadata about the columns in the result set. |
-| override [GetColumnSchemaAsync](SingleStoreDataReader/GetColumnSchemaAsync.md)(…) | Returns metadata about the columns in the result set. |
+| [GetColumnSchemaAsync](SingleStoreDataReader/GetColumnSchemaAsync.md)(…) | Returns metadata about the columns in the result set. |
 | override [GetDataTypeName](SingleStoreDataReader/GetDataTypeName.md)(…) |  |
-| [GetDateOnly](SingleStoreDataReader/GetDateOnly.md)(…) |  (2 methods) |
 | override [GetDateTime](SingleStoreDataReader/GetDateTime.md)(…) |  |
 | [GetDateTime](SingleStoreDataReader/GetDateTime.md)(…) |  |
 | [GetDateTimeOffset](SingleStoreDataReader/GetDateTimeOffset.md)(…) |  (2 methods) |
@@ -55,7 +54,7 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 | override [GetOrdinal](SingleStoreDataReader/GetOrdinal.md)(…) |  |
 | [GetSByte](SingleStoreDataReader/GetSByte.md)(…) |  (2 methods) |
 | override [GetSchemaTable](SingleStoreDataReader/GetSchemaTable.md)() | Returns a DataTable that contains metadata about the columns in the result set. |
-| override [GetSchemaTableAsync](SingleStoreDataReader/GetSchemaTableAsync.md)(…) | Returns a DataTable that contains metadata about the columns in the result set. |
+| [GetSchemaTableAsync](SingleStoreDataReader/GetSchemaTableAsync.md)(…) | Returns a DataTable that contains metadata about the columns in the result set. |
 | [GetSingleStoreDateTime](SingleStoreDataReader/GetSingleStoreDateTime.md)(…) |  (2 methods) |
 | [GetSingleStoreDecimal](SingleStoreDataReader/GetSingleStoreDecimal.md)(…) |  (2 methods) |
 | [GetSingleStoreGeography](SingleStoreDataReader/GetSingleStoreGeography.md)(…) |  (2 methods) |
@@ -66,7 +65,6 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 | [GetString](SingleStoreDataReader/GetString.md)(…) |  |
 | override [GetTextReader](SingleStoreDataReader/GetTextReader.md)(…) |  |
 | [GetTextReader](SingleStoreDataReader/GetTextReader.md)(…) |  |
-| [GetTimeOnly](SingleStoreDataReader/GetTimeOnly.md)(…) |  (2 methods) |
 | [GetTimeSpan](SingleStoreDataReader/GetTimeSpan.md)(…) |  (2 methods) |
 | [GetUInt16](SingleStoreDataReader/GetUInt16.md)(…) |  (2 methods) |
 | [GetUInt32](SingleStoreDataReader/GetUInt32.md)(…) |  (2 methods) |

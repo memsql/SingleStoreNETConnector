@@ -3,7 +3,7 @@
 Returns `true`.
 
 ```csharp
-public override bool CanCreateBatch { get; }
+public bool CanCreateBatch { get; }
 ```
 
 ## See Also

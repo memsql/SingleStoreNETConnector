@@ -51,7 +51,7 @@ builder.Services.AddSingleStoreDataSource("Server=server;User ID=test;Password=t
 
 ## Keyed Services
 
-Use the `AddKeyedSingleStoreDataSource` method to register a `SingleStoreDataSource` as a [keyed service](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-9.0#keyed-services).
+Use the `AddKeyedSingleStoreDataSource` method to register a `SingleStoreDataSource` as a [keyed service](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-8/runtime#keyed-di-services).
 This is useful if you have multiple connection strings or need to connect to multiple databases.
 If the service key is a string, it will automatically be used as the `SingleStoreDataSource` name;
 to customize this, call the `AddKeyedSingleStoreDataSource(object?, string, Action<SingleStoreDataSourceBuilder>)` overload and call `SingleStoreDataSourceBuilder.UseName`.
