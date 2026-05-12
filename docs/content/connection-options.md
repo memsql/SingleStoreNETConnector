@@ -449,6 +449,16 @@ These are the other options that SingleStoreConnector supports. They are set to 
     distributed transactions, but may not be compatible with server replication; there are <a href="https://dev.mysql.com/doc/refman/8.0/en/xa-restrictions.html">other limitations</a>.
     When set to <code>false</code>, regular SingleStore transactions are used, just like Connector/NET.</td>
   </tr>
+  <tr id="EnableExtendedDataTypes">
+    <td>Enable Extended Data Types, EnableExtendedDataTypes</td>
+    <td>true</td>
+    <td>
+      <p>Enables SingleStore extended protocol metadata for native SingleStore data types such as <code>VECTOR</code> and <code>BSON</code>.</p>
+      <p>When this option is <code>true</code>, the connector requests extended type metadata from supported SingleStore servers. This allows <code>VECTOR</code> columns to be returned as typed numeric memory values, such as <code>ReadOnlyMemory&lt;float&gt;</code>, <code>ReadOnlyMemory&lt;double&gt;</code>, <code>ReadOnlyMemory&lt;int&gt;</code>, and related types, and allows <code>BSON</code> columns to be identified as <code>SingleStoreDbType.Bson</code>.</p>
+      <p>When this option is <code>false</code>, the connector uses legacy MySQL-compatible metadata. In that mode, <code>VECTOR</code> and <code>BSON</code> columns may be exposed using fallback binary/blob metadata instead of their native SingleStore provider types.</p>
+      <p>This option is enabled by default. On older SingleStore servers that do not support extended metadata, the connector silently falls back to legacy behavior unless <code>EnableExtendedDataTypes=true</code> was explicitly specified in the connection string, in which case opening the connection fails with a not-supported error.</p>
+    </td>
+  </tr>
 </table>
 
 
