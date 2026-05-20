@@ -18,35 +18,28 @@ public sealed class SingleStoreDbColumn : DbColumn
 		VectorDimensions = null;
 		VectorElementTypeName = null;
 
-		switch (mySqlDbType)
+		if (mySqlDbType == SingleStoreDbType.Vector)
 		{
-			case SingleStoreDbType.Bson:
-				type = typeof(byte[]);
-				dataTypeName = "BSON";
-				break;
+			dataTypeName = "VECTOR";
 
-			case SingleStoreDbType.Vector:
-				dataTypeName = "VECTOR";
+			VectorDimensions = column.VectorDimensions is { } dims
+				? checked((int) dims)
+				: null;
 
-				VectorDimensions = column.VectorDimensions is { } dims
-					? checked((int) dims)
-					: null;
+			VectorElementTypeName = column.VectorElementType?.ToString();
 
-				VectorElementTypeName = column.VectorElementType?.ToString();
-
-				type = column.VectorElementType switch
-				{
-					SingleStoreVectorElementType.F32 => typeof(ReadOnlyMemory<float>),
-					SingleStoreVectorElementType.F64 => typeof(ReadOnlyMemory<double>),
-					SingleStoreVectorElementType.I8 => typeof(ReadOnlyMemory<sbyte>),
-					SingleStoreVectorElementType.I16 => typeof(ReadOnlyMemory<short>),
-					SingleStoreVectorElementType.I32 => typeof(ReadOnlyMemory<int>),
-					SingleStoreVectorElementType.I64 => typeof(ReadOnlyMemory<long>),
-					null => throw new FormatException("VECTOR column is missing VectorElementType metadata."),
-					_ => throw new NotSupportedException(
-						$"Unsupported VECTOR element type: {column.VectorElementType}."),
-				};
-				break;
+			type = column.VectorElementType switch
+			{
+				SingleStoreVectorElementType.F32 => typeof(ReadOnlyMemory<float>),
+				SingleStoreVectorElementType.F64 => typeof(ReadOnlyMemory<double>),
+				SingleStoreVectorElementType.I8 => typeof(ReadOnlyMemory<sbyte>),
+				SingleStoreVectorElementType.I16 => typeof(ReadOnlyMemory<short>),
+				SingleStoreVectorElementType.I32 => typeof(ReadOnlyMemory<int>),
+				SingleStoreVectorElementType.I64 => typeof(ReadOnlyMemory<long>),
+				null => throw new FormatException("VECTOR column is missing VectorElementType metadata."),
+				_ => throw new NotSupportedException(
+					$"Unsupported VECTOR element type: {column.VectorElementType}."),
+			};
 		}
 
 		if (mySqlDbType == SingleStoreDbType.Vector && VectorDimensions is { } vectorDimensions)

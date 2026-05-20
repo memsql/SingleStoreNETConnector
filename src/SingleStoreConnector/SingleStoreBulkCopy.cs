@@ -236,59 +236,13 @@ public sealed class SingleStoreBulkCopy
 				var destinationColumn = reader.GetName(i);
 				var variableName = $"@`temporary_column_dotnet_connector_col{i}`";
 
-				if (schema[i] is not SingleStoreDbColumn singleStoreColumn)
+				if (schema[i] is SingleStoreDbColumn singleStoreColumn &&
+				    TryAddExtendedTypeColumnMapping(singleStoreColumn, i, destinationColumn, variableName))
 				{
-					// fallback to existing behavior
-					goto LegacyHandling;
+					continue;
 				}
 
-				switch (singleStoreColumn.ProviderType)
-				{
-					case SingleStoreDbType.Vector:
-					{
-						if (singleStoreColumn.VectorDimensions is not { } dims || string.IsNullOrEmpty(singleStoreColumn.VectorElementTypeName))
-							throw new InvalidOperationException(
-								$"VECTOR destination column '{destinationColumn}' is missing dimension or element type metadata.");
-
-						var expression = $"%COL% = UNHEX(%VAR%):>VECTOR({dims}, {singleStoreColumn.VectorElementTypeName})";
-						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, variableName, expression);
-						continue;
-					}
-
-					case SingleStoreDbType.Bson:
-					{
-						var expression = "%COL% = UNHEX(%VAR%):>BSON";
-						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, variableName, expression);
-						continue;
-					}
-				}
-
-				LegacyHandling:
-				var dataTypeName = schema[i].DataTypeName;
-				if (dataTypeName == "BIT")
-				{
-					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, variableName, $"%COL% = CAST(%VAR% AS UNSIGNED)");
-				}
-				else
-				{
-					var type = schema[i].DataType;
-					if (type == typeof(byte[]) ||
-					    (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
-					{
-						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, variableName, $"%COL% = UNHEX(%VAR%)");
-					}
-					else if (addDefaultMappings)
-					{
-						if (schema[i].DataTypeName == "YEAR")
-						{
-							// the current code can't distinguish between 0 = 0000 and 0 = 2000
-							throw new NotSupportedException("'YEAR' columns are not supported by SingleStoreBulkCopy.");
-						}
-
-						Log.AddingDefaultColumnMapping(m_logger, i, destinationColumn);
-						columnMappings.Add(new(i, destinationColumn));
-					}
-				}
+				AddLegacyColumnMapping(schema[i], i, destinationColumn, variableName);
 			}
 		}
 
@@ -372,6 +326,58 @@ public sealed class SingleStoreBulkCopy
 			{
 				Log.AddingDefaultColumnMapping(logger, destinationOrdinal, destinationColumn);
 				columnMappings.Add(new(destinationOrdinal, variableName, expression));
+			}
+		}
+
+		bool TryAddExtendedTypeColumnMapping(SingleStoreDbColumn column, int destinationOrdinal, string destinationColumn, string variableName)
+		{
+			switch (column.ProviderType)
+			{
+				case SingleStoreDbType.Vector:
+				{
+					if (column.VectorDimensions is not { } dims || string.IsNullOrEmpty(column.VectorElementTypeName))
+					{
+						throw new InvalidOperationException(
+							$"VECTOR destination column '{destinationColumn}' is missing dimension or element type metadata.");
+					}
+
+					var expression = $"%COL% = UNHEX(%VAR%):>VECTOR({dims}, {column.VectorElementTypeName})";
+					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, expression);
+					return true;
+				}
+
+				case SingleStoreDbType.Bson:
+				{
+					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = UNHEX(%VAR%):>BSON");
+					return true;
+				}
+
+				default:
+					return false;
+			}
+		}
+
+		void AddLegacyColumnMapping(DbColumn column, int destinationOrdinal, string destinationColumn, string variableName)
+		{
+			if (column.DataTypeName == "BIT")
+			{
+				AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = CAST(%VAR% AS UNSIGNED)");
+				return;
+			}
+
+			var type = column.DataType;
+			if (type == typeof(byte[]) ||
+			    (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
+			{
+				AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = UNHEX(%VAR%)");
+			}
+			else if (addDefaultMappings)
+			{
+				if (column.DataTypeName == "YEAR")
+					throw new NotSupportedException("'YEAR' columns are not supported by SingleStoreBulkCopy.");
+
+				Log.AddingDefaultColumnMapping(m_logger, destinationOrdinal, destinationColumn);
+				columnMappings.Add(new(destinationOrdinal, destinationColumn));
 			}
 		}
 	}

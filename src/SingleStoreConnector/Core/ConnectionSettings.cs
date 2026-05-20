@@ -150,7 +150,8 @@ internal sealed class ConnectionSettings
 		UseCompression = csb.UseCompression;
 		UseXaTransactions = false;
 		EnableExtendedDataTypes = csb.EnableExtendedDataTypes;
-		EnableExtendedDataTypesWasExplicitlySet = csb.ContainsKey("Enable Extended Data Types");
+		EnableExtendedDataTypesWasExplicitlySet = csb.ContainsKey("Enable Extended Data Types") ||
+		                                          csb.ContainsKey("EnableExtendedDataTypes");
 
 		static int ToSigned(uint value) => value >= int.MaxValue ? int.MaxValue : (int) value;
 	}
