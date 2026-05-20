@@ -1,5 +1,3 @@
-using SingleStoreConnector.Core;
-
 namespace SideBySide;
 
 public class ParameterTests

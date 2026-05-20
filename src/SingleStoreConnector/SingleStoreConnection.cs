@@ -532,8 +532,8 @@ namespace SingleStoreConnector
 			}
 
 			await using var cmd = new SingleStoreCommand(
-	"SET SESSION enable_extended_types_metadata = TRUE;",
-	this);
+				"SET SESSION enable_extended_types_metadata = TRUE;",
+				this);
 
 			await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 		}

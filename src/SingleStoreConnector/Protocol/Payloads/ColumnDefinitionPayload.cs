@@ -152,7 +152,12 @@ internal sealed class ColumnDefinitionPayload
 
 					var vectorDimensions = reader.ReadUInt32();
 					VectorDimensions = vectorDimensions == 0 ? null : vectorDimensions;
-					VectorElementType = (SingleStoreVectorElementType) reader.ReadByte();
+
+					var vectorElementType = (SingleStoreVectorElementType) reader.ReadByte();
+					if (!IsSupportedVectorElementType(vectorElementType))
+						throw new FormatException($"Unsupported VECTOR element type metadata: {vectorElementType}.");
+
+					VectorElementType = vectorElementType;
 					remainingExtendedBytes -= 5;
 					break;
 				default:
@@ -174,6 +179,15 @@ internal sealed class ColumnDefinitionPayload
 			m_readNames = false;
 		}
 	}
+
+	private static bool IsSupportedVectorElementType(SingleStoreVectorElementType elementType) =>
+		elementType is
+			SingleStoreVectorElementType.F32 or
+			SingleStoreVectorElementType.F64 or
+			SingleStoreVectorElementType.I8 or
+			SingleStoreVectorElementType.I16 or
+			SingleStoreVectorElementType.I32 or
+			SingleStoreVectorElementType.I64;
 
 	private static void SkipLengthEncodedByteString(ref ByteArrayReader reader)
 	{
