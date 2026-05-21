@@ -305,18 +305,24 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			writer.WriteString(ulongValue);
 		}
-		else if (Value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream or float[] or ReadOnlyMemory<float> or Memory<float>)
+		else if (Value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream or
+		         float[] or ReadOnlyMemory<float> or Memory<float> or
+		         double[] or ReadOnlyMemory<double> or Memory<double> or
+		         sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
+		         short[] or ReadOnlyMemory<short> or Memory<short> or
+		         int[] or ReadOnlyMemory<int> or Memory<int> or
+		         long[] or ReadOnlyMemory<long> or Memory<long>)
 		{
 			var inputSpan = Value switch
 			{
 				byte[] byteArray => byteArray.AsSpan(),
 				ArraySegment<byte> arraySegment => arraySegment.AsSpan(),
 				Memory<byte> memory => memory.Span,
+				ReadOnlyMemory<byte> memory => memory.Span,
 				MemoryStream memoryStream => memoryStream.TryGetBuffer(out var streamBuffer) ? streamBuffer.AsSpan() : memoryStream.ToArray().AsSpan(),
-				float[] floatArray => SingleStoreBinaryValueConverter.ConvertFloatsToBytes(floatArray.AsSpan()),
-				Memory<float> memory => SingleStoreBinaryValueConverter.ConvertFloatsToBytes(memory.Span),
-				ReadOnlyMemory<float> memory => SingleStoreBinaryValueConverter.ConvertFloatsToBytes(memory.Span),
-				_ => ((ReadOnlyMemory<byte>) Value).Span,
+
+				// All numeric array types
+				_ => SingleStoreBinaryValueConverter.GetVectorBytes(Value),
 			};
 
 			WriteBinaryLiteral(writer, noBackslashEscapes, inputSpan);
@@ -791,20 +797,16 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			}
 #endif
 		}
-		else if (value is float[] floatArrayValue)
+		else if (value is float[] or Memory<float> or ReadOnlyMemory<float> or
+		         double[] or Memory<double> or ReadOnlyMemory<double> or
+		         sbyte[] or Memory<sbyte> or ReadOnlyMemory<sbyte> or
+		         short[] or Memory<short> or ReadOnlyMemory<short> or
+		         int[] or Memory<int> or ReadOnlyMemory<int> or
+		         long[] or Memory<long> or ReadOnlyMemory<long>)
 		{
-			writer.WriteLengthEncodedInteger(unchecked((ulong) floatArrayValue.Length * 4));
-			writer.Write(SingleStoreBinaryValueConverter.ConvertFloatsToBytes(floatArrayValue.AsSpan()));
-		}
-		else if (value is Memory<float> floatMemory)
-		{
-			writer.WriteLengthEncodedInteger(unchecked((ulong) floatMemory.Length * 4));
-			writer.Write(SingleStoreBinaryValueConverter.ConvertFloatsToBytes(floatMemory.Span));
-		}
-		else if (value is ReadOnlyMemory<float> floatReadOnlyMemory)
-		{
-			writer.WriteLengthEncodedInteger(unchecked((ulong) floatReadOnlyMemory.Length * 4));
-			writer.Write(SingleStoreBinaryValueConverter.ConvertFloatsToBytes(floatReadOnlyMemory.Span));
+			var bytes = SingleStoreBinaryValueConverter.GetVectorBytes(value);
+			writer.WriteLengthEncodedInteger(unchecked((ulong) bytes.Length));
+			writer.Write(bytes);
 		}
 		else if (value is decimal decimalValue)
 		{
