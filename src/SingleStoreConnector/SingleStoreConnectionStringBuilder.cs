@@ -828,7 +828,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 	}
 
 	/// <summary>
-	/// Enables extended data types, by enabling the enable_extended_types_metadata engine variable, that allows the connector to support extended data types, such as VECTOR and BSON
+	/// Enable SingleStore extended type metadata for types such as VECTOR and BSON.
 	/// </summary>
 	[Category("Other")]
 	[DefaultValue(true)]
