@@ -836,7 +836,7 @@ namespace SingleStoreConnector
 		/// <returns>A <see cref="Task{DataTable}"/> containing schema information.</returns>
 		/// <remarks>The proposed ADO.NET API that this is based on is not finalized; this API may change in the future.</remarks>
 #if NET5_0_OR_GREATER
-	public override Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
+		public override Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
 #else
 		public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
 #endif
@@ -851,7 +851,7 @@ namespace SingleStoreConnector
 		/// <returns>A <see cref="Task{DataTable}"/> containing schema information.</returns>
 		/// <remarks>The proposed ADO.NET API that this is based on is not finalized; this API may change in the future.</remarks>
 #if NET5_0_OR_GREATER
-	public override Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
+		public override Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
 #else
 		public Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
 #endif
@@ -866,8 +866,7 @@ namespace SingleStoreConnector
 		/// <returns>A <see cref="Task{DataTable}"/> containing schema information.</returns>
 		/// <remarks>The proposed ADO.NET API that this is based on is not finalized; this API may change in the future.</remarks>
 #if NET5_0_OR_GREATER
-	public override Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictionValues, CancellationToken cancellationToken
- = default)
+		public override Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictionValues, CancellationToken cancellationToken = default)
 #else
 		public Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictionValues,
 			CancellationToken cancellationToken = default)
@@ -891,9 +890,9 @@ namespace SingleStoreConnector
 		/// Creates a <see cref="SingleStoreBatch"/> object for executing batched commands.
 		/// </summary>
 #if NET6_0_OR_GREATER
-	public new SingleStoreBatch CreateBatch() => new(this);
-	protected override DbBatch CreateDbBatch() => CreateBatch();
-	public override bool CanCreateBatch => true;
+		public new SingleStoreBatch CreateBatch() => new(this);
+		protected override DbBatch CreateDbBatch() => CreateBatch();
+		public override bool CanCreateBatch => true;
 #else
 		public SingleStoreBatch CreateBatch() => new(this);
 
@@ -1419,7 +1418,7 @@ namespace SingleStoreConnector
 		private static readonly StateChangeEventArgs s_stateChangeOpenClosed =
 			new(ConnectionState.Open, ConnectionState.Closed);
 #if NET9_0_OR_GREATER
-	private static readonly Lock s_lock = new();
+		private static readonly Lock s_lock = new();
 #else
 		private static readonly object s_lock = new();
 #endif

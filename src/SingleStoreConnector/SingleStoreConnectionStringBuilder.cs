@@ -1000,6 +1000,7 @@ internal abstract partial class SingleStoreConnectionStringOption
 	public static readonly SingleStoreConnectionStringValueOption<bool> UseAffectedRows;
 	public static readonly SingleStoreConnectionStringValueOption<bool> UseCompression;
 	public static readonly SingleStoreConnectionStringValueOption<bool> UseXaTransactions;
+	public static readonly SingleStoreConnectionStringValueOption<bool> EnableExtendedDataTypes;
 
 	public static SingleStoreConnectionStringOption? TryGetOptionForKey(string key) =>
 		s_options.TryGetValue(key, out var option) ? option : null;
@@ -1312,13 +1313,10 @@ internal abstract partial class SingleStoreConnectionStringOption
 		AddOption(options, UseXaTransactions = new(
 			keys: ["Use XA Transactions", "UseXaTransactions"],
 			defaultValue: true));
-<<<<<<< HEAD
-=======
 
 		AddOption(options, EnableExtendedDataTypes = new(
 			keys: ["Enable Extended Data Types", "EnableExtendedDataTypes"],
 			defaultValue: true));
->>>>>>> c083f3d1 (switch default value for EnableExtendedDataTypes to true)
 #pragma warning restore SA1118 // Parameter should not span multiple lines
 
 #if NET8_0_OR_GREATER
