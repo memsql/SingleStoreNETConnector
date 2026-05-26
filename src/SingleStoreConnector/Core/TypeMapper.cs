@@ -78,6 +78,12 @@ internal sealed class TypeMapper
 		AddColumnTypeMetadata(new("MEDIUMBLOB", typeBinary, SingleStoreDbType.MediumBlob, binary: true, columnSize: 16777215, simpleDataTypeName: "BLOB"));
 		AddColumnTypeMetadata(new("LONGBLOB", typeBinary, SingleStoreDbType.LongBlob, binary: true, columnSize: uint.MaxValue, simpleDataTypeName: "BLOB"));
 
+		// bson
+		AddColumnTypeMetadata(new("BSON", typeBinary, SingleStoreDbType.Bson, binary: true, columnSize: uint.MaxValue, simpleDataTypeName: "BSON", createFormat: "BSON"));
+
+		// VECTOR: provider/logical type, blob transport
+		AddColumnTypeMetadata(new("VECTOR", typeBinary, SingleStoreDbType.Vector, binary: true, simpleDataTypeName: "VECTOR"));
+
 		// spatial
 		AddColumnTypeMetadata(new("GEOGRAPHY", typeString, SingleStoreDbType.Geography, columnSize: 1073741823));
 		AddColumnTypeMetadata(new("POINT", typeString, SingleStoreDbType.GeographyPoint, columnSize: 48));
@@ -127,6 +133,11 @@ internal sealed class TypeMapper
 
 	public SingleStoreDbType GetSingleStoreDbTypeForDbType(DbType dbType)
 	{
+		// DbType.Binary is ambiguous because Blob, Binary, VarBinary, Bson, and Vector
+		// all use binary transport. We'll stick to preserving the historical/default inference.
+		if (dbType == DbType.Binary)
+			return SingleStoreDbType.Blob;
+
 		foreach (var pair in m_mySqlDbTypeToColumnTypeMetadata)
 		{
 			if (pair.Value.DbTypeMapping.DbTypes.Contains(dbType))
@@ -198,6 +209,14 @@ internal sealed class TypeMapper
 
 	public static SingleStoreDbType ConvertToSingleStoreDbType(ColumnDefinitionPayload columnDefinition, bool treatTinyAsBoolean, bool treatChar48AsGeographyPoint, SingleStoreGuidFormat guidFormat)
 	{
+		switch (columnDefinition.ExtendedTypeCode)
+		{
+			case SingleStoreExtendedTypeCode.Bson:
+				return SingleStoreDbType.Bson;
+			case SingleStoreExtendedTypeCode.Vector:
+				return SingleStoreDbType.Vector;
+		}
+
 		var isUnsigned = (columnDefinition.ColumnFlags & ColumnFlags.Unsigned) != 0;
 		if ((columnDefinition.ColumnFlags & ColumnFlags.Enum) != 0)
 			return SingleStoreDbType.Enum;
@@ -340,6 +359,10 @@ internal sealed class TypeMapper
 			SingleStoreDbType.Blob or SingleStoreDbType.Text => ColumnType.Blob,
 			SingleStoreDbType.MediumBlob or SingleStoreDbType.MediumText => ColumnType.MediumBlob,
 			SingleStoreDbType.LongBlob or SingleStoreDbType.LongText => ColumnType.LongBlob,
+
+			SingleStoreDbType.Bson => ColumnType.Blob,
+			SingleStoreDbType.Vector => ColumnType.Blob,
+
 			SingleStoreDbType.JSON => ColumnType.Json, // TODO: test
 			SingleStoreDbType.Date or SingleStoreDbType.Newdate => ColumnType.Date,
 			SingleStoreDbType.DateTime => ColumnType.DateTime,

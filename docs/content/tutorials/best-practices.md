@@ -10,6 +10,88 @@ weight: 10
 
 # Best Practices
 
+## Using VECTOR and BSON
+
+By default, the connector enables SingleStore extended metadata for supported servers so it can distinguish native `VECTOR` and `BSON` columns from legacy MySQL-compatible fallback metadata.
+
+### VECTOR
+
+When reading a `VECTOR` column, the connector returns a typed memory value based on the vector element type:
+
+| SingleStore type | .NET type |
+|---|---|
+| `VECTOR(..., F32)` | `ReadOnlyMemory<float>` |
+| `VECTOR(..., F64)` | `ReadOnlyMemory<double>` |
+| `VECTOR(..., I8)` | `ReadOnlyMemory<sbyte>` |
+| `VECTOR(..., I16)` | `ReadOnlyMemory<short>` |
+| `VECTOR(..., I32)` | `ReadOnlyMemory<int>` |
+| `VECTOR(..., I64)` | `ReadOnlyMemory<long>` |
+
+Example:
+
+```csharp
+using var cmd = new SingleStoreCommand("select embedding from docs where id = @id", connection);
+cmd.Parameters.AddWithValue("@id", 1);
+
+using var reader = cmd.ExecuteReader();
+if (reader.Read())
+{
+    var embedding = reader.GetFieldValue<ReadOnlyMemory<float>>(0);
+    float[] values = embedding.ToArray();
+}
+```
+
+For parameters, pass numeric arrays or memory values:
+
+```csharp
+cmd.CommandText = "insert into docs(id, embedding) values(@id, @embedding)";
+cmd.Parameters.AddWithValue("@id", 1);
+cmd.Parameters.AddWithValue("@embedding", new float[] { 0.1f, 0.2f, 0.3f });
+```
+
+Supported parameter value types include:
+
+```
+float[], double[], sbyte[], short[], int[], long[]
+Memory<T>
+ReadOnlyMemory<T>
+```
+
+`byte[]` is intentionally not inferred as `VECTOR`; it remains binary/blob for backward compatibility. Use numeric arrays for vector parameters.
+
+### BSON
+
+`BSON` values are exposed as raw `BSON` bytes:
+
+```csharp
+byte[] bson = reader.GetFieldValue<byte[]>(0);
+```
+
+To insert `BSON`, provide valid `BSON` bytes and explicitly set the provider type:
+
+```csharp
+cmd.CommandText = "insert into events(doc) values(@doc)";
+cmd.Parameters.Add(new SingleStoreParameter("@doc", SingleStoreDbType.Bson)
+{
+    Value = rawBsonBytes
+});
+```
+
+### EnableExtendedDataTypes
+
+`EnableExtendedDataTypes=true` is the default. It enables native metadata support for `VECTOR` and `BSON` on supported SingleStore servers.
+
+Set it to `false` only if your application depends on legacy metadata behavior:
+
+```csharp
+var csb = new SingleStoreConnectionStringBuilder(connectionString)
+{
+    EnableExtendedDataTypes = false
+};
+```
+
+With extended metadata disabled, `VECTOR` and `BSON` may be exposed through legacy MySQL-compatible metadata instead of native connector types.
+
 ## Store bool as TINYINT(1)
 
 In SingleStore Server, [`BOOL` is an alias for `TINYINT(1)`](https://dev.mysql.com/doc/refman/8.0/en/numeric-type-syntax.html#idm46095360188160).

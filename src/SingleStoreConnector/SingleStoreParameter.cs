@@ -139,11 +139,19 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			m_value = value;
 			if (!HasSetDbType && value is not null)
 			{
-				var typeMapping = TypeMapper.Instance.GetDbTypeMapping(value.GetType());
-				if (typeMapping is not null)
+				if (SingleStoreBinaryValueConverter.TryInferSpecialSingleStoreDbType(value, out var specialDbType))
 				{
-					m_dbType = typeMapping.DbTypes[0];
-					m_mySqlDbType = TypeMapper.Instance.GetSingleStoreDbTypeForDbType(m_dbType);
+					m_dbType = TypeMapper.Instance.GetDbTypeForSingleStoreDbType(specialDbType);
+					m_mySqlDbType = specialDbType;
+				}
+				else
+				{
+					var typeMapping = TypeMapper.Instance.GetDbTypeMapping(value.GetType());
+					if (typeMapping is not null)
+					{
+						m_dbType = typeMapping.DbTypes[0];
+						m_mySqlDbType = TypeMapper.Instance.GetSingleStoreDbTypeForDbType(m_dbType);
+					}
 				}
 			}
 		}
@@ -203,12 +211,21 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 	/// </remarks>
 	internal void AppendSqlString(ByteBufferWriter writer, StatementPreparerOptions options)
 	{
-		const byte backslash = 0x5C, quote = 0x27, zeroByte = 0x00;
 		var noBackslashEscapes = (options & StatementPreparerOptions.NoBackslashEscapes) == StatementPreparerOptions.NoBackslashEscapes;
 
 		if (Value is null || Value == DBNull.Value)
 		{
 			writer.Write("NULL"u8);
+		}
+		else if (SingleStoreDbType == SingleStoreDbType.Vector)
+		{
+			writer.Write((byte) '\'');
+			writer.WriteAscii(CreateVectorLiteral(Value!));
+			writer.Write((byte) '\'');
+		}
+		else if (SingleStoreDbType == SingleStoreDbType.Bson)
+		{
+			WriteBinaryLiteral(writer, noBackslashEscapes, SingleStoreBinaryValueConverter.GetBsonBytes(Value!));
 		}
 		else if (Value is string stringValue)
 		{
@@ -288,48 +305,27 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		{
 			writer.WriteString(ulongValue);
 		}
-		else if (Value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream or float[] or ReadOnlyMemory<float> or Memory<float>)
+		else if (Value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream or
+		         float[] or ReadOnlyMemory<float> or Memory<float> or
+		         double[] or ReadOnlyMemory<double> or Memory<double> or
+		         sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
+		         short[] or ReadOnlyMemory<short> or Memory<short> or
+		         int[] or ReadOnlyMemory<int> or Memory<int> or
+		         long[] or ReadOnlyMemory<long> or Memory<long>)
 		{
 			var inputSpan = Value switch
 			{
 				byte[] byteArray => byteArray.AsSpan(),
 				ArraySegment<byte> arraySegment => arraySegment.AsSpan(),
 				Memory<byte> memory => memory.Span,
+				ReadOnlyMemory<byte> memory => memory.Span,
 				MemoryStream memoryStream => memoryStream.TryGetBuffer(out var streamBuffer) ? streamBuffer.AsSpan() : memoryStream.ToArray().AsSpan(),
-				float[] floatArray => ConvertFloatsToBytes(floatArray.AsSpan()),
-				Memory<float> memory => ConvertFloatsToBytes(memory.Span),
-				ReadOnlyMemory<float> memory => ConvertFloatsToBytes(memory.Span),
-				_ => ((ReadOnlyMemory<byte>) Value).Span,
+
+				// All numeric array types
+				_ => SingleStoreBinaryValueConverter.GetVectorBytes(Value),
 			};
 
-			// determine the number of bytes to be written
-			var length = inputSpan.Length + BinaryBytes.Length + 1;
-			foreach (var by in inputSpan)
-			{
-				if (by is quote or zeroByte || (by is backslash && !noBackslashEscapes))
-					length++;
-			}
-
-			var outputSpan = writer.GetSpan(length);
-			BinaryBytes.CopyTo(outputSpan);
-			var index = BinaryBytes.Length;
-			foreach (var by in inputSpan)
-			{
-				if (by is zeroByte)
-				{
-					outputSpan[index++] = (byte) '\\';
-					outputSpan[index++] = (byte) '0';
-				}
-				else
-				{
-					if (by is quote || by is backslash && !noBackslashEscapes)
-						outputSpan[index++] = by;
-					outputSpan[index++] = by;
-				}
-			}
-			outputSpan[index++] = quote;
-			Debug.Assert(index == length, "index == length");
-			writer.Advance(index);
+			WriteBinaryLiteral(writer, noBackslashEscapes, inputSpan);
 		}
 		else if (Value is SingleStoreGeography or SingleStoreGeographyPoint)
 		{
@@ -668,6 +664,20 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 
 	private void AppendBinary(ByteBufferWriter writer, object value, StatementPreparerOptions options)
 	{
+		if (SingleStoreDbType == SingleStoreDbType.Vector)
+		{
+			writer.WriteLengthEncodedAsciiString(CreateVectorLiteral(value));
+			return;
+		}
+
+		if (SingleStoreDbType == SingleStoreDbType.Bson)
+		{
+			var bytes = SingleStoreBinaryValueConverter.GetBsonBytes(value);
+			writer.WriteLengthEncodedInteger(unchecked((ulong) bytes.Length));
+			writer.Write(bytes);
+			return;
+		}
+
 		if (value is string stringValue)
 		{
 			writer.WriteLengthEncodedString(stringValue);
@@ -787,20 +797,16 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			}
 #endif
 		}
-		else if (value is float[] floatArrayValue)
+		else if (value is float[] or Memory<float> or ReadOnlyMemory<float> or
+		         double[] or Memory<double> or ReadOnlyMemory<double> or
+		         sbyte[] or Memory<sbyte> or ReadOnlyMemory<sbyte> or
+		         short[] or Memory<short> or ReadOnlyMemory<short> or
+		         int[] or Memory<int> or ReadOnlyMemory<int> or
+		         long[] or Memory<long> or ReadOnlyMemory<long>)
 		{
-			writer.WriteLengthEncodedInteger(unchecked((ulong) floatArrayValue.Length * 4));
-			writer.Write(ConvertFloatsToBytes(floatArrayValue.AsSpan()));
-		}
-		else if (value is Memory<float> floatMemory)
-		{
-			writer.WriteLengthEncodedInteger(unchecked((ulong) floatMemory.Length * 4));
-			writer.Write(ConvertFloatsToBytes(floatMemory.Span));
-		}
-		else if (value is ReadOnlyMemory<float> floatReadOnlyMemory)
-		{
-			writer.WriteLengthEncodedInteger(unchecked((ulong) floatReadOnlyMemory.Length * 4));
-			writer.Write(ConvertFloatsToBytes(floatReadOnlyMemory.Span));
+			var bytes = SingleStoreBinaryValueConverter.GetVectorBytes(value);
+			writer.WriteLengthEncodedInteger(unchecked((ulong) bytes.Length));
+			writer.Write(bytes);
 		}
 		else if (value is decimal decimalValue)
 		{
@@ -970,6 +976,42 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 	}
 #endif
 
+	private static void WriteBinaryLiteral(ByteBufferWriter writer, bool noBackslashEscapes, ReadOnlySpan<byte> inputSpan)
+	{
+		const byte backslash = 0x5C, quote = 0x27, zeroByte = 0x00;
+
+		var length = inputSpan.Length + BinaryBytes.Length + 1;
+		foreach (var by in inputSpan)
+		{
+			if (by is quote or zeroByte || (by is backslash && !noBackslashEscapes))
+				length++;
+		}
+
+		var outputSpan = writer.GetSpan(length);
+		BinaryBytes.CopyTo(outputSpan);
+		var index = BinaryBytes.Length;
+
+		foreach (var by in inputSpan)
+		{
+			if (by is zeroByte)
+			{
+				outputSpan[index++] = (byte) '\\';
+				outputSpan[index++] = (byte) '0';
+			}
+			else
+			{
+				if (by is quote || (by is backslash && !noBackslashEscapes))
+					outputSpan[index++] = by;
+
+				outputSpan[index++] = by;
+			}
+		}
+
+		outputSpan[index++] = quote;
+		Debug.Assert(index == length, "index == length");
+		writer.Advance(index);
+	}
+
 	private static void WriteDateTime(ByteBufferWriter writer, DateTime dateTime)
 	{
 		byte length;
@@ -1019,30 +1061,57 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		}
 	}
 
-	internal static ReadOnlySpan<byte> ConvertFloatsToBytes(ReadOnlySpan<float> floats)
+	private static string CreateVectorLiteral(object value) =>
+		value switch
+		{
+			float[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<float> values => CreateVectorLiteral(values.Span),
+			Memory<float> values => CreateVectorLiteral(values.Span),
+
+			double[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<double> values => CreateVectorLiteral(values.Span),
+			Memory<double> values => CreateVectorLiteral(values.Span),
+
+			sbyte[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<sbyte> values => CreateVectorLiteral(values.Span),
+			Memory<sbyte> values => CreateVectorLiteral(values.Span),
+
+			short[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<short> values => CreateVectorLiteral(values.Span),
+			Memory<short> values => CreateVectorLiteral(values.Span),
+
+			int[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<int> values => CreateVectorLiteral(values.Span),
+			Memory<int> values => CreateVectorLiteral(values.Span),
+
+			long[] values => CreateVectorLiteral(values.AsSpan()),
+			ReadOnlyMemory<long> values => CreateVectorLiteral(values.Span),
+			Memory<long> values => CreateVectorLiteral(values.Span),
+
+			byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream
+				=> throw new NotSupportedException(
+					$"Raw byte values for {nameof(SingleStoreDbType.Vector)} are only supported for bulk copy or explicit binary vector serialization; use a numeric array for command parameters."),
+
+			_ => throw new NotSupportedException(
+				$"Parameter type {value.GetType().Name} is not supported for {nameof(SingleStoreDbType.Vector)}."),
+		};
+
+	private static string CreateVectorLiteral<T>(ReadOnlySpan<T> values)
+		where T : IFormattable
 	{
-		if (BitConverter.IsLittleEndian)
-		{
-			return MemoryMarshal.AsBytes(floats);
-		}
-		else
-		{
-			// for big-endian platforms, we need to convert each float individually
-			var bytes = new byte[floats.Length * 4];
+		var builder = new StringBuilder();
+		builder.Append('[');
 
-			for (var i = 0; i < floats.Length; i++)
-			{
-#if NET5_0_OR_GREATER
-				BinaryPrimitives.WriteSingleLittleEndian(bytes.AsSpan(i * 4), floats[i]);
-#else
-				var floatBytes = BitConverter.GetBytes(floats[i]);
-				Array.Reverse(floatBytes);
-				floatBytes.CopyTo(bytes, i * 4);
-#endif
-			}
+		for (var i = 0; i < values.Length; i++)
+		{
+			if (i != 0)
+				builder.Append(',');
 
-			return bytes;
+			builder.Append(values[i].ToString(null, CultureInfo.InvariantCulture));
 		}
+
+		builder.Append(']');
+		return builder.ToString();
 	}
 
 	private static ReadOnlySpan<byte> BinaryBytes => "_binary'"u8;

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using SingleStoreConnector.Core;
 using Xunit.Sdk;
@@ -1486,6 +1487,202 @@ create table bulk_load_data_table(
 			Assert.InRange(reader.GetDouble(1), 1.0 - 1e-6, 1.0 + 1e-6);
 
 			Assert.False(reader.Read());
+		}
+	}
+
+	[SkippableTheory(ServerFeatures.ExtendedDataTypes)]
+	[InlineData("byte[]", "F32")]
+	[InlineData("float[]", "F32")]
+	[InlineData("double[]", "F64")]
+	[InlineData("sbyte[]", "I8")]
+	[InlineData("short[]", "I16")]
+	[InlineData("int[]", "I32")]
+	[InlineData("long[]", "I64")]
+	public void BulkCopyDataTableWithVector(string dataType, string vectorElementType)
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("data", ExtendedDataTypeTestUtilities.GetVectorDataColumnType(dataType)),
+			},
+			Rows =
+			{
+				new object[] { 1, ExtendedDataTypeTestUtilities.GetVectorDataRowValue([0f, 0f, 0f], dataType) },
+				new object[] { 2, ExtendedDataTypeTestUtilities.GetVectorDataRowValue([1f, 2f, 3f], dataType) },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		using (var cmd = new SingleStoreCommand($@"drop table if exists bulk_load_vector;
+	create table bulk_load_vector(a int, b vector(3, {vectorElementType}));", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_vector",
+		};
+
+		var result = bulkCopy.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(@"select b from bulk_load_vector order by a;", connection))
+		{
+			using var reader = cmd.ExecuteReader();
+
+			Assert.True(reader.Read());
+			ExtendedDataTypeTestUtilities.AssertVectorEquals(reader, 0, dataType, [0f, 0f, 0f]);
+
+			Assert.True(reader.Read());
+			ExtendedDataTypeTestUtilities.AssertVectorEquals(reader, 0, dataType, [1f, 2f, 3f]);
+
+			Assert.False(reader.Read());
+		}
+	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public void BulkCopyDataTableWithBson()
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("data", typeof(byte[])),
+			},
+			Rows =
+			{
+				new object[] { 1, CreateBsonInt32Document("x", 42) },
+				new object[] { 2, CreateBsonInt32Document("x", 7) },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		connection.Open();
+
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_bson;
+	create table bulk_load_bson(a int, b bson);", connection))
+		{
+			cmd.ExecuteNonQuery();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_bson",
+		};
+
+		var result = bulkCopy.WriteToServer(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(@"select b :> json from bulk_load_bson order by a;", connection))
+		{
+			using var reader = cmd.ExecuteReader();
+
+			Assert.True(reader.Read());
+			var firstJson = reader.GetString(0);
+			Assert.Contains("\"x\"", firstJson);
+			Assert.Contains("42", firstJson);
+
+			Assert.True(reader.Read());
+			var secondJson = reader.GetString(0);
+			Assert.Contains("\"x\"", secondJson);
+			Assert.Contains("7", secondJson);
+
+			Assert.False(reader.Read());
+		}
+
+		static byte[] CreateBsonInt32Document(string name, int value)
+		{
+			var nameBytes = Encoding.UTF8.GetBytes(name);
+			var documentLength = 4 + 1 + nameBytes.Length + 1 + 4 + 1;
+			var document = new byte[documentLength];
+
+			BinaryPrimitives.WriteInt32LittleEndian(document.AsSpan(0, 4), documentLength);
+
+			var offset = 4;
+			document[offset++] = 0x10; // int32
+			nameBytes.CopyTo(document.AsSpan(offset));
+			offset += nameBytes.Length;
+			document[offset++] = 0x00;
+
+			BinaryPrimitives.WriteInt32LittleEndian(document.AsSpan(offset, 4), value);
+			offset += 4;
+
+			document[offset] = 0x00;
+			return document;
+		}
+	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public void BulkCopyDataReaderWithVectorAndBson()
+	{
+		using var connection1 = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection1.Open();
+
+		connection1.Execute("""
+						drop table if exists bulk_copy_extended_source;
+						drop table if exists bulk_copy_extended_destination;
+
+						create table bulk_copy_extended_source(
+						    id int primary key,
+						    vec vector(3, F32),
+						    doc bson
+						);
+
+						create table bulk_copy_extended_destination(
+						    id int primary key,
+						    vec vector(3, F32),
+						    doc bson
+						);
+
+						insert into bulk_copy_extended_source values
+						    (1, '[1, 2, 3]', '{"x": 42}' :> BSON);
+""");
+
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		csb.AllowLoadLocalInfile = true;
+
+		using var connection2 = new SingleStoreConnection(csb.ConnectionString);
+		connection2.Open();
+
+		using (var select = new SingleStoreCommand(
+			       "select id, vec, doc from bulk_copy_extended_source order by id;",
+			       connection1))
+		using (var reader = select.ExecuteReader())
+		{
+			var bulkCopy = new SingleStoreBulkCopy(connection2)
+			{
+				DestinationTableName = "bulk_copy_extended_destination",
+			};
+
+			var result = bulkCopy.WriteToServer(reader);
+			Assert.Equal(1, result.RowsInserted);
+			Assert.Empty(result.Warnings);
+		}
+
+		using (var verify = new SingleStoreCommand(
+			       "select vec, doc :> json from bulk_copy_extended_destination where id = 1;",
+			       connection1))
+		using (var verifyReader = verify.ExecuteReader())
+		{
+			Assert.True(verifyReader.Read());
+
+			Assert.Equal(
+				new float[] { 1, 2, 3 },
+				verifyReader.GetFieldValue<ReadOnlyMemory<float>>(0).ToArray());
+
+			var json = verifyReader.GetString(1);
+			Assert.Contains("\"x\"", json);
+			Assert.Contains("42", json);
+
+			Assert.False(verifyReader.Read());
 		}
 	}
 #endif

@@ -513,6 +513,31 @@ namespace SingleStoreConnector
 
 		public new SingleStoreCommand CreateCommand() => (SingleStoreCommand) base.CreateCommand();
 
+		private async Task InitializeSessionAsync(IOBehavior ioBehavior, CancellationToken cancellationToken)
+		{
+			var settings = GetInitializedConnectionSettings();
+
+			if (!settings.EnableExtendedDataTypes)
+				return;
+
+			if (Session.S2ServerVersion.Version.CompareTo(S2Versions.SupportsExtendedDataTypes) < 0)
+			{
+				if (settings.EnableExtendedDataTypesWasExplicitlySet)
+				{
+					throw new NotSupportedException(
+						"EnableExtendedDataTypes requires SingleStore 8.5.28 or later.");
+				}
+
+				return;
+			}
+
+			await using var cmd = new SingleStoreCommand(
+				"SET SESSION enable_extended_types_metadata = TRUE;",
+				this);
+
+			await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+		}
+
 #pragma warning disable CA2012 // Safe because method completes synchronously
 		public bool Ping() => PingAsync(IOBehavior.Synchronous, CancellationToken.None).GetAwaiter().GetResult();
 #pragma warning restore CA2012
@@ -572,6 +597,16 @@ namespace SingleStoreConnector
 						m_hasBeenOpened = true;
 						SetState(ConnectionState.Open);
 
+						try
+						{
+							await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+						}
+						catch
+						{
+							await CloseAsync(changeState: true, ioBehavior ?? AsyncIOBehavior).ConfigureAwait(false);
+							throw;
+						}
+
 						if (ConnectionOpenedCallback is { } autoEnlistConnectionOpenedCallback)
 						{
 							cancellationToken.ThrowIfCancellationRequested();
@@ -588,6 +623,16 @@ namespace SingleStoreConnector
 						cancellationToken).ConfigureAwait(false);
 					m_hasBeenOpened = true;
 					SetState(ConnectionState.Open);
+
+					try
+					{
+						await InitializeSessionAsync(ioBehavior ?? AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
+					}
+					catch
+					{
+						await CloseAsync(changeState: true, ioBehavior ?? AsyncIOBehavior).ConfigureAwait(false);
+						throw;
+					}
 				}
 				catch (OperationCanceledException ex)
 				{
@@ -641,6 +686,7 @@ namespace SingleStoreConnector
 		public async ValueTask ResetConnectionAsync(CancellationToken cancellationToken = default)
 		{
 			await Session.ResetConnectionAsync(AsyncIOBehavior, Database, cancellationToken).ConfigureAwait(false);
+			await InitializeSessionAsync(AsyncIOBehavior, cancellationToken).ConfigureAwait(false);
 		}
 
 		[AllowNull]
@@ -1074,6 +1120,7 @@ namespace SingleStoreConnector
 		internal bool IgnorePrepare => GetInitializedConnectionSettings().IgnorePrepare;
 		internal bool NoBackslashEscapes => GetInitializedConnectionSettings().NoBackslashEscapes;
 		internal bool TreatTinyAsBoolean => GetInitializedConnectionSettings().TreatTinyAsBoolean;
+		internal bool EnableExtendedDataTypes => GetInitializedConnectionSettings().EnableExtendedDataTypes;
 
 		internal IOBehavior AsyncIOBehavior => GetConnectionSettings().ForceSynchronous
 			? IOBehavior.Synchronous

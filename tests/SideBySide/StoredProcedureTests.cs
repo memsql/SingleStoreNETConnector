@@ -641,6 +641,39 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 		Assert.False(reader.Read());
 	}
 
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public void StoredProcedureReturnsBson()
+	{
+		using var connection = CreateOpenConnection();
+
+		using (var setup = connection.CreateCommand())
+		{
+			setup.CommandText = """
+			                    DROP PROCEDURE IF EXISTS sp_bson_result;
+			                    CREATE PROCEDURE sp_bson_result() AS
+			                    BEGIN
+			                    ECHO SELECT '{"x": 42}' :> BSON AS value;
+			                    END;
+			                    """;
+			setup.ExecuteNonQuery();
+		}
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = "CALL sp_bson_result()";
+
+		using var reader = cmd.ExecuteReader();
+
+		Assert.True(reader.Read());
+		Assert.Equal(typeof(byte[]), reader.GetFieldType(0));
+		var schema = Assert.IsType<SingleStoreDbColumn>(reader.GetColumnSchema()[0]);
+		Assert.Equal(SingleStoreDbType.Bson, schema.ProviderType);
+
+		var bson = Assert.IsType<byte[]>(reader.GetValue(0));
+		Assert.NotEmpty(bson);
+
+		Assert.False(reader.Read());
+	}
+
 	private static Action<SingleStoreParameter> AssertParameter(string name, ParameterDirection direction, SingleStoreDbType mySqlDbType)
 	{
 		return x =>
