@@ -234,31 +234,15 @@ public sealed class SingleStoreBulkCopy
 			for (var i = 0; i < schema.Count; i++)
 			{
 				var destinationColumn = reader.GetName(i);
-				var dataTypeName = schema[i].DataTypeName;
-				if (dataTypeName == "BIT")
-				{
-					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = CAST(%VAR% AS UNSIGNED)");
-				}
-				else
-				{
-					var type = schema[i].DataType;
-					if (type == typeof(byte[]) ||
-					    (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
-					{
-						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, i, destinationColumn, $"@`temporary_column_dotnet_connector_col{i}`", $"%COL% = UNHEX(%VAR%)");
-					}
-					else if (addDefaultMappings)
-					{
-						if (schema[i].DataTypeName == "YEAR")
-						{
-							// the current code can't distinguish between 0 = 0000 and 0 = 2000
-							throw new NotSupportedException("'YEAR' columns are not supported by SingleStoreBulkCopy.");
-						}
+				var variableName = $"@`temporary_column_dotnet_connector_col{i}`";
 
-						Log.AddingDefaultColumnMapping(m_logger, i, destinationColumn);
-						columnMappings.Add(new(i, destinationColumn));
-					}
+				if (schema[i] is SingleStoreDbColumn singleStoreColumn &&
+				    TryAddExtendedTypeColumnMapping(singleStoreColumn, i, destinationColumn, variableName))
+				{
+					continue;
 				}
+
+				AddLegacyColumnMapping(schema[i], i, destinationColumn, variableName);
 			}
 		}
 
@@ -321,7 +305,9 @@ public sealed class SingleStoreBulkCopy
 
 		static void AddColumnMapping(ILogger logger, List<SingleStoreBulkCopyColumnMapping> columnMappings, bool addDefaultMappings, int destinationOrdinal, string destinationColumn, string variableName, string expression)
 		{
-			expression = expression.Replace("%COL%", "`" + destinationColumn + "`").Replace("%VAR%", variableName);
+			expression = expression
+				.Replace("%COL%", "`" + destinationColumn.Replace("`", "``") + "`")
+				.Replace("%VAR%", variableName);
 			var columnMapping = columnMappings.FirstOrDefault(x => destinationColumn.Equals(x.DestinationColumn, StringComparison.OrdinalIgnoreCase));
 			if (columnMapping is not null)
 			{
@@ -340,6 +326,58 @@ public sealed class SingleStoreBulkCopy
 			{
 				Log.AddingDefaultColumnMapping(logger, destinationOrdinal, destinationColumn);
 				columnMappings.Add(new(destinationOrdinal, variableName, expression));
+			}
+		}
+
+		bool TryAddExtendedTypeColumnMapping(SingleStoreDbColumn column, int destinationOrdinal, string destinationColumn, string variableName)
+		{
+			switch (column.ProviderType)
+			{
+				case SingleStoreDbType.Vector:
+				{
+					if (column.VectorDimensions is not { } dims || string.IsNullOrEmpty(column.VectorElementTypeName))
+					{
+						throw new InvalidOperationException(
+							$"VECTOR destination column '{destinationColumn}' is missing dimension or element type metadata.");
+					}
+
+					var expression = $"%COL% = UNHEX(%VAR%):>VECTOR({dims}, {column.VectorElementTypeName})";
+					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, expression);
+					return true;
+				}
+
+				case SingleStoreDbType.Bson:
+				{
+					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = UNHEX(%VAR%):>BSON");
+					return true;
+				}
+
+				default:
+					return false;
+			}
+		}
+
+		void AddLegacyColumnMapping(DbColumn column, int destinationOrdinal, string destinationColumn, string variableName)
+		{
+			if (column.DataTypeName == "BIT")
+			{
+				AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = CAST(%VAR% AS UNSIGNED)");
+				return;
+			}
+
+			var type = column.DataType;
+			if (type == typeof(byte[]) ||
+			    (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
+			{
+				AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = UNHEX(%VAR%)");
+			}
+			else if (addDefaultMappings)
+			{
+				if (column.DataTypeName == "YEAR")
+					throw new NotSupportedException("'YEAR' columns are not supported by SingleStoreBulkCopy.");
+
+				Log.AddingDefaultColumnMapping(m_logger, destinationOrdinal, destinationColumn);
+				columnMappings.Add(new(destinationOrdinal, destinationColumn));
 			}
 		}
 	}
@@ -473,17 +511,31 @@ public sealed class SingleStoreBulkCopy
 			{
 				return Utf8Formatter.TryFormat(decimalValue, output, out bytesWritten);
 			}
-			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or float[] or ReadOnlyMemory<float> or Memory<float>)
+			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream or
+			         float[] or ReadOnlyMemory<float> or Memory<float> or
+			         double[] or ReadOnlyMemory<double> or Memory<double> or
+			         sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
+			         short[] or ReadOnlyMemory<short> or Memory<short> or
+			         int[] or ReadOnlyMemory<int> or Memory<int> or
+			         long[] or ReadOnlyMemory<long> or Memory<long>)
 			{
 				var inputSpan = value switch
 				{
 					byte[] byteArray => byteArray.AsSpan(),
 					ArraySegment<byte> arraySegment => arraySegment.AsSpan(),
 					Memory<byte> memory => memory.Span,
-					float[] floatArray => SingleStoreParameter.ConvertFloatsToBytes(floatArray.AsSpan()),
-					Memory<float> memory => SingleStoreParameter.ConvertFloatsToBytes(memory.Span),
-					ReadOnlyMemory<float> memory => SingleStoreParameter.ConvertFloatsToBytes(memory.Span),
-					_ => ((ReadOnlyMemory<byte>) value).Span,
+					ReadOnlyMemory<byte> memory => memory.Span,
+					MemoryStream memoryStream => memoryStream.TryGetBuffer(out var streamBuffer) ? streamBuffer.AsSpan() : memoryStream.ToArray().AsSpan(),
+
+					float[] or ReadOnlyMemory<float> or Memory<float> or
+						double[] or ReadOnlyMemory<double> or Memory<double> or
+						sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
+						short[] or ReadOnlyMemory<short> or Memory<short> or
+						int[] or ReadOnlyMemory<int> or Memory<int> or
+						long[] or ReadOnlyMemory<long> or Memory<long>
+						=> SingleStoreBinaryValueConverter.GetVectorBytes(value),
+
+					_ => throw new NotSupportedException($"Type {value.GetType().Name} not currently supported. Value: {value}"),
 				};
 
 				return WriteBytes(inputSpan, ref inputIndex, output, out bytesWritten);

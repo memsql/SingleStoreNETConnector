@@ -1,8 +1,8 @@
 namespace SingleStoreConnector.Protocol;
 
-/// <summary>
-/// See <a href="https://dev.mysql.com/doc/internals/en/com-query-response.html#column-type">SingleStore documentation</a>.
-/// </summary>
+/// Base column type values from the MySQL-compatible protocol.
+/// SingleStore-specific types such as BSON and VECTOR are exposed through extended metadata,
+/// not as additional ColumnType values.
 internal enum ColumnType
 {
 	Decimal = 0,

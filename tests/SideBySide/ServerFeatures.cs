@@ -45,4 +45,9 @@ public enum ServerFeatures
 	/// Server supports the 'parsec' authentication plugin.
 	/// </summary>
 	ParsecAuthentication = 0x200_0000,
+
+	/// <summary>
+	/// Server supports extended data types (VECTOR, BSON) via enable_extended_types_metadata (8.5.28+).
+	/// </summary>
+	ExtendedDataTypes = 0x400_0000,
 }

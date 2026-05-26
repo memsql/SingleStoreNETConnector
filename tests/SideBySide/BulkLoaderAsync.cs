@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 using SingleStoreConnector.Core;
 using Xunit.Sdk;
 
@@ -765,6 +767,134 @@ create table bulk_load_data_table(
 			Assert.InRange(reader.GetDouble(1), 1.0 - 1e-6, 1.0 + 1e-6);
 
 			Assert.False(await reader.ReadAsync());
+		}
+	}
+
+	[SkippableTheory(ServerFeatures.ExtendedDataTypes)]
+	[InlineData("byte[]", "F32")]
+	[InlineData("float[]", "F32")]
+	[InlineData("double[]", "F64")]
+	[InlineData("sbyte[]", "I8")]
+	[InlineData("short[]", "I16")]
+	[InlineData("int[]", "I32")]
+	[InlineData("long[]", "I64")]
+	public async Task BulkCopyDataTableWithVectorAsync(string dataType, string vectorElementType)
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("data", ExtendedDataTypeTestUtilities.GetVectorDataColumnType(dataType)),
+			},
+			Rows =
+			{
+				new object[] { 1, ExtendedDataTypeTestUtilities.GetVectorDataRowValue([0f, 0f, 0f], dataType) },
+				new object[] { 2, ExtendedDataTypeTestUtilities.GetVectorDataRowValue([1f, 2f, 3f], dataType) },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		await connection.OpenAsync();
+
+		using (var cmd = new SingleStoreCommand($@"drop table if exists bulk_load_vector_async;
+	create table bulk_load_vector_async(a int, b vector(3, {vectorElementType}));", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_vector_async",
+		};
+
+		var result = await bulkCopy.WriteToServerAsync(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(@"select b from bulk_load_vector_async order by a;", connection))
+		using (var reader = await cmd.ExecuteReaderAsync())
+		{
+			Assert.True(await reader.ReadAsync());
+			ExtendedDataTypeTestUtilities.AssertVectorEquals(reader, 0, dataType, [0f, 0f, 0f]);
+
+			Assert.True(await reader.ReadAsync());
+			ExtendedDataTypeTestUtilities.AssertVectorEquals(reader, 0, dataType, [1f, 2f, 3f]);
+
+			Assert.False(await reader.ReadAsync());
+		}
+	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public async Task BulkCopyDataTableWithBsonAsync()
+	{
+		var dataTable = new DataTable()
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("data", typeof(byte[])),
+			},
+			Rows =
+			{
+				new object[] { 1, CreateBsonInt32Document("x", 42) },
+				new object[] { 2, CreateBsonInt32Document("x", 7) },
+			},
+		};
+
+		using var connection = new SingleStoreConnection(GetLocalConnectionString());
+		await connection.OpenAsync();
+
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_load_bson_async;
+	create table bulk_load_bson_async(a int, b bson);", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var bulkCopy = new SingleStoreBulkCopy(connection)
+		{
+			DestinationTableName = "bulk_load_bson_async",
+		};
+
+		var result = await bulkCopy.WriteToServerAsync(dataTable);
+		Assert.Equal(2, result.RowsInserted);
+		Assert.Empty(result.Warnings);
+
+		using (var cmd = new SingleStoreCommand(@"select b :> json from bulk_load_bson_async order by a;", connection))
+		using (var reader = await cmd.ExecuteReaderAsync())
+		{
+			Assert.True(await reader.ReadAsync());
+			var firstJson = reader.GetString(0);
+			Assert.Contains("\"x\"", firstJson);
+			Assert.Contains("42", firstJson);
+
+			Assert.True(await reader.ReadAsync());
+			var secondJson = reader.GetString(0);
+			Assert.Contains("\"x\"", secondJson);
+			Assert.Contains("7", secondJson);
+
+			Assert.False(await reader.ReadAsync());
+		}
+
+		static byte[] CreateBsonInt32Document(string name, int value)
+		{
+			var nameBytes = Encoding.UTF8.GetBytes(name);
+			var documentLength = 4 + 1 + nameBytes.Length + 1 + 4 + 1;
+			var document = new byte[documentLength];
+
+			BinaryPrimitives.WriteInt32LittleEndian(document.AsSpan(0, 4), documentLength);
+
+			var offset = 4;
+			document[offset++] = 0x10;
+			nameBytes.CopyTo(document.AsSpan(offset));
+			offset += nameBytes.Length;
+			document[offset++] = 0x00;
+
+			BinaryPrimitives.WriteInt32LittleEndian(document.AsSpan(offset, 4), value);
+			offset += 4;
+
+			document[offset] = 0x00;
+			return document;
 		}
 	}
 #endif

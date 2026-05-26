@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using SingleStoreConnector.Protocol;
 
@@ -1676,6 +1677,159 @@ select mysql_query_attribute_string('attr2') as attribute, @param2 as parameter;
 
 		Assert.False(serverCapabilities.HasFlag(ProtocolCapabilities.QueryAttributes),
 			"Server should not send QueryAttributes capability flag.");
+	}
+
+	[SkippableTheory(ServerFeatures.ExtendedDataTypes)]
+	[InlineData(false, "F32")]
+	[InlineData(true, "F32")]
+	[InlineData(false, "F64")]
+	[InlineData(true, "F64")]
+	[InlineData(false, "I8")]
+	[InlineData(true, "I8")]
+	[InlineData(false, "I16")]
+	[InlineData(true, "I16")]
+	[InlineData(false, "I32")]
+	[InlineData(true, "I32")]
+	[InlineData(false, "I64")]
+	[InlineData(true, "I64")]
+	public void QueryVectorParameterRoundTrips(bool prepare, string elementType)
+	{
+		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+
+		connection.Execute($"""
+	drop table if exists test_vector_parameter;
+	create table test_vector_parameter(id bigint auto_increment not null primary key, vec vector(3, {elementType}) not null);
+	""");
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = "insert into test_vector_parameter(vec) values(@vec)";
+		cmd.Parameters.Add(new SingleStoreParameter
+		{
+			ParameterName = "@vec",
+			SingleStoreDbType = SingleStoreDbType.Vector,
+			Value = ExtendedDataTypeTestUtilities.GetVectorParameterValue(elementType),
+		});
+
+		if (prepare)
+			cmd.Prepare();
+
+		cmd.ExecuteNonQuery();
+
+		cmd.CommandText = "select vec from test_vector_parameter";
+		if (prepare)
+			cmd.Prepare();
+
+		using var reader = cmd.ExecuteReader();
+		Assert.True(reader.Read());
+		ExtendedDataTypeTestUtilities.AssertVectorEquals(reader.GetValue(0), elementType);
+		Assert.False(reader.Read());
+	}
+
+	[SkippableTheory(ServerFeatures.ExtendedDataTypes)]
+	[InlineData(false, 0)]
+	[InlineData(false, 1)]
+	[InlineData(false, 2)]
+	[InlineData(true, 0)]
+	[InlineData(true, 1)]
+	[InlineData(true, 2)]
+	public void QueryVectorParameterSupportsMemoryFormats(bool prepare, int dataFormat)
+	{
+		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+
+		connection.Execute("""
+		                   drop table if exists test_vector_memory_formats;
+		                   create table test_vector_memory_formats(id bigint auto_increment not null primary key, vec vector(3, F32) not null);
+		                   """);
+
+		var values = new float[] { 1.2f, 3.4f, 5.6f };
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = "insert into test_vector_memory_formats(vec) values(@vec)";
+		cmd.Parameters.Add(new SingleStoreParameter
+		{
+			ParameterName = "@vec",
+			SingleStoreDbType = SingleStoreDbType.Vector,
+			Value = dataFormat switch
+			{
+				0 => values,
+				1 => new Memory<float>(values),
+				2 => new ReadOnlyMemory<float>(values),
+				_ => throw new ArgumentOutOfRangeException(nameof(dataFormat)),
+			},
+		});
+
+		if (prepare)
+			cmd.Prepare();
+
+		cmd.ExecuteNonQuery();
+
+		cmd.CommandText = "select vec from test_vector_memory_formats";
+		if (prepare)
+			cmd.Prepare();
+
+		using var reader = cmd.ExecuteReader();
+		Assert.True(reader.Read());
+		Assert.Equal(values, ((ReadOnlyMemory<float>) reader.GetValue(0)).ToArray());
+		Assert.False(reader.Read());
+	}
+
+	[SkippableTheory(ServerFeatures.ExtendedDataTypes)]
+	[InlineData(false)]
+	[InlineData(true)]
+	public void QueryBsonParameterRoundTrips(bool prepare)
+	{
+		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
+		connection.Open();
+
+		connection.Execute("""
+		                   drop table if exists test_bson_parameter;
+		                   create table test_bson_parameter(id bigint auto_increment not null primary key, doc bson not null);
+		                   """);
+
+		using var cmd = connection.CreateCommand();
+		cmd.CommandText = "insert into test_bson_parameter(doc) values(@doc)";
+		cmd.Parameters.Add(new SingleStoreParameter
+		{
+			ParameterName = "@doc",
+			SingleStoreDbType = SingleStoreDbType.Bson,
+			Value = CreateBsonInt32Document("x", 42),
+		});
+
+		if (prepare)
+			cmd.Prepare();
+
+		cmd.ExecuteNonQuery();
+
+		cmd.CommandText = "select doc :> json from test_bson_parameter";
+		if (prepare)
+			cmd.Prepare();
+
+		var json = (string) cmd.ExecuteScalar()!;
+		Assert.Contains("\"x\"", json);
+		Assert.Contains("42", json);
+
+		static byte[] CreateBsonInt32Document(string name, int value)
+		{
+			var nameBytes = Encoding.UTF8.GetBytes(name);
+			var documentLength = 4 + 1 + nameBytes.Length + 1 + 4 + 1;
+			var document = new byte[documentLength];
+
+			BinaryPrimitives.WriteInt32LittleEndian(document.AsSpan(0, 4), documentLength);
+
+			var offset = 4;
+			document[offset++] = 0x10;
+			nameBytes.CopyTo(document.AsSpan(offset));
+			offset += nameBytes.Length;
+			document[offset++] = 0x00;
+
+			BinaryPrimitives.WriteInt32LittleEndian(document.AsSpan(offset, 4), value);
+			offset += 4;
+
+			document[offset] = 0x00;
+			return document;
+		}
 	}
 
 	private class BoolTest

@@ -31,7 +31,7 @@ public class ParameterTests
 	[InlineData(new[] { DbType.Date }, new[] { SingleStoreDbType.Date, SingleStoreDbType.Newdate })]
 #if !BASELINE
 	[InlineData(new[] { DbType.Int32 }, new[] { SingleStoreDbType.Int32, SingleStoreDbType.Year })]
-	[InlineData(new[] { DbType.Binary }, new[] { SingleStoreDbType.Blob, SingleStoreDbType.Binary, SingleStoreDbType.TinyBlob, SingleStoreDbType.MediumBlob, SingleStoreDbType.LongBlob })]
+	[InlineData(new[] { DbType.Binary }, new[] { SingleStoreDbType.Blob, SingleStoreDbType.Binary, SingleStoreDbType.TinyBlob, SingleStoreDbType.MediumBlob, SingleStoreDbType.LongBlob, SingleStoreDbType.Bson, SingleStoreDbType.Vector })]
 	[InlineData(new[] { DbType.String, DbType.AnsiString, DbType.Xml },
 		new[] { SingleStoreDbType.VarChar, SingleStoreDbType.VarString, SingleStoreDbType.Text, SingleStoreDbType.TinyText, SingleStoreDbType.MediumText, SingleStoreDbType.LongText, SingleStoreDbType.JSON, SingleStoreDbType.Enum, SingleStoreDbType.Set, SingleStoreDbType.Geography, SingleStoreDbType.GeographyPoint })]
 	[InlineData(new[] { DbType.Decimal, DbType.Currency }, new[] { SingleStoreDbType.NewDecimal, SingleStoreDbType.Decimal })]
@@ -343,6 +343,87 @@ public class ParameterTests
 		parameter.Value = 1.0;
 		Assert.Equal(DbType.Int32, parameter.DbType);
 		Assert.Equal(SingleStoreDbType.Int32, parameter.SingleStoreDbType);
+	}
+
+	[Theory]
+	[MemberData(nameof(VectorParameterValues))]
+	public void SetValueToNumericArrayInfersVector(object value)
+	{
+		var parameter = new SingleStoreParameter { Value = value };
+
+		Assert.Equal(DbType.Binary, parameter.DbType);
+		Assert.Equal(SingleStoreDbType.Vector, parameter.SingleStoreDbType);
+	}
+
+	public static IEnumerable<object[]> VectorParameterValues()
+	{
+		yield return [new float[] { 1, 2 }];
+		yield return [new double[] { 1, 2 }];
+		yield return [new short[] { 1, 2 }];
+		yield return [new int[] { 1, 2 }];
+		yield return [new long[] { 1, 2 }];
+	}
+
+	[Fact]
+	public void SetValueToSByteArrayInfersVector()
+	{
+		var parameter = new SingleStoreParameter { Value = new sbyte[] { 1, 2 } };
+
+		Assert.Equal(DbType.Binary, parameter.DbType);
+		Assert.Equal(SingleStoreDbType.Vector, parameter.SingleStoreDbType);
+	}
+
+	[Fact]
+	public void SetValueToByteArrayInfersBlob()
+	{
+		var parameter = new SingleStoreParameter { Value = new byte[] { 1, 2, 3 } };
+
+		Assert.Equal(DbType.Binary, parameter.DbType);
+		Assert.Equal(SingleStoreDbType.Blob, parameter.SingleStoreDbType);
+	}
+
+	[Fact]
+	public void ExplicitVectorCanUseByteArray()
+	{
+		var bytes = new byte[] { 1, 2, 3 };
+
+		var parameter = new SingleStoreParameter
+		{
+			SingleStoreDbType = SingleStoreDbType.Vector,
+			Value = bytes,
+		};
+
+		Assert.Equal(DbType.Binary, parameter.DbType);
+		Assert.Equal(SingleStoreDbType.Vector, parameter.SingleStoreDbType);
+		Assert.Same(bytes, parameter.Value);
+	}
+
+	[Fact]
+	public void SetValueToNumericArrayDoesNotOverrideExplicitType()
+	{
+		var parameter = new SingleStoreParameter
+		{
+			SingleStoreDbType = SingleStoreDbType.Blob,
+		};
+
+		parameter.Value = new int[] { 1, 2, 3 };
+
+		Assert.Equal(DbType.Binary, parameter.DbType);
+		Assert.Equal(SingleStoreDbType.Blob, parameter.SingleStoreDbType);
+	}
+
+	[Theory]
+	[InlineData(SingleStoreDbType.Vector)]
+	[InlineData(SingleStoreDbType.Bson)]
+	public void ExtendedSingleStoreDbTypesUseBinaryDbType(SingleStoreDbType singleStoreDbType)
+	{
+		var parameter = new SingleStoreParameter
+		{
+			SingleStoreDbType = singleStoreDbType,
+		};
+
+		Assert.Equal(DbType.Binary, parameter.DbType);
+		Assert.Equal(singleStoreDbType, parameter.SingleStoreDbType);
 	}
 
 	[Fact]
