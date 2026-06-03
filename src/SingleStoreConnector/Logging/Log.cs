@@ -383,6 +383,33 @@ internal static partial class Log
 	[LoggerMessage(EventIds.RolledBackTransaction, LogLevel.Debug, "Session {SessionId} rolled back transaction")]
 	public static partial void RolledBackTransaction(ILogger logger, string sessionId);
 
+	[LoggerMessage(EventIds.StartingBulkUpdate, LogLevel.Information, "Starting bulk update: Table={TableName}, Keys=[{KeyColumns}], UpdateColumns=[{UpdateColumns}], RowCount={RowCount}")]
+	public static partial void StartingBulkUpdate(ILogger logger, string tableName, string keyColumns, string updateColumns, int rowCount);
+
+	[LoggerMessage(EventIds.CreatedStagingTableForBulkUpdate, LogLevel.Debug, "Created staging table for bulk update: {TempTableName}, Columns={ColumnCount}")]
+	public static partial void CreatedStagingTableForBulkUpdate(ILogger logger, string tempTableName, int columnCount);
+
+	[LoggerMessage(EventIds.StagedDataForBulkUpdate, LogLevel.Debug, "Staged data for bulk update: RowsStaged={RowsStaged}, Warnings={WarningCount}")]
+	public static partial void StagedDataForBulkUpdate(ILogger logger, int rowsStaged, int warningCount);
+
+	[LoggerMessage(EventIds.QueriedMatchCountForBulkUpdate, LogLevel.Debug, "Queried match count for bulk update: RowsMatched={RowsMatched}")]
+	public static partial void QueriedMatchCountForBulkUpdate(ILogger logger, int rowsMatched);
+
+	[LoggerMessage(EventIds.ExecutedBulkUpdate, LogLevel.Debug, "Executed bulk update: RowsUpdated={RowsUpdated}")]
+	public static partial void ExecutedBulkUpdate(ILogger logger, int rowsUpdated);
+
+	[LoggerMessage(EventIds.CompletedBulkUpdate, LogLevel.Information, "Completed bulk update: Staged={Staged}, Matched={Matched}, Updated={Updated}, Duration={Duration}ms")]
+	public static partial void CompletedBulkUpdate(ILogger logger, int staged, int matched, int updated, long duration);
+
+	[LoggerMessage(EventIds.KeyColumnsNotIndexedForBulkUpdate, LogLevel.Warning, "Key columns not indexed for bulk update, performance may be slow: {Columns}")]
+	public static partial void KeyColumnsNotIndexedForBulkUpdate(ILogger logger, string columns);
+
+	[LoggerMessage(EventIds.ShardKeyMismatchForBulkUpdate, LogLevel.Warning, "Shard key mismatch for bulk update: Staging=[{StagingKey}], Target=[{TargetKey}]")]
+	public static partial void ShardKeyMismatchForBulkUpdate(ILogger logger, string stagingKey, string targetKey);
+
+	[LoggerMessage(EventIds.LargeUnmatchedCountForBulkUpdate, LogLevel.Warning, "Large unmatched count for bulk update: Staged={Staged}, Matched={Matched}, Unmatched={Unmatched}")]
+	public static partial void LargeUnmatchedCountForBulkUpdate(ILogger logger, int staged, int matched, int unmatched);
+
 	[LoggerMessage(EventIds.WaitingForAvailableSession, LogLevel.Trace, "Pool {PoolId} waiting for an available session")]
 	public static partial void WaitingForAvailableSession(ILogger logger, int poolId);
 
