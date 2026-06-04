@@ -17,9 +17,9 @@ public sealed class SingleStoreRowsStagedEventArgs : EventArgs
 	}
 }
 
-/// <summary>
+/*/// <summary>
 /// Represents the method that handles the <see cref="SingleStoreBulkUpdate.SingleStoreRowsStaged"/> event of a <see cref="SingleStoreBulkUpdate"/>.
 /// </summary>
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 public delegate void SingleStoreRowsStagedEventHandler(object sender, SingleStoreRowsStagedEventArgs e);
-#pragma warning restore CA1711 // Identifiers should not have incorrect suffix
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix*/
