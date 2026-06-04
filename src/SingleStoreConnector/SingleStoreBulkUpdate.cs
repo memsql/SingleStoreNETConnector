@@ -6,6 +6,8 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
+// TODO: consider upsert support in a future version.
+
 /// <summary>
 /// Provides efficient bulk update operations for SingleStore databases.
 /// </summary>
@@ -23,7 +25,7 @@ public sealed class SingleStoreBulkUpdate
 	/// </summary>
 	/// <param name="connection">The <see cref="SingleStoreConnection"/> to use.</param>
 	/// <param name="transaction">(Optional) The <see cref="SingleStoreTransaction"/> to use.</param>
-    public SingleStoreBulkUpdate(SingleStoreConnection connection, SingleStoreTransaction transaction)
+    public SingleStoreBulkUpdate(SingleStoreConnection connection, SingleStoreTransaction? transaction = null)
     {
         m_connection = connection ?? throw new ArgumentNullException(nameof(connection));
         m_transaction = transaction;
@@ -77,7 +79,6 @@ public sealed class SingleStoreBulkUpdate
     /// </remarks>
     public event SingleStoreRowsStagedEventHandler? SingleStoreRowsStaged;*/
 
-    // TODO: Add WriteToServer overloads in next steps
     private void ValidateColumnMappings()
 	{
 		// Ensure the caller specified at least one key column.
@@ -139,15 +140,54 @@ public sealed class SingleStoreBulkUpdate
 
 		// Ensure there is at least one non-key column to update.
 		// If all mapped columns are key columns, the UPDATE statement would have an empty SET clause.
-		var hasUpdateColumn = ColumnMappings.Any(m => !keyColumnsSet.Contains(m.DestinationColumn));
-
-		if (!hasUpdateColumn)
+		if (GetUpdateColumns().Count == 0)
 			throw new InvalidOperationException("ColumnMappings must contain at least one non-key column to update.");
 	}
 
+    private async ValueTask ValidateSchemaAsync(string tableName, CancellationToken cancellationToken)
+	{
+		var schemaDetector = new SchemaDetector(m_connection);
+
+		// TODO: make changes to support the solutions described here -- https://docs.singlestore.com/cloud/reference/troubleshooting-reference/query-errors/error-1706-hy-000-feature-multi-table-update-delete-with-a-reference-table-as-target-table-is-not-supported-by-memsql/
+		if (await schemaDetector.IsReferenceTableAsync(tableName, cancellationToken).ConfigureAwait(false))
+			throw new NotSupportedException($"Target table '{tableName}' is a reference table. Bulk updates on reference tables are not supported in this version.");
+
+		var shardKeyColumns = await schemaDetector.GetShardKeyColumnsAsync(tableName, cancellationToken).ConfigureAwait(false);
+		var updateColumns = GetUpdateColumns();
+
+		foreach (var updateColumn in updateColumns)
+		{
+			if (shardKeyColumns.Contains(updateColumn, StringComparer.OrdinalIgnoreCase))
+				throw new InvalidOperationException($"Column '{updateColumn}' is a shard key. SingleStore does not support updating shard key columns.");
+		}
+
+		var schema = await schemaDetector.GetTableSchemaAsync(tableName, cancellationToken).ConfigureAwait(false);
+
+		var tableColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+		foreach (DataRow row in schema.Rows)
+		{
+			var columnName = row["ColumnName"]?.ToString();
+			if (columnName is not null)
+				tableColumns.Add(columnName);
+		}
+
+		foreach (var columnMapping in ColumnMappings)
+		{
+			if (!tableColumns.Contains(columnMapping.DestinationColumn))
+				throw new InvalidOperationException($"Column '{columnMapping.DestinationColumn}' does not exist in target table '{tableName}'.");
+		}
+	}
+
+    private List<string> GetUpdateColumns() =>
+		ColumnMappings
+			.Select(x => x.DestinationColumn)
+			.Where(x => !KeyColumns.Contains(x, StringComparer.OrdinalIgnoreCase))
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToList();
 
     private readonly SingleStoreConnection m_connection;
-    private readonly SingleStoreTransaction m_transaction;
+    private readonly SingleStoreTransaction? m_transaction;
     private readonly ILogger m_logger;
     private readonly List<SingleStoreError> m_warnings;
 }
