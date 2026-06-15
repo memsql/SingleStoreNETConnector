@@ -1,5 +1,6 @@
 using System.Data;
 using System.Diagnostics;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Logging;
 using SingleStoreConnector.Utilities;
@@ -185,6 +186,137 @@ public sealed class SingleStoreBulkUpdate
 			.Where(x => !KeyColumns.Contains(x, StringComparer.OrdinalIgnoreCase))
 			.Distinct(StringComparer.OrdinalIgnoreCase)
 			.ToList();
+
+	/// <summary>
+	/// Creates a session-scoped temporary staging table containing only the mapped (key + update) columns
+	/// of the destination table, ready to receive the source data via <see cref="SingleStoreBulkCopy"/>.
+	/// </summary>
+	/// <param name="destinationTableName">The destination table whose column types are mirrored.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>The name of the created temporary table.</returns>
+	/// <remarks>
+	/// <para>
+	/// Column type definitions are copied verbatim from <c>SHOW CREATE TABLE</c> rather than reconstructed from
+	/// <c>GetSchemaTable()</c>. The schema table is lossy for several SingleStore types (for example
+	/// <c>VARBINARY</c> is reported as <c>BLOB</c> and <c>BIT(1)</c> as <c>BIGINT</c>, and <c>UNSIGNED</c>,
+	/// character set, collation and <c>ENUM</c>/<c>SET</c> member lists are not exposed), so copying the exact
+	/// definition is the only way to guarantee the staging column matches the destination column. Matching the
+	/// collation in particular keeps the key-column equality used by the <c>UPDATE ... JOIN</c> well defined.
+	/// </para>
+	/// <para>
+	/// The key columns form the staging table's <c>PRIMARY KEY</c>, so they are always declared <c>NOT NULL</c>
+	/// even when the destination column is nullable (a nullable primary key column is not allowed, and SQL
+	/// equality on <c>NULL</c> would not match rows in the join anyway). When the destination table's shard key
+	/// is a subset of the key columns, the staging table is sharded the same way so the join can run locally;
+	/// otherwise it falls back to the primary key distribution and logs a shard-key mismatch warning.
+	/// </para>
+	/// <para>
+	/// This must run on the same open connection (and transaction) used for staging, counting and updating,
+	/// because the temporary table is session-scoped.
+	/// </para>
+	/// </remarks>
+	private async Task<string> CreateStagingTableAsync(string destinationTableName, CancellationToken cancellationToken)
+	{
+		// Generate a unique temporary table name. The "g" suffix on the GUID guarantees the identifier
+		// starts with a letter regardless of the GUID's first hex digit.
+		var tempTableName = $"_bulk_update_staging_g{Guid.NewGuid():N}";
+
+		var schemaDetector = new SchemaDetector(m_connection);
+
+		// Pull the exact, server-rendered type definition for every column so the staging columns are
+		// byte-for-byte type compatible with the destination (see remarks).
+		var columnTypeDefinitions = await schemaDetector.GetColumnTypeDefinitionsAsync(destinationTableName, cancellationToken).ConfigureAwait(false);
+		var shardKeyColumns = await schemaDetector.GetShardKeyColumnsAsync(destinationTableName, cancellationToken).ConfigureAwait(false);
+
+		// Emit a column definition for each mapped column, preserving the order in which the columns appear
+		// in the destination table is unnecessary here: the staging table only needs the columns to exist by
+		// name. SingleStoreBulkCopy maps source ordinals to these destination column names when staging.
+		var keyColumnSet = new HashSet<string>(KeyColumns, StringComparer.OrdinalIgnoreCase);
+		var seenColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		var columnDefinitions = new List<string>(ColumnMappings.Count);
+
+		foreach (var mapping in ColumnMappings)
+		{
+			var columnName = mapping.DestinationColumn;
+
+			// ColumnMappings is validated for duplicates earlier, but guard anyway so a duplicate can never
+			// produce an invalid CREATE TABLE with two columns of the same name.
+			if (!seenColumns.Add(columnName))
+				continue;
+
+			if (!columnTypeDefinitions.TryGetValue(columnName, out var typeDefinition))
+				throw new InvalidOperationException($"Column '{columnName}' not found in destination table '{destinationTableName}'.");
+
+			// Key columns become the staging primary key, so they must be NOT NULL even when nullable in the
+			// destination. Update columns are left nullable so a NULL source value stages successfully; any
+			// real NOT NULL violation then surfaces against the destination during the UPDATE.
+			var nullability = keyColumnSet.Contains(columnName) ? "NOT NULL" : "NULL";
+
+			columnDefinitions.Add($"{IdentifierHelper.QuoteIdentifier(columnName)} {typeDefinition} {nullability}");
+		}
+
+		// The key columns identify the rows to update, so they are the natural primary key of the staging
+		// table. This also rejects duplicate keys in the source data with a clear primary-key violation.
+		var primaryKey = $"PRIMARY KEY ({string.Join(", ", KeyColumns.Select(IdentifierHelper.QuoteIdentifier))})";
+
+		var stagingShardKey = ComputeStagingShardKey(shardKeyColumns, keyColumnSet);
+
+		var createTableSql = new StringBuilder();
+		createTableSql.Append("CREATE TEMPORARY TABLE ");
+		createTableSql.Append(IdentifierHelper.QuoteIdentifier(tempTableName));
+		createTableSql.Append(" (");
+		createTableSql.Append(string.Join(", ", columnDefinitions));
+		createTableSql.Append(", ");
+		createTableSql.Append(primaryKey);
+
+		if (stagingShardKey.Count != 0)
+		{
+			createTableSql.Append(", SHARD KEY (");
+			createTableSql.Append(string.Join(", ", stagingShardKey.Select(IdentifierHelper.QuoteIdentifier)));
+			createTableSql.Append(')');
+		}
+
+		createTableSql.Append(')');
+
+		using (var cmd = m_connection.CreateCommand())
+		{
+			cmd.CommandText = createTableSql.ToString();
+			cmd.Transaction = m_transaction;
+			cmd.CommandTimeout = BulkCopyTimeout;
+			await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+		}
+
+		Log.CreatedStagingTableForBulkUpdate(m_logger, tempTableName, columnDefinitions.Count);
+
+		return tempTableName;
+	}
+
+	/// <summary>
+	/// Determines the shard key to declare on the staging table so that the <c>UPDATE ... JOIN</c> can run as a
+	/// local (non-reshuffled) join whenever possible.
+	/// </summary>
+	/// <remarks>
+	/// A shard key must be a subset of the primary key, which for the staging table is exactly the key columns.
+	/// When the destination's shard key is contained in the key columns we reuse it verbatim (preserving its
+	/// column order) so both tables hash to the same partitions. When it is not — for example the destination is
+	/// sharded on a column that is not a join key — the staging table cannot be aligned, so we fall back to the
+	/// primary-key distribution (by returning an empty list, which omits an explicit shard key) and warn.
+	/// </remarks>
+	private List<string> ComputeStagingShardKey(List<string> destinationShardKeyColumns, HashSet<string> keyColumnSet)
+	{
+		if (destinationShardKeyColumns.Count == 0)
+			return [];
+
+		if (destinationShardKeyColumns.All(keyColumnSet.Contains))
+			return destinationShardKeyColumns;
+
+		Log.ShardKeyMismatchForBulkUpdate(
+			m_logger,
+			string.Join(", ", KeyColumns),
+			string.Join(", ", destinationShardKeyColumns));
+
+		return [];
+	}
 
     private readonly SingleStoreConnection m_connection;
     private readonly SingleStoreTransaction? m_transaction;
