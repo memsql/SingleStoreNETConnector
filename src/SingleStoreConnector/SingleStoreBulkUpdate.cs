@@ -436,14 +436,9 @@ public sealed class SingleStoreBulkUpdate
 		if (!ComputeRowsMatched)
 			return null;
 
-		// Build the key-column equi-join: t.`k1` = s.`k1` AND t.`k2` = s.`k2` ...
-		var joinCondition = string.Join(
-			" AND ",
-			KeyColumns.Select(k => $"t.{IdentifierHelper.QuoteIdentifier(k)} = s.{IdentifierHelper.QuoteIdentifier(k)}"));
-
 		var countSql =
 			$"SELECT COUNT(*) FROM {IdentifierHelper.QuoteQualifiedIdentifier(DestinationTableName!)} AS t " +
-			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {joinCondition}";
+			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {BuildKeyJoinCondition()}";
 
 		using var cmd = m_connection.CreateCommand();
 		cmd.CommandText = countSql;
@@ -459,6 +454,77 @@ public sealed class SingleStoreBulkUpdate
 
 		return rowsMatched;
 	}
+
+	/// <summary>
+	/// Executes the <c>UPDATE ... JOIN</c> that copies the non-key column values from the staging table into
+	/// the matching rows of the destination table.
+	/// </summary>
+	/// <param name="tempTableName">The session-scoped staging table populated by <see cref="StageDataAsync"/>.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>The number of rows affected by the update, as reported by the server.</returns>
+	/// <remarks>
+	/// <para>
+	/// Rows are matched on the key columns (the same join used by <see cref="ComputeMatchedRowsAsync"/>) and the
+	/// non-key mapped columns are assigned from the staging row. The statement runs on the same open
+	/// connection/transaction as the rest of the operation because the staging table is session-scoped.
+	/// </para>
+	/// <para>
+	/// The returned count reflects the server's affected-row semantics, which depend on the connection's
+	/// <see cref="SingleStoreConnectionStringBuilder.UseAffectedRows"/> setting. With the default
+	/// (<c>UseAffectedRows=false</c>, i.e. <c>CLIENT_FOUND_ROWS</c>), the count is the number of rows
+	/// <em>matched</em> by the join — including rows that already held the target values — so it typically
+	/// equals <see cref="ComputeMatchedRowsAsync"/>'s result. With <c>UseAffectedRows=true</c>, it is the number
+	/// of rows whose values actually changed.
+	/// </para>
+	/// <para>
+	/// Warnings raised while executing the statement (for example truncation or conversion warnings) are
+	/// collected via the connection's <see cref="SingleStoreConnection.InfoMessage"/> event and surfaced on the
+	/// operation result.
+	/// </para>
+	/// </remarks>
+	private async Task<int> ExecuteUpdateAsync(string tempTableName, CancellationToken cancellationToken)
+	{
+		// Assign each non-key mapped column from the staging row: t.`c1` = s.`c1`, t.`c2` = s.`c2` ...
+		var setClause = string.Join(
+			", ",
+			GetUpdateColumns().Select(c => $"t.{IdentifierHelper.QuoteIdentifier(c)} = s.{IdentifierHelper.QuoteIdentifier(c)}"));
+
+		var updateSql =
+			$"UPDATE {IdentifierHelper.QuoteQualifiedIdentifier(DestinationTableName!)} AS t " +
+			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {BuildKeyJoinCondition()} " +
+			$"SET {setClause}";
+
+		using var cmd = m_connection.CreateCommand();
+		cmd.CommandText = updateSql;
+		cmd.Transaction = m_transaction;
+		cmd.CommandTimeout = BulkCopyTimeout;
+
+		// Collect any warnings raised during the UPDATE. Errors is already IReadOnlyList<SingleStoreError>.
+		void OnInfoMessage(object sender, SingleStoreInfoMessageEventArgs args) => m_warnings.AddRange(args.Errors);
+
+		m_connection.InfoMessage += OnInfoMessage;
+		try
+		{
+			var rowsUpdated = await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+			Log.ExecutedBulkUpdate(m_logger, rowsUpdated);
+
+			return rowsUpdated;
+		}
+		finally
+		{
+			m_connection.InfoMessage -= OnInfoMessage;
+		}
+	}
+
+	/// <summary>
+	/// Builds the key-column equi-join predicate shared by the match-count query and the update, joining the
+	/// destination table (alias <c>t</c>) to the staging table (alias <c>s</c>) on every key column.
+	/// </summary>
+	private string BuildKeyJoinCondition() =>
+		string.Join(
+			" AND ",
+			KeyColumns.Select(k => $"t.{IdentifierHelper.QuoteIdentifier(k)} = s.{IdentifierHelper.QuoteIdentifier(k)}"));
 
     private readonly SingleStoreConnection m_connection;
     private readonly SingleStoreTransaction? m_transaction;
