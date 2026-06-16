@@ -1,5 +1,6 @@
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Logging;
@@ -215,7 +216,7 @@ public sealed class SingleStoreBulkUpdate
 	/// because the temporary table is session-scoped.
 	/// </para>
 	/// </remarks>
-	private async Task<string> CreateStagingTableAsync(string destinationTableName, CancellationToken cancellationToken)
+    private async Task<string> CreateStagingTableAsync(string destinationTableName, CancellationToken cancellationToken)
 	{
 		// Generate a unique temporary table name. The "g" suffix on the GUID guarantees the identifier
 		// starts with a letter regardless of the GUID's first hex digit.
@@ -302,7 +303,7 @@ public sealed class SingleStoreBulkUpdate
 	/// sharded on a column that is not a join key — the staging table cannot be aligned, so we fall back to the
 	/// primary-key distribution (by returning an empty list, which omits an explicit shard key) and warn.
 	/// </remarks>
-	private List<string> ComputeStagingShardKey(List<string> destinationShardKeyColumns, HashSet<string> keyColumnSet)
+    private List<string> ComputeStagingShardKey(List<string> destinationShardKeyColumns, HashSet<string> keyColumnSet)
 	{
 		if (destinationShardKeyColumns.Count == 0)
 			return [];
@@ -340,7 +341,7 @@ public sealed class SingleStoreBulkUpdate
 	/// destination-name relationship identical between staging and the later <c>UPDATE ... JOIN</c>.
 	/// </para>
 	/// </remarks>
-	private async Task<int> StageDataAsync(string tempTableName, object source, CancellationToken cancellationToken)
+    private async Task<int> StageDataAsync(string tempTableName, object source, CancellationToken cancellationToken)
 	{
 		var bulkCopy = new SingleStoreBulkCopy(m_connection, m_transaction)
 		{
@@ -399,12 +400,64 @@ public sealed class SingleStoreBulkUpdate
 	/// Empty input is short-circuited before staging, so the array is expected to be non-empty here; it is still
 	/// guarded so an unexpected empty array fails clearly rather than dereferencing a missing row.
 	/// </remarks>
-	private static int GetDataRowColumnCount(DataRow[] rows)
+    private static int GetDataRowColumnCount(DataRow[] rows)
 	{
 		if (rows.Length == 0)
 			throw new ArgumentException("Cannot stage an empty DataRow array.", nameof(rows));
 
 		return rows[0].Table.Columns.Count;
+	}
+
+	/// <summary>
+	/// Counts how many staged rows match a row in the destination table, joined on the key columns.
+	/// </summary>
+	/// <param name="tempTableName">The session-scoped staging table populated by <see cref="StageDataAsync"/>.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>
+	/// The number of staged rows that match a destination row, or <see langword="null"/> when
+	/// <see cref="ComputeRowsMatched"/> is <see langword="false"/> (the count was intentionally skipped).
+	/// </returns>
+	/// <remarks>
+	/// <para>
+	/// This runs an extra <c>SELECT COUNT(*)</c> over the same <c>INNER JOIN</c> that the subsequent
+	/// <c>UPDATE ... JOIN</c> uses, letting the caller distinguish staged rows that updated a destination row
+	/// from staged rows that matched nothing. Callers that do not need this distinction can set
+	/// <see cref="ComputeRowsMatched"/> to <see langword="false"/> to skip the query.
+	/// </para>
+	/// <para>
+	/// The join uses the key columns, which were created in the staging table with the destination's exact
+	/// type and collation (see <see cref="CreateStagingTableAsync"/>), so this count is consistent with the
+	/// rows the UPDATE will match. It must run on the same open connection/transaction as the rest of the
+	/// operation because the staging table is session-scoped.
+	/// </para>
+	/// </remarks>
+    private async Task<int?> ComputeMatchedRowsAsync(string tempTableName, CancellationToken cancellationToken)
+	{
+		if (!ComputeRowsMatched)
+			return null;
+
+		// Build the key-column equi-join: t.`k1` = s.`k1` AND t.`k2` = s.`k2` ...
+		var joinCondition = string.Join(
+			" AND ",
+			KeyColumns.Select(k => $"t.{IdentifierHelper.QuoteIdentifier(k)} = s.{IdentifierHelper.QuoteIdentifier(k)}"));
+
+		var countSql =
+			$"SELECT COUNT(*) FROM {IdentifierHelper.QuoteQualifiedIdentifier(DestinationTableName!)} AS t " +
+			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {joinCondition}";
+
+		using var cmd = m_connection.CreateCommand();
+		cmd.CommandText = countSql;
+		cmd.Transaction = m_transaction;
+		cmd.CommandTimeout = BulkCopyTimeout;
+
+		var scalar = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+
+		// COUNT(*) comes back as a long; convert rather than cast so the boxed type is handled correctly.
+		var rowsMatched = scalar is null or DBNull ? 0 : Convert.ToInt32(scalar, CultureInfo.InvariantCulture);
+
+		Log.QueriedMatchCountForBulkUpdate(m_logger, rowsMatched);
+
+		return rowsMatched;
 	}
 
     private readonly SingleStoreConnection m_connection;
