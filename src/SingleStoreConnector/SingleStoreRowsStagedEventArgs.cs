@@ -10,16 +10,16 @@ public sealed class SingleStoreRowsStagedEventArgs : EventArgs
 	/// <summary>
 	/// Gets a value that returns the number of rows staged during the current bulk update operation.
 	/// </summary>
-	public int RowsStaged { get; internal set; }
+	public long RowsStaged { get; internal set; }
 
 	internal SingleStoreRowsStagedEventArgs()
 	{
 	}
 }
 
-/*/// <summary>
+/// <summary>
 /// Represents the method that handles the <see cref="SingleStoreBulkUpdate.SingleStoreRowsStaged"/> event of a <see cref="SingleStoreBulkUpdate"/>.
 /// </summary>
 #pragma warning disable CA1711 // Identifiers should not have incorrect suffix
 public delegate void SingleStoreRowsStagedEventHandler(object sender, SingleStoreRowsStagedEventArgs e);
-#pragma warning restore CA1711 // Identifiers should not have incorrect suffix*/
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix

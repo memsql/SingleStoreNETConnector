@@ -71,14 +71,14 @@ public sealed class SingleStoreBulkUpdate
     /// </summary>
     public bool ComputeRowsMatched { get; set; } = true;
 
-    /*/// <summary>
+    /// <summary>
     /// This event is raised every time that the number of rows specified by the <see cref="NotifyAfter"/> property have been processed.
     /// </summary>
     /// <remarks>
     /// <para>Receipt of a RowsStaged event does not imply that any rows have been sent to the server or committed.</para>
     /// <para>The <see cref="SingleStoreRowsStagedEventArgs.Abort"/> property can be set to <c>true</c> by the event handler to abort the staging.</para>
     /// </remarks>
-    public event SingleStoreRowsStagedEventHandler? SingleStoreRowsStaged;*/
+    public event SingleStoreRowsStagedEventHandler? SingleStoreRowsStaged;
 
     private void ValidateColumnMappings()
 	{
@@ -316,6 +316,95 @@ public sealed class SingleStoreBulkUpdate
 			string.Join(", ", destinationShardKeyColumns));
 
 		return [];
+	}
+
+	/// <summary>
+	/// Stages the source rows into the temporary table created by <see cref="CreateStagingTableAsync"/>,
+	/// using <see cref="SingleStoreBulkCopy"/> (which loads the data via <c>LOAD DATA LOCAL INFILE</c>).
+	/// </summary>
+	/// <param name="tempTableName">The session-scoped temporary staging table to load into.</param>
+	/// <param name="source">The source data: a <see cref="DataTable"/>, a <see cref="DataRow"/> array, or an <see cref="IDataReader"/>.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>The number of rows staged into the temporary table.</returns>
+	/// <remarks>
+	/// <para>
+	/// This must run on the same open connection (and transaction) as <see cref="CreateStagingTableAsync"/>,
+	/// because the temporary table is session-scoped. The caller is responsible for opening the connection
+	/// and creating the staging table before calling this method.
+	/// </para>
+	/// <para>
+	/// The bulk-update column mappings are forwarded verbatim to <see cref="SingleStoreBulkCopy"/>. Each
+	/// mapping's <see cref="SingleStoreBulkCopyColumnMapping.SourceOrdinal"/> selects a column from the source
+	/// data, and its <see cref="SingleStoreBulkCopyColumnMapping.DestinationColumn"/> names a column in the
+	/// staging table (which contains exactly the mapped columns by name). This keeps the source-ordinal /
+	/// destination-name relationship identical between staging and the later <c>UPDATE ... JOIN</c>.
+	/// </para>
+	/// </remarks>
+	private async Task<int> StageDataAsync(string tempTableName, object source, CancellationToken cancellationToken)
+	{
+		var bulkCopy = new SingleStoreBulkCopy(m_connection, m_transaction)
+		{
+			DestinationTableName = tempTableName,
+			BulkCopyTimeout = BulkCopyTimeout,
+			NotifyAfter = NotifyAfter,
+		};
+
+		// Forward our column mappings unchanged: source ordinal -> staging column name.
+		foreach (var mapping in ColumnMappings)
+			bulkCopy.ColumnMappings.Add(mapping);
+
+		// Re-raise SingleStoreBulkCopy's progress event as a bulk-update staging event, and propagate the
+		// caller's request to abort. Only subscribe when progress notifications are actually requested.
+		void OnRowsCopied(object sender, SingleStoreRowsCopiedEventArgs e)
+		{
+			var args = new SingleStoreRowsStagedEventArgs { RowsStaged = e.RowsCopied };
+			SingleStoreRowsStaged?.Invoke(this, args);
+			if (args.Abort)
+				e.Abort = true;
+		}
+
+		var notifyProgress = NotifyAfter > 0 && SingleStoreRowsStaged is not null;
+		if (notifyProgress)
+			bulkCopy.SingleStoreRowsCopied += OnRowsCopied;
+
+		try
+		{
+			var result = source switch
+			{
+				DataTable dataTable => await bulkCopy.WriteToServerAsync(dataTable, cancellationToken).ConfigureAwait(false),
+				DataRow[] rows => await bulkCopy.WriteToServerAsync(rows, GetDataRowColumnCount(rows), cancellationToken).ConfigureAwait(false),
+				IDataReader dataReader => await bulkCopy.WriteToServerAsync(dataReader, cancellationToken).ConfigureAwait(false),
+				_ => throw new ArgumentException($"Unsupported source type '{source.GetType()}'.", nameof(source)),
+			};
+
+			m_warnings.AddRange(result.Warnings);
+
+			Log.StagedDataForBulkUpdate(m_logger, result.RowsInserted, result.Warnings.Count);
+
+			return result.RowsInserted;
+		}
+		finally
+		{
+			if (notifyProgress)
+				bulkCopy.SingleStoreRowsCopied -= OnRowsCopied;
+		}
+	}
+
+	/// <summary>
+	/// Determines the column count to pass to <see cref="SingleStoreBulkCopy"/> for a <see cref="DataRow"/> array.
+	/// </summary>
+	/// <remarks>
+	/// <see cref="SingleStoreBulkCopy.WriteToServerAsync(IEnumerable{DataRow}, int, CancellationToken)"/> requires
+	/// the source column count up front, which is taken from the owning <see cref="DataTable"/> of the first row.
+	/// Empty input is short-circuited before staging, so the array is expected to be non-empty here; it is still
+	/// guarded so an unexpected empty array fails clearly rather than dereferencing a missing row.
+	/// </remarks>
+	private static int GetDataRowColumnCount(DataRow[] rows)
+	{
+		if (rows.Length == 0)
+			throw new ArgumentException("Cannot stage an empty DataRow array.", nameof(rows));
+
+		return rows[0].Table.Columns.Count;
 	}
 
     private readonly SingleStoreConnection m_connection;
