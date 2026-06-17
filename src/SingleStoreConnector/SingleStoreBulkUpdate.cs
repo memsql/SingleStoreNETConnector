@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using SingleStoreConnector.Logging;
+using SingleStoreConnector.Protocol.Serialization;
 using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
@@ -80,6 +81,99 @@ public sealed class SingleStoreBulkUpdate
     /// <para>The <see cref="SingleStoreRowsStagedEventArgs.Abort"/> property can be set to <c>true</c> by the event handler to abort the staging.</para>
     /// </remarks>
     public event SingleStoreRowsStagedEventHandler? SingleStoreRowsStaged;
+
+	/// <summary>
+	/// Updates rows in the destination table using the data in the supplied <see cref="DataTable"/>.
+	/// </summary>
+	/// <param name="dataTable">The <see cref="DataTable"/> containing the key and update column values.</param>
+	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
+    public SingleStoreBulkUpdateResult WriteToServer(DataTable dataTable)
+	{
+		ArgumentNullException.ThrowIfNull(dataTable);
+#pragma warning disable CA2012 // Safe because method completes synchronously
+		return WriteToServerAsync(IOBehavior.Synchronous, dataTable, CancellationToken.None).GetAwaiter().GetResult();
+#pragma warning restore CA2012
+	}
+
+	/// <summary>
+	/// Asynchronously updates rows in the destination table using the data in the supplied <see cref="DataTable"/>.
+	/// </summary>
+	/// <param name="dataTable">The <see cref="DataTable"/> containing the key and update column values.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
+    public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(DataTable dataTable, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(dataTable);
+		return await WriteToServerAsync(IOBehavior.Asynchronous, dataTable, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Updates rows in the destination table using the data in the supplied sequence of <see cref="DataRow"/> objects.
+	/// </summary>
+	/// <param name="dataRows">The collection of <see cref="DataRow"/> objects containing the key and update column values.</param>
+	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
+    public SingleStoreBulkUpdateResult WriteToServer(IEnumerable<DataRow> dataRows)
+	{
+		ArgumentNullException.ThrowIfNull(dataRows);
+#pragma warning disable CA2012 // Safe because method completes synchronously
+		return WriteToServerAsync(IOBehavior.Synchronous, dataRows, CancellationToken.None).GetAwaiter().GetResult();
+#pragma warning restore CA2012
+	}
+
+	/// <summary>
+	/// Asynchronously updates rows in the destination table using the data in the supplied sequence of <see cref="DataRow"/> objects.
+	/// </summary>
+	/// <param name="dataRows">The collection of <see cref="DataRow"/> objects containing the key and update column values.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
+    public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IEnumerable<DataRow> dataRows, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(dataRows);
+		return await WriteToServerAsync(IOBehavior.Asynchronous, dataRows, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Updates rows in the destination table using the data read from the supplied <see cref="IDataReader"/>.
+	/// </summary>
+	/// <param name="dataReader">The <see cref="IDataReader"/> to read the key and update column values from.</param>
+	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
+    public SingleStoreBulkUpdateResult WriteToServer(IDataReader dataReader)
+	{
+		ArgumentNullException.ThrowIfNull(dataReader);
+#pragma warning disable CA2012 // Safe because method completes synchronously
+		return WriteToServerAsync(IOBehavior.Synchronous, dataReader, CancellationToken.None).GetAwaiter().GetResult();
+#pragma warning restore CA2012
+	}
+
+	/// <summary>
+	/// Asynchronously updates rows in the destination table using the data read from the supplied <see cref="IDataReader"/>.
+	/// </summary>
+	/// <param name="dataReader">The <see cref="IDataReader"/> to read the key and update column values from.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
+    public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IDataReader dataReader, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(dataReader);
+		return await WriteToServerAsync(IOBehavior.Asynchronous, dataReader, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// The single implementation behind every <c>WriteToServer</c>/<c>WriteToServerAsync</c> overload.
+	/// </summary>
+	/// <param name="ioBehavior">
+	/// Whether to perform database I/O synchronously or asynchronously. The synchronous public overloads pass
+	/// <see cref="IOBehavior.Synchronous"/>, which causes every inner database call to complete inline so the
+	/// returned task is already finished — making the <c>GetAwaiter().GetResult()</c> in those overloads safe
+	/// (no blocking wait on outstanding async work). This mirrors <see cref="SingleStoreBulkCopy"/>.
+	/// </param>
+	/// <param name="source">The source data: a <see cref="DataTable"/>, a sequence of <see cref="DataRow"/>, or an <see cref="IDataReader"/>.</param>
+	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+    private ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IOBehavior ioBehavior, object source, CancellationToken cancellationToken)
+	{
+		// The full orchestration (validate, open connection, create staging table, stage, count, update,
+		// drop staging table) is implemented in step 1.12. This method is intentionally a placeholder until then.
+		throw new NotImplementedException();
+	}
 
     private void ValidateColumnMappings()
 	{
@@ -324,7 +418,7 @@ public sealed class SingleStoreBulkUpdate
 	/// using <see cref="SingleStoreBulkCopy"/> (which loads the data via <c>LOAD DATA LOCAL INFILE</c>).
 	/// </summary>
 	/// <param name="tempTableName">The session-scoped temporary staging table to load into.</param>
-	/// <param name="source">The source data: a <see cref="DataTable"/>, a <see cref="DataRow"/> array, or an <see cref="IDataReader"/>.</param>
+	/// <param name="source">The source data: a <see cref="DataTable"/>, a sequence of <see cref="DataRow"/>, or an <see cref="IDataReader"/>.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>The number of rows staged into the temporary table.</returns>
 	/// <remarks>
@@ -373,7 +467,7 @@ public sealed class SingleStoreBulkUpdate
 			var result = source switch
 			{
 				DataTable dataTable => await bulkCopy.WriteToServerAsync(dataTable, cancellationToken).ConfigureAwait(false),
-				DataRow[] rows => await bulkCopy.WriteToServerAsync(rows, GetDataRowColumnCount(rows), cancellationToken).ConfigureAwait(false),
+				IEnumerable<DataRow> dataRows => await StageDataRowsAsync(bulkCopy, dataRows, cancellationToken).ConfigureAwait(false),
 				IDataReader dataReader => await bulkCopy.WriteToServerAsync(dataReader, cancellationToken).ConfigureAwait(false),
 				_ => throw new ArgumentException($"Unsupported source type '{source.GetType()}'.", nameof(source)),
 			};
@@ -392,20 +486,25 @@ public sealed class SingleStoreBulkUpdate
 	}
 
 	/// <summary>
-	/// Determines the column count to pass to <see cref="SingleStoreBulkCopy"/> for a <see cref="DataRow"/> array.
+	/// Stages a sequence of <see cref="DataRow"/> objects, supplying the column count that
+	/// <see cref="SingleStoreBulkCopy"/> requires up front.
 	/// </summary>
 	/// <remarks>
-	/// <see cref="SingleStoreBulkCopy.WriteToServerAsync(IEnumerable{DataRow}, int, CancellationToken)"/> requires
-	/// the source column count up front, which is taken from the owning <see cref="DataTable"/> of the first row.
-	/// Empty input is short-circuited before staging, so the array is expected to be non-empty here; it is still
-	/// guarded so an unexpected empty array fails clearly rather than dereferencing a missing row.
+	/// <see cref="SingleStoreBulkCopy.WriteToServerAsync(IEnumerable{DataRow}, int, CancellationToken)"/> needs the
+	/// source column count before it enumerates the rows, which is taken from the owning <see cref="DataTable"/>
+	/// of the first row. The sequence is materialized first so it can be inspected for the first row and then
+	/// enumerated again by the bulk copy without re-running (and possibly exhausting) a lazy source. Empty input
+	/// is short-circuited before staging, so the sequence is expected to be non-empty here; it is still guarded so
+	/// an unexpected empty sequence fails clearly rather than dereferencing a missing row.
 	/// </remarks>
-    private static int GetDataRowColumnCount(DataRow[] rows)
+    private static ValueTask<SingleStoreBulkCopyResult> StageDataRowsAsync(SingleStoreBulkCopy bulkCopy, IEnumerable<DataRow> dataRows, CancellationToken cancellationToken)
 	{
-		if (rows.Length == 0)
-			throw new ArgumentException("Cannot stage an empty DataRow array.", nameof(rows));
+		var rows = dataRows as IReadOnlyList<DataRow> ?? dataRows.ToList();
+		if (rows.Count == 0)
+			throw new ArgumentException("Cannot stage an empty sequence of rows.", nameof(dataRows));
 
-		return rows[0].Table.Columns.Count;
+		var columnCount = rows[0].Table.Columns.Count;
+		return bulkCopy.WriteToServerAsync(rows, columnCount, cancellationToken);
 	}
 
 	/// <summary>
@@ -482,7 +581,7 @@ public sealed class SingleStoreBulkUpdate
 	/// operation result.
 	/// </para>
 	/// </remarks>
-	private async Task<int> ExecuteUpdateAsync(string tempTableName, CancellationToken cancellationToken)
+    private async Task<int> ExecuteUpdateAsync(string tempTableName, CancellationToken cancellationToken)
 	{
 		// Assign each non-key mapped column from the staging row: t.`c1` = s.`c1`, t.`c2` = s.`c2` ...
 		var setClause = string.Join(
@@ -535,7 +634,7 @@ public sealed class SingleStoreBulkUpdate
 	/// is used deliberately so cleanup still runs after a cancelled or timed-out operation.
 	/// </para>
 	/// </remarks>
-	private async Task DropStagingTableAsync(string? tempTableName)
+    private async Task DropStagingTableAsync(string? tempTableName)
 	{
 		if (string.IsNullOrEmpty(tempTableName))
 			return;
@@ -564,7 +663,7 @@ public sealed class SingleStoreBulkUpdate
 	/// Builds the key-column equi-join predicate shared by the match-count query and the update, joining the
 	/// destination table (alias <c>t</c>) to the staging table (alias <c>s</c>) on every key column.
 	/// </summary>
-	private string BuildKeyJoinCondition() =>
+    private string BuildKeyJoinCondition() =>
 		string.Join(
 			" AND ",
 			KeyColumns.Select(k => $"t.{IdentifierHelper.QuoteIdentifier(k)} = s.{IdentifierHelper.QuoteIdentifier(k)}"));
