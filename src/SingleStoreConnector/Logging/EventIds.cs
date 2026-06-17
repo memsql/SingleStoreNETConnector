@@ -162,6 +162,7 @@ internal static class EventIds
 	public const int KeyColumnsNotIndexedForBulkUpdate = 2806;
 	public const int ShardKeyMismatchForBulkUpdate = 2807;
 	public const int LargeUnmatchedCountForBulkUpdate = 2808;
+	public const int FailedToDropStagingTableForBulkUpdate = 2809;
 
 	// Connection pool events, 3000-3099
 	public const int WaitingForAvailableSession = 3000;

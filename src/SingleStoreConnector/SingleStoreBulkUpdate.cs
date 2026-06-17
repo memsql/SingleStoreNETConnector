@@ -518,6 +518,49 @@ public sealed class SingleStoreBulkUpdate
 	}
 
 	/// <summary>
+	/// Drops the temporary staging table created by <see cref="CreateStagingTableAsync"/> on a best-effort basis.
+	/// </summary>
+	/// <param name="tempTableName">The name of the staging table, or <see langword="null"/> if none was created.</param>
+	/// <remarks>
+	/// <para>
+	/// The staging table is session-scoped, so it is discarded automatically when the session ends (for example
+	/// when a connection opened by the bulk update is closed, or when a pooled connection is reset). This explicit
+	/// drop matters mainly when the caller supplied an already-open connection that they continue to use, freeing
+	/// the temporary table promptly rather than leaving it until the session is reset.
+	/// </para>
+	/// <para>
+	/// Cleanup never throws: a failed drop is logged and swallowed so it cannot mask the outcome (or the original
+	/// exception) of the bulk update. The drop is skipped when the connection is no longer open, because in that
+	/// case the session — and therefore the temporary table — is already gone. <see cref="CancellationToken.None"/>
+	/// is used deliberately so cleanup still runs after a cancelled or timed-out operation.
+	/// </para>
+	/// </remarks>
+	private async Task DropStagingTableAsync(string? tempTableName)
+	{
+		if (string.IsNullOrEmpty(tempTableName))
+			return;
+
+		// A session-scoped temporary table cannot outlive its session, so there is nothing to drop (and no usable
+		// connection to issue the command on) once the connection is no longer open.
+		if (m_connection.State != ConnectionState.Open)
+			return;
+
+		try
+		{
+			using var cmd = m_connection.CreateCommand();
+			cmd.CommandText = $"DROP TEMPORARY TABLE IF EXISTS {IdentifierHelper.QuoteIdentifier(tempTableName!)}";
+			cmd.Transaction = m_transaction;
+			cmd.CommandTimeout = BulkCopyTimeout;
+			await cmd.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
+		}
+		catch (Exception ex)
+		{
+			// A failed cleanup is non-fatal: the temporary table will be discarded when the session ends.
+			Log.FailedToDropStagingTableForBulkUpdate(m_logger, ex, tempTableName!, ex.Message);
+		}
+	}
+
+	/// <summary>
 	/// Builds the key-column equi-join predicate shared by the match-count query and the update, joining the
 	/// destination table (alias <c>t</c>) to the staging table (alias <c>s</c>) on every key column.
 	/// </summary>

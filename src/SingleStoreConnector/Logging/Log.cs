@@ -410,6 +410,9 @@ internal static partial class Log
 	[LoggerMessage(EventIds.LargeUnmatchedCountForBulkUpdate, LogLevel.Warning, "Large unmatched count for bulk update: Staged={Staged}, Matched={Matched}, Unmatched={Unmatched}")]
 	public static partial void LargeUnmatchedCountForBulkUpdate(ILogger logger, int staged, int matched, int unmatched);
 
+	[LoggerMessage(EventIds.FailedToDropStagingTableForBulkUpdate, LogLevel.Warning, "Failed to drop staging table {TempTableName} for bulk update: {ExceptionMessage}")]
+	public static partial void FailedToDropStagingTableForBulkUpdate(ILogger logger, Exception exception, string tempTableName, string exceptionMessage);
+
 	[LoggerMessage(EventIds.WaitingForAvailableSession, LogLevel.Trace, "Pool {PoolId} waiting for an available session")]
 	public static partial void WaitingForAvailableSession(ILogger logger, int poolId);
 
