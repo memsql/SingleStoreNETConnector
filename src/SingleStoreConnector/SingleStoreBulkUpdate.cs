@@ -168,12 +168,86 @@ public sealed class SingleStoreBulkUpdate
 	/// </param>
 	/// <param name="source">The source data: a <see cref="DataTable"/>, a sequence of <see cref="DataRow"/>, or an <see cref="IDataReader"/>.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-    private ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IOBehavior ioBehavior, object source, CancellationToken cancellationToken)
+    private async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IOBehavior ioBehavior, object source, CancellationToken cancellationToken)
 	{
-		// The full orchestration (validate, open connection, create staging table, stage, count, update,
-		// drop staging table) is implemented in step 1.12. This method is intentionally a placeholder until then.
-		throw new NotImplementedException();
+		// Validate configuration before touching the connection so misconfiguration fails fast and cheaply.
+		ValidateColumnMappings();
+
+		var destinationTableName = DestinationTableName ??
+			throw new InvalidOperationException("DestinationTableName must be set before calling WriteToServer.");
+
+		// Reset any warnings from a previous call so the result only reflects this operation.
+		m_warnings.Clear();
+
+		// Short-circuit input whose row count is known to be zero: there is nothing to stage or update, so avoid
+		// opening the connection and creating a staging table. (An IDataReader's count is unknown, so it still
+		// flows through and stages zero rows naturally.)
+		if (GetRowCount(source) == 0)
+			return new SingleStoreBulkUpdateResult(m_warnings.AsReadOnly(), rowsStaged: 0, rowsMatched: ComputeRowsMatched ? 0 : -1, rowsUpdated: 0);
+
+		var stopwatch = Stopwatch.StartNew();
+
+		// All phases must run on one open session because the staging table is a session-scoped temporary table.
+		// Open the connection if the caller left it closed, and close it again only if we were the ones to open it.
+		var closeConnection = false;
+		if (m_connection.State != ConnectionState.Open)
+		{
+			await m_connection.OpenAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			closeConnection = true;
+		}
+
+		string? tempTableName = null;
+		try
+		{
+			// Reject reference tables and shard-key updates, and confirm every mapped column exists.
+			await ValidateSchemaAsync(destinationTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+
+			var updateColumns = GetUpdateColumns();
+			Log.StartingBulkUpdate(m_logger, destinationTableName, string.Join(", ", KeyColumns), string.Join(", ", updateColumns), GetRowCount(source));
+
+			// Phase 1: create the staging table mirroring the destination column types.
+			tempTableName = await CreateStagingTableAsync(destinationTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+
+			// Phase 2: stage the source rows into the temporary table via SingleStoreBulkCopy.
+			var rowsStaged = await StageDataAsync(tempTableName, source, ioBehavior, cancellationToken).ConfigureAwait(false);
+
+			// Phase 3 (optional): count how many staged rows match a destination row.
+			var rowsMatched = await ComputeMatchedRowsAsync(tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+			if (rowsMatched is { } matched && rowsStaged > matched)
+				Log.LargeUnmatchedCountForBulkUpdate(m_logger, rowsStaged, matched, rowsStaged - matched);
+
+			// Phase 4: run the UPDATE ... JOIN that copies the non-key values into the matching rows.
+			var rowsUpdated = await ExecuteUpdateAsync(tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+
+			stopwatch.Stop();
+			Log.CompletedBulkUpdate(m_logger, rowsStaged, rowsMatched ?? -1, rowsUpdated, stopwatch.ElapsedMilliseconds);
+
+			// RowsMatched is reported as -1 when ComputeRowsMatched was false (the count was intentionally skipped).
+			return new SingleStoreBulkUpdateResult(m_warnings.AsReadOnly(), rowsStaged, rowsMatched ?? -1, rowsUpdated);
+		}
+		finally
+		{
+			// Drop the staging table before closing a connection we opened (a closed connection's session, and
+			// therefore the temporary table, is already gone).
+			await DropStagingTableAsync(tempTableName, ioBehavior).ConfigureAwait(false);
+
+			if (closeConnection)
+				m_connection.Close();
+		}
 	}
+
+	/// <summary>
+	/// Returns the number of rows in the source for logging, or <c>-1</c> when the count is not known in advance
+	/// (for example an <see cref="IDataReader"/>, which is consumed as it is staged).
+	/// </summary>
+    private static int GetRowCount(object source) =>
+		source switch
+		{
+			DataTable dataTable => dataTable.Rows.Count,
+			ICollection<DataRow> dataRows => dataRows.Count,
+			IReadOnlyCollection<DataRow> dataRows => dataRows.Count,
+			_ => -1,
+		};
 
     private void ValidateColumnMappings()
 	{
@@ -240,15 +314,15 @@ public sealed class SingleStoreBulkUpdate
 			throw new InvalidOperationException("ColumnMappings must contain at least one non-key column to update.");
 	}
 
-    private async ValueTask ValidateSchemaAsync(string tableName, CancellationToken cancellationToken)
+    private async ValueTask ValidateSchemaAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var schemaDetector = new SchemaDetector(m_connection);
 
 		// TODO: make changes to support the solutions described here -- https://docs.singlestore.com/cloud/reference/troubleshooting-reference/query-errors/error-1706-hy-000-feature-multi-table-update-delete-with-a-reference-table-as-target-table-is-not-supported-by-memsql/
-		if (await schemaDetector.IsReferenceTableAsync(tableName, cancellationToken).ConfigureAwait(false))
+		if (await schemaDetector.IsReferenceTableAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false))
 			throw new NotSupportedException($"Target table '{tableName}' is a reference table. Bulk updates on reference tables are not supported in this version.");
 
-		var shardKeyColumns = await schemaDetector.GetShardKeyColumnsAsync(tableName, cancellationToken).ConfigureAwait(false);
+		var shardKeyColumns = await schemaDetector.GetShardKeyColumnsAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false);
 		var updateColumns = GetUpdateColumns();
 
 		foreach (var updateColumn in updateColumns)
@@ -257,7 +331,7 @@ public sealed class SingleStoreBulkUpdate
 				throw new InvalidOperationException($"Column '{updateColumn}' is a shard key. SingleStore does not support updating shard key columns.");
 		}
 
-		var schema = await schemaDetector.GetTableSchemaAsync(tableName, cancellationToken).ConfigureAwait(false);
+		var schema = await schemaDetector.GetTableSchemaAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 		var tableColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -310,7 +384,7 @@ public sealed class SingleStoreBulkUpdate
 	/// because the temporary table is session-scoped.
 	/// </para>
 	/// </remarks>
-    private async Task<string> CreateStagingTableAsync(string destinationTableName, CancellationToken cancellationToken)
+    private async Task<string> CreateStagingTableAsync(string destinationTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		// Generate a unique temporary table name. The "g" suffix on the GUID guarantees the identifier
 		// starts with a letter regardless of the GUID's first hex digit.
@@ -320,8 +394,8 @@ public sealed class SingleStoreBulkUpdate
 
 		// Pull the exact, server-rendered type definition for every column so the staging columns are
 		// byte-for-byte type compatible with the destination (see remarks).
-		var columnTypeDefinitions = await schemaDetector.GetColumnTypeDefinitionsAsync(destinationTableName, cancellationToken).ConfigureAwait(false);
-		var shardKeyColumns = await schemaDetector.GetShardKeyColumnsAsync(destinationTableName, cancellationToken).ConfigureAwait(false);
+		var columnTypeDefinitions = await schemaDetector.GetColumnTypeDefinitionsAsync(destinationTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+		var shardKeyColumns = await schemaDetector.GetShardKeyColumnsAsync(destinationTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 		// Emit a column definition for each mapped column, preserving the order in which the columns appear
 		// in the destination table is unnecessary here: the staging table only needs the columns to exist by
@@ -378,7 +452,7 @@ public sealed class SingleStoreBulkUpdate
 			cmd.CommandText = createTableSql.ToString();
 			cmd.Transaction = m_transaction;
 			cmd.CommandTimeout = BulkCopyTimeout;
-			await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+			await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 		}
 
 		Log.CreatedStagingTableForBulkUpdate(m_logger, tempTableName, columnDefinitions.Count);
@@ -435,7 +509,7 @@ public sealed class SingleStoreBulkUpdate
 	/// destination-name relationship identical between staging and the later <c>UPDATE ... JOIN</c>.
 	/// </para>
 	/// </remarks>
-    private async Task<int> StageDataAsync(string tempTableName, object source, CancellationToken cancellationToken)
+    private async Task<int> StageDataAsync(string tempTableName, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var bulkCopy = new SingleStoreBulkCopy(m_connection, m_transaction)
 		{
@@ -464,13 +538,7 @@ public sealed class SingleStoreBulkUpdate
 
 		try
 		{
-			var result = source switch
-			{
-				DataTable dataTable => await bulkCopy.WriteToServerAsync(dataTable, cancellationToken).ConfigureAwait(false),
-				IEnumerable<DataRow> dataRows => await StageDataRowsAsync(bulkCopy, dataRows, cancellationToken).ConfigureAwait(false),
-				IDataReader dataReader => await bulkCopy.WriteToServerAsync(dataReader, cancellationToken).ConfigureAwait(false),
-				_ => throw new ArgumentException($"Unsupported source type '{source.GetType()}'.", nameof(source)),
-			};
+			var result = await StageWithBulkCopyAsync(bulkCopy, source, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			m_warnings.AddRange(result.Warnings);
 
@@ -486,25 +554,46 @@ public sealed class SingleStoreBulkUpdate
 	}
 
 	/// <summary>
-	/// Stages a sequence of <see cref="DataRow"/> objects, supplying the column count that
-	/// <see cref="SingleStoreBulkCopy"/> requires up front.
+	/// Dispatches the source data to the appropriate <see cref="SingleStoreBulkCopy"/> overload, selecting the
+	/// synchronous or asynchronous method according to <paramref name="ioBehavior"/>.
 	/// </summary>
 	/// <remarks>
-	/// <see cref="SingleStoreBulkCopy.WriteToServerAsync(IEnumerable{DataRow}, int, CancellationToken)"/> needs the
-	/// source column count before it enumerates the rows, which is taken from the owning <see cref="DataTable"/>
-	/// of the first row. The sequence is materialized first so it can be inspected for the first row and then
-	/// enumerated again by the bulk copy without re-running (and possibly exhausting) a lazy source. Empty input
-	/// is short-circuited before staging, so the sequence is expected to be non-empty here; it is still guarded so
-	/// an unexpected empty sequence fails clearly rather than dereferencing a missing row.
+	/// <see cref="SingleStoreBulkCopy"/> exposes separate synchronous (<c>WriteToServer</c>) and asynchronous
+	/// (<c>WriteToServerAsync</c>) methods rather than an <see cref="IOBehavior"/> overload, so the behavior is
+	/// selected here. Calling the synchronous methods on the synchronous path keeps the whole operation inline,
+	/// preserving the no-sync-over-async guarantee that lets the public synchronous overloads block safely.
+	/// For a <see cref="DataRow"/> sequence, <see cref="SingleStoreBulkCopy"/> needs the column count before it
+	/// enumerates the rows (taken from the owning <see cref="DataTable"/> of the first row); the sequence is
+	/// materialized first so a lazy source is not consumed by the peek and then re-enumerated (empty) by the bulk
+	/// copy. Empty input is short-circuited before staging, so the sequence is expected to be non-empty here; it
+	/// is still guarded so an unexpected empty sequence fails clearly rather than dereferencing a missing row.
 	/// </remarks>
-    private static ValueTask<SingleStoreBulkCopyResult> StageDataRowsAsync(SingleStoreBulkCopy bulkCopy, IEnumerable<DataRow> dataRows, CancellationToken cancellationToken)
+    private static ValueTask<SingleStoreBulkCopyResult> StageWithBulkCopyAsync(SingleStoreBulkCopy bulkCopy, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		var rows = dataRows as IReadOnlyList<DataRow> ?? dataRows.ToList();
-		if (rows.Count == 0)
-			throw new ArgumentException("Cannot stage an empty sequence of rows.", nameof(dataRows));
+		switch (source)
+		{
+		case DataTable dataTable:
+			return ioBehavior == IOBehavior.Synchronous
+				? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(dataTable))
+				: bulkCopy.WriteToServerAsync(dataTable, cancellationToken);
 
-		var columnCount = rows[0].Table.Columns.Count;
-		return bulkCopy.WriteToServerAsync(rows, columnCount, cancellationToken);
+		case IEnumerable<DataRow> dataRows:
+			var rows = dataRows as IReadOnlyList<DataRow> ?? dataRows.ToList();
+			if (rows.Count == 0)
+				throw new ArgumentException("Cannot stage an empty sequence of rows.", nameof(source));
+			var columnCount = rows[0].Table.Columns.Count;
+			return ioBehavior == IOBehavior.Synchronous
+				? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(rows, columnCount))
+				: bulkCopy.WriteToServerAsync(rows, columnCount, cancellationToken);
+
+		case IDataReader dataReader:
+			return ioBehavior == IOBehavior.Synchronous
+				? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(dataReader))
+				: bulkCopy.WriteToServerAsync(dataReader, cancellationToken);
+
+		default:
+			throw new ArgumentException($"Unsupported source type '{source.GetType()}'.", nameof(source));
+		}
 	}
 
 	/// <summary>
@@ -530,7 +619,7 @@ public sealed class SingleStoreBulkUpdate
 	/// operation because the staging table is session-scoped.
 	/// </para>
 	/// </remarks>
-    private async Task<int?> ComputeMatchedRowsAsync(string tempTableName, CancellationToken cancellationToken)
+    private async Task<int?> ComputeMatchedRowsAsync(string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!ComputeRowsMatched)
 			return null;
@@ -544,7 +633,7 @@ public sealed class SingleStoreBulkUpdate
 		cmd.Transaction = m_transaction;
 		cmd.CommandTimeout = BulkCopyTimeout;
 
-		var scalar = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+		var scalar = await cmd.ExecuteScalarAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 		// COUNT(*) comes back as a long; convert rather than cast so the boxed type is handled correctly.
 		var rowsMatched = scalar is null or DBNull ? 0 : Convert.ToInt32(scalar, CultureInfo.InvariantCulture);
@@ -581,7 +670,7 @@ public sealed class SingleStoreBulkUpdate
 	/// operation result.
 	/// </para>
 	/// </remarks>
-    private async Task<int> ExecuteUpdateAsync(string tempTableName, CancellationToken cancellationToken)
+    private async Task<int> ExecuteUpdateAsync(string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		// Assign each non-key mapped column from the staging row: t.`c1` = s.`c1`, t.`c2` = s.`c2` ...
 		var setClause = string.Join(
@@ -604,7 +693,7 @@ public sealed class SingleStoreBulkUpdate
 		m_connection.InfoMessage += OnInfoMessage;
 		try
 		{
-			var rowsUpdated = await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+			var rowsUpdated = await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			Log.ExecutedBulkUpdate(m_logger, rowsUpdated);
 
@@ -634,7 +723,7 @@ public sealed class SingleStoreBulkUpdate
 	/// is used deliberately so cleanup still runs after a cancelled or timed-out operation.
 	/// </para>
 	/// </remarks>
-    private async Task DropStagingTableAsync(string? tempTableName)
+    private async Task DropStagingTableAsync(string? tempTableName, IOBehavior ioBehavior)
 	{
 		if (string.IsNullOrEmpty(tempTableName))
 			return;
@@ -650,7 +739,7 @@ public sealed class SingleStoreBulkUpdate
 			cmd.CommandText = $"DROP TEMPORARY TABLE IF EXISTS {IdentifierHelper.QuoteIdentifier(tempTableName!)}";
 			cmd.Transaction = m_transaction;
 			cmd.CommandTimeout = BulkCopyTimeout;
-			await cmd.ExecuteNonQueryAsync(CancellationToken.None).ConfigureAwait(false);
+			await cmd.ExecuteNonQueryAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 		}
 		catch (Exception ex)
 		{

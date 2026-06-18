@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using SingleStoreConnector.Protocol.Serialization;
 
 namespace SingleStoreConnector.Utilities;
 
@@ -20,11 +21,11 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 	/// <summary>
 	/// Detects if the specified table is a reference table.
 	/// </summary>
-	public async Task<bool> IsReferenceTableAsync(string tableName, CancellationToken cancellationToken = default)
+	public async Task<bool> IsReferenceTableAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken = default)
 	{
 		EnsureConnectionIsOpen();
 
-		var createTableSql = await GetCreateTableStatementAsync(tableName, cancellationToken)
+		var createTableSql = await GetCreateTableStatementAsync(tableName, ioBehavior, cancellationToken)
 			.ConfigureAwait(false);
 
 		return referenceTableRegex.IsMatch(createTableSql);
@@ -34,7 +35,7 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 	/// Gets the shard key columns for the specified table.
 	/// </summary>
 	/// <returns>List of shard key column names, or empty list if no shard key.</returns>
-	public async Task<List<string>> GetShardKeyColumnsAsync(string tableName, CancellationToken cancellationToken = default)
+	public async Task<List<string>> GetShardKeyColumnsAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken = default)
 	{
 		EnsureConnectionIsOpen();
 
@@ -46,14 +47,14 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 		{
 			cmd.CommandText = $"SHOW INDEXES FROM {IdentifierHelper.QuoteQualifiedIdentifier(tableName)}";
 
-			await using var reader = await cmd.ExecuteReaderAsync(cancellationToken)
+			await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken)
 				.ConfigureAwait(false);
 
 			var keyNameOrdinal = reader.GetOrdinal("Key_name");
 			var columnNameOrdinal = reader.GetOrdinal("Column_name");
 			var sequenceOrdinal = reader.GetOrdinal("Seq_in_index");
 
-			while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+			while (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
 			{
 				if (reader.IsDBNull(keyNameOrdinal))
 					continue;
@@ -84,7 +85,7 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 
 		// Method 2: Parse SHOW CREATE TABLE for SHARD KEY.
 		// This is a fallback for cases where SHOW INDEXES doesn't expose __SHARDKEY.
-		var createTableSql = await GetCreateTableStatementAsync(tableName, cancellationToken)
+		var createTableSql = await GetCreateTableStatementAsync(tableName, ioBehavior, cancellationToken)
 			.ConfigureAwait(false);
 
 		var match = shardKeyRegex.Match(createTableSql);
@@ -101,17 +102,17 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 	/// <summary>
 	/// Gets the CREATE TABLE statement for the specified table.
 	/// </summary>
-	private async Task<string> GetCreateTableStatementAsync(string tableName, CancellationToken cancellationToken)
+	private async Task<string> GetCreateTableStatementAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		EnsureConnectionIsOpen();
 
 		using var cmd = m_connection.CreateCommand();
 		cmd.CommandText = $"SHOW CREATE TABLE {IdentifierHelper.QuoteQualifiedIdentifier(tableName)}";
 
-		await using var reader = await cmd.ExecuteReaderAsync(cancellationToken)
+		await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken)
 			.ConfigureAwait(false);
 
-		if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+		if (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
 		{
 			// SHOW CREATE TABLE returns the CREATE TABLE statement in the second column.
 			return reader.GetString(1);
@@ -142,11 +143,11 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 	/// </para>
 	/// </remarks>
 	/// <returns>A case-insensitive map of column name to its type definition.</returns>
-	public async Task<Dictionary<string, string>> GetColumnTypeDefinitionsAsync(string tableName, CancellationToken cancellationToken = default)
+	public async Task<Dictionary<string, string>> GetColumnTypeDefinitionsAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken = default)
 	{
 		EnsureConnectionIsOpen();
 
-		var createTableSql = await GetCreateTableStatementAsync(tableName, cancellationToken)
+		var createTableSql = await GetCreateTableStatementAsync(tableName, ioBehavior, cancellationToken)
 			.ConfigureAwait(false);
 
 		var definitions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -174,14 +175,14 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 	/// <summary>
 	/// Gets column metadata for the specified table.
 	/// </summary>
-	public async Task<DataTable> GetTableSchemaAsync(string tableName, CancellationToken cancellationToken = default)
+	public async Task<DataTable> GetTableSchemaAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken = default)
 	{
 		EnsureConnectionIsOpen();
 
 		using var cmd = m_connection.CreateCommand();
 		cmd.CommandText = $"SELECT * FROM {IdentifierHelper.QuoteQualifiedIdentifier(tableName)} LIMIT 0";
 
-		await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly, cancellationToken)
+		await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly, ioBehavior, cancellationToken)
 			.ConfigureAwait(false);
 
 		return reader.GetSchemaTable()
