@@ -8,20 +8,15 @@ namespace SingleStoreConnector.Utilities;
 internal static class IdentifierHelper
 {
 	/// <summary>
-	/// Quotes a SQL identifier with backticks, escaping any backticks within the identifier.
-	/// </summary>
-	/// <param name="identifier">The identifier to quote.</param>
-	/// <returns>The quoted identifier.</returns>
-	/// <exception cref="ArgumentException">If identifier is null, empty, or contains null characters.</exception>
+    /// Quotes a SQL identifier with backticks, escaping any backticks within the identifier.
+    /// </summary>
+    /// <param name="identifier">The identifier to quote.</param>
+    /// <returns>The quoted identifier.</returns>
+    /// <exception cref="ArgumentException">If identifier is null, empty, or contains null characters.</exception>
 	public static string QuoteIdentifier(string identifier)
 	{
-		if (string.IsNullOrWhiteSpace(identifier))
-			throw new ArgumentException("Identifier cannot be null or empty.", nameof(identifier));
+		ValidateIdentifierInput(identifier, nameof(identifier), "Identifier");
 
-		if (identifier.Contains('\0'))
-			throw new ArgumentException("Identifier cannot contain null characters.", nameof(identifier));
-
-		// Backticks inside the identifier must be doubled.
 		return "`" + identifier.Replace("`", "``") + "`";
 	}
 
@@ -30,21 +25,19 @@ internal static class IdentifierHelper
 	/// </summary>
 	public static string QuoteQualifiedIdentifier(string qualifiedName)
 	{
-		if (string.IsNullOrWhiteSpace(qualifiedName))
-			throw new ArgumentException("Qualified name cannot be null or empty.", nameof(qualifiedName));
+		ValidateIdentifierInput(qualifiedName, nameof(qualifiedName), "Qualified name");
 
-		if (qualifiedName.Contains('\0'))
-			throw new ArgumentException("Qualified name cannot contain null characters.", nameof(qualifiedName));
-
-		// Split on dots that are outside backtick-quoted identifier parts.
-		// This supports names such as:
-		//   database.table
-		//   `database`.`table`
-		//   `database.with.dot`.`table`
-		//   `database`.`table.with.dot`
 		var parts = SplitQualifiedIdentifier(qualifiedName);
-
 		return string.Join(".", parts.Select(QuoteIdentifier));
+	}
+
+	private static void ValidateIdentifierInput(string value, string paramName, string displayName)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+			throw new ArgumentException($"{displayName} cannot be null or empty.", paramName);
+
+		if (value.Contains('\0'))
+			throw new ArgumentException($"{displayName} cannot contain null characters.", paramName);
 	}
 
 	private static List<string> SplitQualifiedIdentifier(string qualifiedName)
@@ -57,24 +50,21 @@ internal static class IdentifierHelper
 		{
 			var ch = qualifiedName[i];
 
-			if (ch == '`')
+			if (ch == '.' && !inBackticks)
 			{
-				if (inBackticks)
-				{
-					if (i + 1 < qualifiedName.Length && qualifiedName[i + 1] == '`')
-					{
-						// Escaped backtick inside a quoted identifier.
-						current.Append("``");
-						i++;
-					}
-					else
-					{
-						// Closing backtick.
-						current.Append(ch);
-						inBackticks = false;
-					}
-				}
-				else if (IsOnlyWhitespace(current))
+				AddPart(parts, current, qualifiedName);
+				continue;
+			}
+
+			if (ch != '`')
+			{
+				current.Append(ch);
+				continue;
+			}
+
+			if (!inBackticks)
+			{
+				if (IsOnlyWhitespace(current))
 				{
 					// Opening backtick at the start of an identifier part.
 					current.Append(ch);
@@ -82,19 +72,24 @@ internal static class IdentifierHelper
 				}
 				else
 				{
-					// Treat backticks in unquoted input as literal identifier characters.
-					// They will be escaped later by QuoteIdentifier.
+					// Literal backtick in an unquoted identifier.
 					current.Append(ch);
 				}
+
+				continue;
 			}
-			else if (ch == '.' && !inBackticks)
+
+			if (i + 1 < qualifiedName.Length && qualifiedName[i + 1] == '`')
 			{
-				AddPart(parts, current, qualifiedName);
+				// Escaped backtick inside a quoted identifier.
+				current.Append("``");
+				i++;
+				continue;
 			}
-			else
-			{
-				current.Append(ch);
-			}
+
+			// Closing backtick.
+			current.Append(ch);
+			inBackticks = false;
 		}
 
 		if (inBackticks)
@@ -126,28 +121,32 @@ internal static class IdentifierHelper
 		{
 			var ch = part[i];
 
-			if (ch == '`')
-			{
-				if (i + 1 < part.Length && part[i + 1] == '`')
-				{
-					identifier.Append('`');
-					i++;
-				}
-				else
-				{
-					if (i != part.Length - 1)
-						throw new ArgumentException("Qualified name contains unexpected characters after a quoted identifier.", nameof(qualifiedName));
-
-					return identifier.ToString();
-				}
-			}
-			else
+			if (ch != '`')
 			{
 				identifier.Append(ch);
+				continue;
 			}
+
+			// Escaped backtick: `` means one literal ` inside the identifier.
+			if (i + 1 < part.Length && part[i + 1] == '`')
+			{
+				identifier.Append('`');
+				i++;
+				continue;
+			}
+
+			// Single backtick closes the quoted identifier.
+			if (i == part.Length - 1)
+				return identifier.ToString();
+
+			throw new ArgumentException(
+				"Qualified name contains unexpected characters after a quoted identifier.",
+				nameof(qualifiedName));
 		}
 
-		throw new ArgumentException("Qualified name contains an unterminated quoted identifier.", nameof(qualifiedName));
+		throw new ArgumentException(
+			"Qualified name contains an unterminated quoted identifier.",
+			nameof(qualifiedName));
 	}
 
 	private static bool IsOnlyWhitespace(StringBuilder builder)

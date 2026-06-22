@@ -128,12 +128,9 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 	/// <remarks>
 	/// <para>
 	/// The returned type definitions are taken verbatim from the server rather than reconstructed from
-	/// <c>GetSchemaTable()</c>. The schema table is lossy for several SingleStore types:
-	/// for example <c>VARBINARY</c> is reported as <c>BLOB</c>, <c>BIT(1)</c> as <c>BIGINT</c>, the
-	/// <c>UNSIGNED</c> flag is dropped, and character set, collation and <c>ENUM</c>/<c>SET</c> member
-	/// lists are not exposed at all. Copying the definition verbatim guarantees the staging column has the
+	/// <c>GetSchemaTable()</c>. Copying the definition verbatim guarantees the staging column has the
 	/// exact same type as the destination column, which keeps key-column equality (including collation)
-	/// well defined in the <c>UPDATE ... JOIN</c>.
+	/// well-defined in the <c>UPDATE ... JOIN</c>.
 	/// </para>
 	/// <para>
 	/// Only the type portion is returned (data type, any parenthesised arguments, <c>UNSIGNED</c>/<c>ZEROFILL</c>,
