@@ -5,7 +5,7 @@ using SingleStoreConnector.Protocol.Serialization;
 
 namespace SingleStoreConnector.Utilities;
 
-internal sealed class SchemaDetector(SingleStoreConnection connection)
+internal sealed class SchemaDetector(SingleStoreConnection connection, SingleStoreTransaction? transaction = null)
 {
 	private static readonly Regex referenceTableRegex =
 		new(@"CREATE\s+(?:(?:ROWSTORE|COLUMNSTORE)\s+)?REFERENCE\s+TABLE",
@@ -17,6 +17,8 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 
 	private readonly SingleStoreConnection m_connection =
 		connection ?? throw new ArgumentNullException(nameof(connection));
+
+	private readonly SingleStoreTransaction? m_transaction = transaction;
 
 	/// <summary>
 	/// Detects if the specified table is a reference table.
@@ -45,6 +47,7 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 		// This is preferred because Seq_in_index preserves composite shard key column order.
 		using (var cmd = m_connection.CreateCommand())
 		{
+			cmd.Transaction = m_transaction;
 			cmd.CommandText = $"SHOW INDEXES FROM {IdentifierHelper.QuoteQualifiedIdentifier(tableName)}";
 
 			await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken)
@@ -107,6 +110,7 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 		EnsureConnectionIsOpen();
 
 		using var cmd = m_connection.CreateCommand();
+		cmd.Transaction = m_transaction;
 		cmd.CommandText = $"SHOW CREATE TABLE {IdentifierHelper.QuoteQualifiedIdentifier(tableName)}";
 
 		await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken)
@@ -177,6 +181,7 @@ internal sealed class SchemaDetector(SingleStoreConnection connection)
 		EnsureConnectionIsOpen();
 
 		using var cmd = m_connection.CreateCommand();
+		cmd.Transaction = m_transaction;
 		cmd.CommandText = $"SELECT * FROM {IdentifierHelper.QuoteQualifiedIdentifier(tableName)} LIMIT 0";
 
 		await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly, ioBehavior, cancellationToken)

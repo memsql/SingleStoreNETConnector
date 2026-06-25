@@ -316,7 +316,7 @@ public sealed class SingleStoreBulkUpdate
 
     private async ValueTask ValidateSchemaAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		var schemaDetector = new SchemaDetector(m_connection);
+		var schemaDetector = new SchemaDetector(m_connection, m_transaction);
 
 		// TODO: make changes to support the solutions described here -- https://docs.singlestore.com/cloud/reference/troubleshooting-reference/query-errors/error-1706-hy-000-feature-multi-table-update-delete-with-a-reference-table-as-target-table-is-not-supported-by-memsql/
 		if (await schemaDetector.IsReferenceTableAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false))
@@ -390,7 +390,7 @@ public sealed class SingleStoreBulkUpdate
 		// starts with a letter regardless of the GUID's first hex digit.
 		var tempTableName = $"_bulk_update_staging_g{Guid.NewGuid():N}";
 
-		var schemaDetector = new SchemaDetector(m_connection);
+		var schemaDetector = new SchemaDetector(m_connection, m_transaction);
 
 		// Pull the exact, server-rendered type definition for every column so the staging columns are
 		// byte-for-byte type compatible with the destination (see remarks).
