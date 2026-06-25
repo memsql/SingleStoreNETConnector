@@ -1,0 +1,313 @@
+namespace SideBySide;
+
+public class BulkUpdateValidationTests(DatabaseFixture database) : IClassFixture<DatabaseFixture>
+{
+	[Fact]
+	public async Task ThrowsWhenDestinationTableNameNotSet()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id", "value")));
+		Assert.Contains("DestinationTableName", exception.Message);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenKeyColumnsEmpty()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			ColumnMappings = { new SingleStoreBulkCopyColumnMapping(0, "id") },
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id")));
+		Assert.Contains("KeyColumns", exception.Message);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenColumnMappingsEmpty()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "id" },
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id")));
+		Assert.Contains("ColumnMappings", exception.Message);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenKeyColumnNotMapped()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "id", "tenant_id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id", "value")));
+		Assert.Contains("tenant_id", exception.Message);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenNoUpdateColumns()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "id" },
+			ColumnMappings = { new SingleStoreBulkCopyColumnMapping(0, "id") },
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id")));
+		Assert.Contains("non-key column", exception.Message, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenDuplicateKeyColumn()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "id", "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id", "value")));
+		Assert.Contains("duplicate", exception.Message, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("id", exception.Message);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenKeyColumnNameIsEmpty()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "  " },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id", "value")));
+		Assert.Contains("KeyColumns", exception.Message);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenDestinationColumnIsEmpty()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, ""),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id", "value")));
+		Assert.Contains("DestinationColumn", exception.Message);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenMappedColumnDoesNotExistInTargetTable()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_missing_column;
+create table bulk_update_missing_column(id int primary key, value varchar(100));", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("missing", typeof(string)),
+			},
+			Rows = { new object[] { 1, "test" } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_missing_column",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "missing"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(dataTable));
+		Assert.Contains("missing", exception.Message);
+		Assert.Contains("does not exist", exception.Message, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public async Task ThrowsOnExpressionMapping()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value", "UNHEX(@value)"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<NotSupportedException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id", "value")));
+		Assert.Contains("Expression", exception.Message, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public async Task ThrowsOnDuplicateDestinationColumn()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+				new SingleStoreBulkCopyColumnMapping(2, "value"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(NewTable("id", "value", "value2")));
+		Assert.Contains("duplicate", exception.Message, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public async Task ThrowsForReferenceTable()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_reference;
+create reference table bulk_update_reference(id int primary key, value varchar(100));", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows = { new object[] { 1, "test" } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_reference",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<NotSupportedException>(async () => await bulkUpdate.WriteToServerAsync(dataTable));
+		Assert.Contains("reference table", exception.Message, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public async Task ThrowsWhenUpdatingShardKeyColumn()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// Shard on tenant_id, then attempt to update tenant_id (a shard key) as a non-key column. SingleStore does
+		// not allow updating shard key columns, so this must be rejected. tenant_id is part of the primary key
+		// because SingleStore requires the primary key to contain all shard key columns.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_shardkey;
+create table bulk_update_shardkey(id int, tenant_id int, value varchar(100), primary key (id, tenant_id), shard key (tenant_id));", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("tenant_id", typeof(int)),
+			},
+			Rows = { new object[] { 1, 2 } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_shardkey",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "tenant_id"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await bulkUpdate.WriteToServerAsync(dataTable));
+		Assert.Contains("shard key", exception.Message, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("tenant_id", exception.Message);
+	}
+
+	private static DataTable NewTable(params string[] columnNames)
+	{
+		var dataTable = new DataTable();
+		foreach (var columnName in columnNames)
+			dataTable.Columns.Add(columnName, typeof(string));
+		return dataTable;
+	}
+}

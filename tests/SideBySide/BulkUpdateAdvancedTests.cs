@@ -325,6 +325,160 @@ insert into bulk_update_reader_src values (1, 'new1'), (2, 'new2');", connection
 	}
 
 	[Fact]
+	public async Task UpdatesWhenShardKeyAlignsWithKeyColumns()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// The destination shard key (id) is a subset of the key columns, so the staging table is sharded the same
+		// way and the join can run locally. The update must succeed.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_shard_aligned;
+create table bulk_update_shard_aligned(id int, value varchar(100), primary key (id), shard key (id));
+insert into bulk_update_shard_aligned values (1, 'old1'), (2, 'old2');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows =
+			{
+				new object[] { 1, "new1" },
+				new object[] { 2, "new2" },
+			},
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_shard_aligned",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		Assert.Equal(2, result.RowsMatched);
+		Assert.Equal(2, result.RowsUpdated);
+
+		using var selectCommand = new SingleStoreCommand("select value from bulk_update_shard_aligned where id = 1;", connection);
+		Assert.Equal("new1", await selectCommand.ExecuteScalarAsync());
+	}
+
+	[Fact]
+	public async Task UpdatesWhenCompositeShardKeyOrderDiffersFromKeyColumns()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// The destination shard key is (tenant_id, user_id) but the key columns are declared in the opposite order
+		// (user_id, then tenant_id). ComputeStagingShardKey returns the destination's shard-key columns verbatim, so
+		// the staging SHARD KEY keeps the destination order (tenant_id, user_id) while the staging PRIMARY KEY uses
+		// KeyColumns order (user_id, tenant_id). SingleStore only requires the primary key to *contain* every shard
+		// key column (a set rule, not an ordering/prefix rule), so CREATE TEMPORARY TABLE is valid and the update
+		// succeeds. Preserving the destination shard-key order also keeps the join co-located.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_shard_composite;
+create table bulk_update_shard_composite(tenant_id int, user_id int, value varchar(100), primary key (tenant_id, user_id), shard key (tenant_id, user_id));
+insert into bulk_update_shard_composite values (1, 100, 'old1'), (2, 200, 'old2');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("user_id", typeof(int)),
+				new DataColumn("tenant_id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows =
+			{
+				new object[] { 100, 1, "new1" },
+				new object[] { 200, 2, "new2" },
+			},
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_shard_composite",
+			KeyColumns = { "user_id", "tenant_id" }, // deliberately the opposite order from the destination shard key
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "user_id"),
+				new SingleStoreBulkCopyColumnMapping(1, "tenant_id"),
+				new SingleStoreBulkCopyColumnMapping(2, "value"),
+			},
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		Assert.Equal(2, result.RowsMatched);
+		Assert.Equal(2, result.RowsUpdated);
+
+		using var selectCommand = new SingleStoreCommand("select value from bulk_update_shard_composite where tenant_id = 1 and user_id = 100;", connection);
+		Assert.Equal("new1", await selectCommand.ExecuteScalarAsync());
+	}
+
+	[Fact]
+	public async Task UpdatesWhenShardKeyDoesNotAlignWithKeyColumns()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// The destination shard key (region) is not among the key columns, so the staging table cannot be aligned
+		// and falls back to primary-key distribution (logging a mismatch warning). region is left unmapped so it is
+		// not treated as a shard-key update. The update must still succeed.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_shard_mismatch;
+create table bulk_update_shard_mismatch(id int, region int, value varchar(100), primary key (id, region), shard key (region));
+insert into bulk_update_shard_mismatch values (1, 10, 'old1'), (2, 20, 'old2');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows =
+			{
+				new object[] { 1, "new1" },
+				new object[] { 2, "new2" },
+			},
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_shard_mismatch",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		Assert.Equal(2, result.RowsMatched);
+		Assert.Equal(2, result.RowsUpdated);
+
+		using var selectCommand = new SingleStoreCommand("select value from bulk_update_shard_mismatch where id = 1;", connection);
+		Assert.Equal("new1", await selectCommand.ExecuteScalarAsync());
+	}
+
+	[Fact]
 	public async Task UpdatesLargeDataset()
 	{
 		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
