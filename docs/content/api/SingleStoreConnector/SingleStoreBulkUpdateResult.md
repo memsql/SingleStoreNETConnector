@@ -12,7 +12,7 @@ public sealed class SingleStoreBulkUpdateResult
 | --- | --- |
 | [RowsMatched](SingleStoreBulkUpdateResult/RowsMatched.md) { get; } | The number of staged rows that matched rows in the destination table, or `-1` when [`ComputeRowsMatched`](./SingleStoreBulkUpdate/ComputeRowsMatched.md) was set to `false` and the count was not computed. |
 | [RowsStaged](SingleStoreBulkUpdateResult/RowsStaged.md) { get; } | The number of rows that were loaded into the staging table during the bulk update operation. |
-| [RowsUpdated](SingleStoreBulkUpdateResult/RowsUpdated.md) { get; } | The number of rows that were updated during the bulk update operation. |
+| [RowsUpdated](SingleStoreBulkUpdateResult/RowsUpdated.md) { get; } | The number of rows affected by the `UPDATE`, as reported by the server. |
 | [Warnings](SingleStoreBulkUpdateResult/Warnings.md) { get; } | The warnings, if any. Users of [`SingleStoreBulkUpdate`](./SingleStoreBulkUpdate.md) should check that this collection is empty to avoid potential data loss from failed data type conversions. |
 
 ## See Also

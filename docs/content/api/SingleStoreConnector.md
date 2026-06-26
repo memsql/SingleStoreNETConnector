@@ -16,6 +16,8 @@
 | class [SingleStoreBulkLoader](./SingleStoreConnector/SingleStoreBulkLoader.md) | [`SingleStoreBulkLoader`](./SingleStoreConnector/SingleStoreBulkLoader.md) lets you efficiently load a SingleStore Server Table with data from a CSV or TSV file or Stream. |
 | enum [SingleStoreBulkLoaderConflictOption](./SingleStoreConnector/SingleStoreBulkLoaderConflictOption.md) |  |
 | enum [SingleStoreBulkLoaderPriority](./SingleStoreConnector/SingleStoreBulkLoaderPriority.md) |  |
+| class [SingleStoreBulkUpdate](./SingleStoreConnector/SingleStoreBulkUpdate.md) | [`SingleStoreBulkUpdate`](./SingleStoreConnector/SingleStoreBulkUpdate.md) lets you efficiently update many existing rows in a SingleStore table from an in-memory source. It complements [`SingleStoreBulkCopy`](./SingleStoreConnector/SingleStoreBulkCopy.md): where bulk copy inserts rows, bulk update modifies rows that already exist, matching them on the columns in [`KeyColumns`](./SingleStoreConnector/SingleStoreBulkUpdate/KeyColumns.md). |
+| class [SingleStoreBulkUpdateResult](./SingleStoreConnector/SingleStoreBulkUpdateResult.md) | Represents the result of a [`SingleStoreBulkUpdate`](./SingleStoreConnector/SingleStoreBulkUpdate.md) operation. |
 | enum [SingleStoreCertificateStoreLocation](./SingleStoreConnector/SingleStoreCertificateStoreLocation.md) |  |
 | class [SingleStoreCommand](./SingleStoreConnector/SingleStoreCommand.md) | [`SingleStoreCommand`](./SingleStoreConnector/SingleStoreCommand.md) represents a SQL statement or stored procedure name to execute against a SingleStore database. |
 | class [SingleStoreCommandBuilder](./SingleStoreConnector/SingleStoreCommandBuilder.md) |  |
@@ -54,6 +56,8 @@
 | class [SingleStoreProvidePasswordContext](./SingleStoreConnector/SingleStoreProvidePasswordContext.md) | Provides context for the [`ProvidePasswordCallback`](./SingleStoreConnector/SingleStoreConnection/ProvidePasswordCallback.md) delegate. |
 | class [SingleStoreRowsCopiedEventArgs](./SingleStoreConnector/SingleStoreRowsCopiedEventArgs.md) |  |
 | delegate [SingleStoreRowsCopiedEventHandler](./SingleStoreConnector/SingleStoreRowsCopiedEventHandler.md) | Represents the method that handles the [`SingleStoreRowsCopied`](./SingleStoreConnector/SingleStoreBulkCopy/SingleStoreRowsCopied.md) event of a [`SingleStoreBulkCopy`](./SingleStoreConnector/SingleStoreBulkCopy.md). |
+| class [SingleStoreRowsStagedEventArgs](./SingleStoreConnector/SingleStoreRowsStagedEventArgs.md) |  |
+| delegate [SingleStoreRowsStagedEventHandler](./SingleStoreConnector/SingleStoreRowsStagedEventHandler.md) | Represents the method that handles the [`SingleStoreRowsStaged`](./SingleStoreConnector/SingleStoreBulkUpdate/SingleStoreRowsStaged.md) event of a [`SingleStoreBulkUpdate`](./SingleStoreConnector/SingleStoreBulkUpdate.md). |
 | class [SingleStoreRowUpdatedEventArgs](./SingleStoreConnector/SingleStoreRowUpdatedEventArgs.md) |  |
 | delegate [SingleStoreRowUpdatedEventHandler](./SingleStoreConnector/SingleStoreRowUpdatedEventHandler.md) |  |
 | class [SingleStoreRowUpdatingEventArgs](./SingleStoreConnector/SingleStoreRowUpdatingEventArgs.md) |  |

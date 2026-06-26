@@ -1,6 +1,6 @@
 # SingleStoreBulkUpdate class
 
-[`SingleStoreBulkUpdate`](./SingleStoreBulkUpdate.md) lets you efficiently update many existing rows in a SingleStore Server table from an in-memory source. It complements [`SingleStoreBulkCopy`](./SingleStoreBulkCopy.md): where bulk copy inserts rows, bulk update modifies rows that already exist, matching them on the columns in [`KeyColumns`](./SingleStoreBulkUpdate/KeyColumns.md).
+[`SingleStoreBulkUpdate`](./SingleStoreBulkUpdate.md) lets you efficiently update many existing rows in a SingleStore table from an in-memory source. It complements [`SingleStoreBulkCopy`](./SingleStoreBulkCopy.md): where bulk copy inserts rows, bulk update modifies rows that already exist, matching them on the columns in [`KeyColumns`](./SingleStoreBulkUpdate/KeyColumns.md).
 
 The source rows are first staged into a temporary table using [`SingleStoreBulkCopy`](./SingleStoreBulkCopy.md), then a single `UPDATE ... JOIN` copies the non-key column values into the matching rows of the destination table.
 
@@ -46,7 +46,7 @@ public sealed class SingleStoreBulkUpdate
 | name | description |
 | --- | --- |
 | [SingleStoreBulkUpdate](SingleStoreBulkUpdate/SingleStoreBulkUpdate.md)(…) | Initializes a [`SingleStoreBulkUpdate`](./SingleStoreBulkUpdate.md) object with the specified connection, and optionally the active transaction. |
-| [BulkCopyTimeout](SingleStoreBulkUpdate/BulkCopyTimeout.md) { get; set; } | The number of seconds for each phase of the operation to complete before it times out (default `30`). |
+| [BulkUpdateTimeout](SingleStoreBulkUpdate/BulkUpdateTimeout.md) { get; set; } | The number of seconds for each phase of the operation to complete before it times out (default `30`). |
 | [ColumnMappings](SingleStoreBulkUpdate/ColumnMappings.md) { get; } | A collection of [`SingleStoreBulkCopyColumnMapping`](./SingleStoreBulkCopyColumnMapping.md) objects that map source column ordinals onto destination column names. Every key column and at least one non-key (updated) column must be mapped. |
 | [ComputeRowsMatched](SingleStoreBulkUpdate/ComputeRowsMatched.md) { get; set; } | Whether to compute [`RowsMatched`](./SingleStoreBulkUpdateResult/RowsMatched.md) via a `COUNT` query (default `true`). Set this to `false` to skip that query for better performance, in which case [`RowsMatched`](./SingleStoreBulkUpdateResult/RowsMatched.md) is reported as `-1`. |
 | [DestinationTableName](SingleStoreBulkUpdate/DestinationTableName.md) { get; set; } | The name of the table whose rows are updated. |
@@ -57,8 +57,6 @@ public sealed class SingleStoreBulkUpdate
 | [WriteToServerAsync](SingleStoreBulkUpdate/WriteToServerAsync.md)(…) | Asynchronously updates rows in the destination table using the data in the supplied DataTable. (3 methods) |
 
 ## Remarks
-
-Note: This API is a unique feature of SingleStoreConnector; you must [switch to SingleStoreConnector](https://mysqlconnector.net/overview/installing/) in order to use it.
 
 The following restrictions apply, and `WriteToServer` throws if they are not met: [`KeyColumns`](./SingleStoreBulkUpdate/KeyColumns.md) is required and every key column must be mapped; at least one non-key column must be mapped; the source must not contain duplicate key values; shard key columns cannot be updated; reference tables are not supported; and expression column mappings are not supported.
 

@@ -12,13 +12,48 @@ namespace SingleStoreConnector;
 // TODO: consider upsert support in a future version.
 
 /// <summary>
-/// Provides efficient bulk update operations for SingleStore databases.
+/// <para><see cref="SingleStoreBulkUpdate"/> lets you efficiently update many existing rows in a SingleStore table
+/// from an in-memory source. It complements <see cref="SingleStoreBulkCopy"/>: where bulk copy <em>inserts</em> rows,
+/// bulk update <em>modifies</em> rows that already exist, matching them on the columns in <see cref="KeyColumns"/>.</para>
+/// <para>The source rows are first staged into a temporary table using <see cref="SingleStoreBulkCopy"/>, then a single
+/// <c>UPDATE ... JOIN</c> copies the non-key column values into the matching rows of the destination table.</para>
+/// <para>Because staging uses <see cref="SingleStoreBulkCopy"/>, which loads data via <c>LOAD DATA LOCAL INFILE</c>,
+/// the connection string <em>must</em> have <c>AllowLoadLocalInfile=true</c> in order to use this class.</para>
+/// <para>Example code:</para>
+/// <code>
+/// // open a connection that is allowed to load local data
+/// await using var connection = new SingleStoreConnection("...;AllowLoadLocalInfile=True");
+/// await connection.OpenAsync();
+///
+/// // the source data; the column ordinals are referenced by the column mappings below
+/// var dataTable = new DataTable
+/// {
+///     Columns = { new DataColumn("id", typeof(int)), new DataColumn("status", typeof(string)) },
+///     Rows = { { 1, "active" }, { 2, "disabled" } },
+/// };
+///
+/// // update the "status" column of the rows whose "id" matches
+/// var bulkUpdate = new SingleStoreBulkUpdate(connection)
+/// {
+///     DestinationTableName = "users",
+///     KeyColumns = { "id" },
+///     ColumnMappings =
+///     {
+///         new SingleStoreBulkCopyColumnMapping(0, "id"),     // source column 0 -&gt; key column "id"
+///         new SingleStoreBulkCopyColumnMapping(1, "status"), // source column 1 -&gt; updated column "status"
+///     },
+/// };
+/// var result = await bulkUpdate.WriteToServerAsync(dataTable);
+///
+/// // check for problems
+/// if (result.Warnings.Count != 0) { /* handle potential data loss warnings */ }
+/// </code>
 /// </summary>
 /// <remarks>
-/// <para>
-/// This class stages source rows into a temporary table using <see cref="SingleStoreBulkCopy"/>,
-/// then updates matching rows in the destination table using a single <c>UPDATE ... JOIN</c> statement.
-/// </para>
+/// <para>The following restrictions apply, and <c>WriteToServer</c> throws if they are not met: <see cref="KeyColumns"/>
+/// is required and every key column must be mapped; at least one non-key column must be mapped; the source must not
+/// contain duplicate key values; shard key columns cannot be updated; reference tables are not supported; and
+/// expression column mappings are not supported.</para>
 /// <para>This API is experimental and may change in the future.</para>
 /// </remarks>
 public sealed class SingleStoreBulkUpdate
@@ -39,37 +74,38 @@ public sealed class SingleStoreBulkUpdate
     }
 
     /// <summary>
-    /// Gets or sets the name of the destination table.
+    /// The name of the table whose rows are updated.
     /// </summary>
+    /// <remarks>This name needs to be quoted if it contains special characters.</remarks>
     public string? DestinationTableName { get; set; }
 
     /// <summary>
-    /// Gets the list of key columns used for the JOIN condition.
-    /// These columns identify which rows to update.
+    /// The columns that identify which rows to update. They form the <c>JOIN</c> condition between the destination
+    /// table and the staging table, so every key column must also appear in <see cref="ColumnMappings"/>.
     /// </summary>
     public List<string> KeyColumns { get; }
 
     /// <summary>
-    /// Gets the collection of column mappings between source data and destination table.
+    /// A collection of <see cref="SingleStoreBulkCopyColumnMapping"/> objects that map source column ordinals onto
+    /// destination column names. Every key column and at least one non-key (updated) column must be mapped.
     /// </summary>
     public List<SingleStoreBulkCopyColumnMapping> ColumnMappings { get; }
 
     /// <summary>
-    /// Gets or sets the timeout in seconds for bulk operations.
+    /// The number of seconds for each phase of the operation to complete before it times out (default <c>30</c>).
     /// </summary>
-    public int BulkCopyTimeout { get; set; } = 30;
+    public int BulkUpdateTimeout { get; set; } = 30;
 
     /// <summary>
-    /// Gets or sets the number of rows to stage before firing the SingleStoreRowsStaged event.
-    /// Only applies to the staging phase (LOAD DATA), not the UPDATE execution.
-    /// Set to 0 to disable progress notifications.
+    /// If non-zero, this specifies the number of rows to be staged before raising the <see cref="SingleStoreRowsStaged"/>
+    /// event. This applies only to the staging phase, not to the <c>UPDATE</c> execution.
     /// </summary>
     public int NotifyAfter { get; set; }
 
     /// <summary>
-    /// Gets or sets whether to compute the RowsMatched count via a COUNT query.
-    /// Default is true. Set to false to skip the COUNT query for better performance.
-    /// When false, RowsMatched will be null in the result.
+    /// Whether to compute <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> via a <c>COUNT</c> query (default <c>true</c>).
+    /// Set this to <c>false</c> to skip that query for better performance, in which case
+    /// <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> is reported as <c>-1</c>.
     /// </summary>
     public bool ComputeRowsMatched { get; set; } = true;
 
@@ -451,7 +487,7 @@ public sealed class SingleStoreBulkUpdate
 		{
 			cmd.CommandText = createTableSql.ToString();
 			cmd.Transaction = m_transaction;
-			cmd.CommandTimeout = BulkCopyTimeout;
+			cmd.CommandTimeout = BulkUpdateTimeout;
 			await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 		}
 
@@ -514,7 +550,7 @@ public sealed class SingleStoreBulkUpdate
 		var bulkCopy = new SingleStoreBulkCopy(m_connection, m_transaction)
 		{
 			DestinationTableName = tempTableName,
-			BulkCopyTimeout = BulkCopyTimeout,
+			BulkCopyTimeout = BulkUpdateTimeout,
 			NotifyAfter = NotifyAfter,
 		};
 
@@ -631,7 +667,7 @@ public sealed class SingleStoreBulkUpdate
 		using var cmd = m_connection.CreateCommand();
 		cmd.CommandText = countSql;
 		cmd.Transaction = m_transaction;
-		cmd.CommandTimeout = BulkCopyTimeout;
+		cmd.CommandTimeout = BulkUpdateTimeout;
 
 		var scalar = await cmd.ExecuteScalarAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
@@ -685,7 +721,7 @@ public sealed class SingleStoreBulkUpdate
 		using var cmd = m_connection.CreateCommand();
 		cmd.CommandText = updateSql;
 		cmd.Transaction = m_transaction;
-		cmd.CommandTimeout = BulkCopyTimeout;
+		cmd.CommandTimeout = BulkUpdateTimeout;
 
 		// Collect any warnings raised during the UPDATE. Errors is already IReadOnlyList<SingleStoreError>.
 		void OnInfoMessage(object sender, SingleStoreInfoMessageEventArgs args) => m_warnings.AddRange(args.Errors);
@@ -738,7 +774,7 @@ public sealed class SingleStoreBulkUpdate
 			using var cmd = m_connection.CreateCommand();
 			cmd.CommandText = $"DROP TEMPORARY TABLE IF EXISTS {IdentifierHelper.QuoteIdentifier(tempTableName!)}";
 			cmd.Transaction = m_transaction;
-			cmd.CommandTimeout = BulkCopyTimeout;
+			cmd.CommandTimeout = BulkUpdateTimeout;
 			await cmd.ExecuteNonQueryAsync(ioBehavior, CancellationToken.None).ConfigureAwait(false);
 		}
 		catch (Exception ex)

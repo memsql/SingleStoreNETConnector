@@ -11,7 +11,7 @@ public sealed class SingleStoreConnectorTracingOptionsBuilder
 | name | description |
 | --- | --- |
 | [SingleStoreConnectorTracingOptionsBuilder](SingleStoreConnectorTracingOptionsBuilder/SingleStoreConnectorTracingOptionsBuilder.md)() | The default constructor. |
-| [EnableResultSetHeaderEvent](SingleStoreConnectorTracingOptionsBuilder/EnableResultSetHeaderEvent.md)(…) | Gets or sets a value indicating whether to enable the "time-to-first-read" event. Default is true to preserve existing behavior. |
+| [EnableResultSetHeaderEvent](SingleStoreConnectorTracingOptionsBuilder/EnableResultSetHeaderEvent.md)(…) | Gets or sets a value indicating whether to enable the "read-result-set-header" event. Default is false; set to true to opt in to this event. |
 
 ## See Also
 

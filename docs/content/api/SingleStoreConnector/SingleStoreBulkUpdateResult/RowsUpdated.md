@@ -1,10 +1,14 @@
 # SingleStoreBulkUpdateResult.RowsUpdated property
 
-The number of rows that were updated during the bulk update operation.
+The number of rows affected by the `UPDATE`, as reported by the server.
 
 ```csharp
 public int RowsUpdated { get; }
 ```
+
+## Remarks
+
+The exact meaning depends on the connection's [`UseAffectedRows`](../SingleStoreConnectionStringBuilder/UseAffectedRows.md) setting. With the default (`UseAffectedRows=false`) this is the number of rows matched by the update — including rows that already held the new values — and therefore typically equals [`RowsMatched`](./RowsMatched.md). With `UseAffectedRows=true` it is the number of rows whose values actually changed.
 
 ## See Also
 

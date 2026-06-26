@@ -10,6 +10,8 @@ public sealed class SingleStoreDbColumn : DbColumn
 | --- | --- |
 | [ProviderType](SingleStoreDbColumn/ProviderType.md) { get; } |  |
 | [TableName](SingleStoreDbColumn/TableName.md) { get; } | Gets the name of the table that the column belongs to. This will be the alias if the table is aliased in the query. |
+| [VectorDimensions](SingleStoreDbColumn/VectorDimensions.md) { get; } |  |
+| [VectorElementTypeName](SingleStoreDbColumn/VectorElementTypeName.md) { get; } |  |
 
 ## See Also
 

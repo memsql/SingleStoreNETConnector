@@ -504,7 +504,7 @@ insert into bulk_update_large values {SequentialRows(5000)};", connection))
 		var bulkUpdate = new SingleStoreBulkUpdate(connection)
 		{
 			DestinationTableName = "bulk_update_large",
-			BulkCopyTimeout = 60,
+			BulkUpdateTimeout = 60,
 			KeyColumns = { "id" },
 			ColumnMappings =
 			{

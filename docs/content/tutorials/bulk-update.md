@@ -94,7 +94,10 @@ Interpreting the result
 * `RowsStaged` — the number of source rows loaded into the staging table.
 * `RowsMatched` — the number of staged rows that matched a row in the destination table. This is `-1` when
   `ComputeRowsMatched` is set to `false` (see below).
-* `RowsUpdated` — the number of rows affected by the `UPDATE`.
+* `RowsUpdated` — the number of rows affected by the `UPDATE`, as reported by the server. Its exact meaning depends on
+  the connection's `UseAffectedRows` setting: with the default (`UseAffectedRows=false`) it counts the rows *matched* by
+  the update — including rows that already held the new values — so it typically equals `RowsMatched`; with
+  `UseAffectedRows=true` it counts only the rows whose values actually *changed*.
 * `Warnings` — any warnings raised while staging or updating; check that this is empty to avoid silent data loss from
   failed type conversions.
 
@@ -103,7 +106,7 @@ Performance
 
 * Set `ComputeRowsMatched = false` to skip the extra `COUNT(*)` query that populates `RowsMatched`. When disabled,
   `RowsMatched` is reported as `-1`.
-* Set `BulkCopyTimeout` (in seconds) to control how long each phase may run.
+* Set `BulkUpdateTimeout` (in seconds) to control how long each phase may run.
 * Set `NotifyAfter` to a non-zero value to receive `SingleStoreRowsStaged` events while rows are being staged; the
   event handler can set `Abort = true` to stop staging early.
 
