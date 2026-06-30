@@ -241,6 +241,64 @@ public class SchemaDetectorTests(DatabaseFixture database) : IClassFixture<Datab
 	}
 
 	[Fact]
+	public async Task GetColumnTypeDefinitionsHandlesCommentWithSpecialCharacters()
+	{
+		await using var connection = new SingleStoreConnection(database.Connection.ConnectionString);
+		await connection.OpenAsync();
+
+		var tableName = "schema_detector_coldefs_comment";
+
+		// A column comment can contain the characters the parser keys on: top-level commas (which separate
+		// columns), parentheses (which the type-args/paren tracking uses), and quotes/backticks. None of these
+		// must confuse SplitTopLevel, the column-name parsing, or the type extraction. The comment is a column
+		// option, so it must also be excluded from the returned type definition.
+		await CreateTableAsync(connection, tableName, "id INT PRIMARY KEY, value VARCHAR(50) COMMENT 'a, b (c) ''d'' `e`', other INT");
+
+		var detector = new SchemaDetector(connection);
+		var definitions = await detector.GetColumnTypeDefinitionsAsync(tableName, IOBehavior.Asynchronous);
+
+		// All three columns must be discovered (the comment must not have swallowed "other" or split it early).
+		Assert.Equal(3, definitions.Count);
+		Assert.Contains("varchar(50)", definitions["value"], StringComparison.OrdinalIgnoreCase);
+		Assert.DoesNotContain("comment", definitions["value"], StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("int", definitions["other"], StringComparison.OrdinalIgnoreCase);
+	}
+
+	[SkippableFact(ServerFeatures.Json)]
+	public async Task GetColumnTypeDefinitionsHandlesJsonColumn()
+	{
+		await using var connection = new SingleStoreConnection(database.Connection.ConnectionString);
+		await connection.OpenAsync();
+
+		var tableName = "schema_detector_coldefs_json";
+		await CreateTableAsync(connection, tableName, "id INT PRIMARY KEY, data JSON");
+
+		var detector = new SchemaDetector(connection);
+		var definitions = await detector.GetColumnTypeDefinitionsAsync(tableName, IOBehavior.Asynchronous);
+
+		Assert.Contains("json", definitions["data"], StringComparison.OrdinalIgnoreCase);
+	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public async Task GetColumnTypeDefinitionsHandlesVectorColumn()
+	{
+		await using var connection = new SingleStoreConnection(database.Connection.ConnectionString);
+		await connection.OpenAsync();
+
+		var tableName = "schema_detector_coldefs_vector";
+
+		// VECTOR has parenthesised arguments (dimension count, and possibly an element type) that must be kept as
+		// part of the type token rather than split on or truncated.
+		await CreateTableAsync(connection, tableName, "id INT PRIMARY KEY, embedding VECTOR(4)");
+
+		var detector = new SchemaDetector(connection);
+		var definitions = await detector.GetColumnTypeDefinitionsAsync(tableName, IOBehavior.Asynchronous);
+
+		Assert.Contains("vector", definitions["embedding"], StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("4", definitions["embedding"], StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
 	public async Task IsReferenceTableThrowsForNonexistentTable()
 	{
 		await using var connection = new SingleStoreConnection(database.Connection.ConnectionString);

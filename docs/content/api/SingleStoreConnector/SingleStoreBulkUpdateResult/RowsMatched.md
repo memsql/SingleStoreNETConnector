@@ -1,9 +1,9 @@
 # SingleStoreBulkUpdateResult.RowsMatched property
 
-The number of staged rows that matched rows in the destination table, or `-1` when [`ComputeRowsMatched`](../SingleStoreBulkUpdate/ComputeRowsMatched.md) was set to `false` and the count was not computed.
+The number of staged rows that matched rows in the destination table, or `null` when [`ComputeRowsMatched`](../SingleStoreBulkUpdate/ComputeRowsMatched.md) was set to `false` and the count was not computed.
 
 ```csharp
-public int RowsMatched { get; }
+public int? RowsMatched { get; }
 ```
 
 ## See Also

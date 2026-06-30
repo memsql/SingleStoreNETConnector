@@ -92,9 +92,9 @@ Interpreting the result
 `WriteToServerAsync` returns a `SingleStoreBulkUpdateResult`:
 
 * `RowsStaged` — the number of source rows loaded into the staging table.
-* `RowsMatched` — the number of staged rows that matched a row in the destination table. This is `-1` when
+* `RowsMatched` — the number of staged rows that matched a row in the destination table. This is `null` when
   `ComputeRowsMatched` is set to `false` (see below).
-* `RowsUpdated` — the number of rows affected by the `UPDATE`, as reported by the server. Its exact meaning depends on
+* `RowsAffected` — the number of rows affected by the `UPDATE`, as reported by the server. Its exact meaning depends on
   the connection's `UseAffectedRows` setting: with the default (`UseAffectedRows=false`) it counts the rows *matched* by
   the update — including rows that already held the new values — so it typically equals `RowsMatched`; with
   `UseAffectedRows=true` it counts only the rows whose values actually *changed*.
@@ -105,10 +105,11 @@ Performance
 -----------
 
 * Set `ComputeRowsMatched = false` to skip the extra `COUNT(*)` query that populates `RowsMatched`. When disabled,
-  `RowsMatched` is reported as `-1`.
+  `RowsMatched` is `null`.
 * Set `BulkUpdateTimeout` (in seconds) to control how long each phase may run.
 * Set `NotifyAfter` to a non-zero value to receive `SingleStoreRowsStaged` events while rows are being staged; the
-  event handler can set `Abort = true` to stop staging early.
+  event handler can set `Abort = true` to cancel the operation. Aborting stops staging and skips the `UPDATE`
+  entirely, so no rows in the destination table are modified.
 
 Limitations
 -----------
@@ -119,8 +120,22 @@ Limitations
 * At least one non-key column must be mapped, so there is a column to update.
 * Duplicate key values in the source data are rejected; they would collide in the staging table's primary key.
 * Shard key columns cannot be updated, because SingleStore does not allow updating a shard key.
+* Generated (computed) columns cannot be updated, and are rejected if mapped.
 * Reference tables are not supported as the destination.
 * Expression column mappings (a `SingleStoreBulkCopyColumnMapping` with an `Expression`) are not supported.
+
+Other things to be aware of:
+
+* **Key column types.** The key columns become the primary key of the staging table, so they must be types that
+  SingleStore allows in a primary key. Large `TEXT`/`BLOB`/`JSON`/spatial columns are not usable as key columns.
+* **Required privileges.** In addition to `UPDATE` on the destination table, the connection needs permission to run
+  `SHOW CREATE TABLE`, `SHOW INDEXES`, and a schema-only `SELECT` against it, because the operation inspects the
+  table's schema before updating.
+* **`IDataReader` source.** When the source is an `IDataReader`, it must be opened on a *different* connection than
+  the one used for the bulk update. The update connection runs schema queries, creates the staging table, and loads
+  data, so it cannot have an open reader on it at the same time.
+* **Thread safety.** A `SingleStoreBulkUpdate` instance is not thread-safe. Do not share an instance across concurrent
+  operations.
 
 Transactions
 ------------

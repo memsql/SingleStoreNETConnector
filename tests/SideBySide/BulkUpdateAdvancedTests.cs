@@ -91,7 +91,7 @@ insert into bulk_update_abort values {SequentialRows(100)};", connection))
 
 		var result = await bulkUpdate.WriteToServerAsync(dataTable);
 
-		Assert.Equal(0, result.RowsUpdated);
+		Assert.Equal(0, result.RowsAffected);
 
 		// Every row must still hold its seeded value of 0 (the update would have set value = id * 2).
 		using var selectCommand = new SingleStoreCommand("select count(*) from bulk_update_abort where value <> 0;", connection);
@@ -142,6 +142,60 @@ insert into bulk_update_no_notify values {SequentialRows(100)};", connection))
 		Assert.Equal(0, eventCount);
 	}
 
+	[Theory]
+	[InlineData(false, 2)] // CLIENT_FOUND_ROWS: RowsAffected counts matched rows, including the unchanged one
+	[InlineData(true, 1)] // RowsAffected counts only the row whose value actually changed
+	public async Task RowsAffectedDependsOnUseAffectedRows(bool useAffectedRows, int expectedRowsAffected)
+	{
+		var csb = new SingleStoreConnectionStringBuilder(database.Connection.ConnectionString)
+		{
+			AllowLoadLocalInfile = true,
+			UseAffectedRows = useAffectedRows,
+		};
+
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_affected;
+create table bulk_update_affected(id int primary key, value varchar(100));
+insert into bulk_update_affected values (1, 'unchanged'), (2, 'before');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		// Row 1 is updated to the value it already holds (no change); row 2 changes. Both match the join, so the
+		// difference between the two settings is whether RowsAffected counts the unchanged matched row.
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows =
+			{
+				new object[] { 1, "unchanged" },
+				new object[] { 2, "after" },
+			},
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_affected",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		// RowsMatched always reflects the join (both rows) regardless of the connection setting.
+		Assert.Equal(2, result.RowsMatched);
+		Assert.Equal(expectedRowsAffected, result.RowsAffected);
+	}
+
 	[Fact]
 	public async Task SkipsMatchCountWhenComputeRowsMatchedIsFalse()
 	{
@@ -179,8 +233,8 @@ insert into bulk_update_nocount values (1, 'original');", connection))
 		var result = await bulkUpdate.WriteToServerAsync(dataTable);
 
 		Assert.Equal(1, result.RowsStaged);
-		Assert.Equal(-1, result.RowsMatched); // -1 signals the COUNT was intentionally skipped
-		Assert.Equal(1, result.RowsUpdated);
+		Assert.Null(result.RowsMatched); // null signals the COUNT was intentionally skipped
+		Assert.Equal(1, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select value from bulk_update_nocount where id = 1;", connection);
 		Assert.Equal("updated", await selectCommand.ExecuteScalarAsync());
@@ -225,7 +279,7 @@ insert into `my-special-table` values (1, 'Alice', 'value1');", connection))
 
 		Assert.Equal(1, result.RowsStaged);
 		Assert.Equal(1, result.RowsMatched);
-		Assert.Equal(1, result.RowsUpdated);
+		Assert.Equal(1, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select `user name`, `select` from `my-special-table` where `user-id` = 1;", connection);
 		using var reader = await selectCommand.ExecuteReaderAsync();
@@ -276,7 +330,7 @@ insert into bulk_update_lossy values (1, 0.0000, 0, 'active');", connection))
 
 		var result = await bulkUpdate.WriteToServerAsync(dataTable);
 
-		Assert.Equal(1, result.RowsUpdated);
+		Assert.Equal(1, result.RowsAffected);
 		Assert.Empty(result.Warnings);
 
 		using var selectCommand = new SingleStoreCommand("select amount, quantity, status from bulk_update_lossy where id = 1;", connection);
@@ -285,6 +339,148 @@ insert into bulk_update_lossy values (1, 0.0000, 0, 'active');", connection))
 		Assert.Equal(1234.5678m, reader.GetDecimal(0));
 		Assert.Equal(4000000000L, Convert.ToInt64(reader.GetValue(1)));
 		Assert.Equal("inactive", reader.GetString(2));
+	}
+
+	[Fact]
+	public async Task RoundTripsBinaryColumn()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// VARBINARY is staged directly (not via an UNHEX expression mapping the caller provides); SingleStoreBulkCopy
+		// applies the hex conversion itself based on the staging column's type, so the bytes must round-trip exactly.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_binary;
+create table bulk_update_binary(id int primary key, payload varbinary(16));
+insert into bulk_update_binary values (1, NULL);", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var payload = new byte[] { 0x00, 0x01, 0xFE, 0xFF, 0x10, 0x20 };
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("payload", typeof(byte[])),
+			},
+			Rows = { new object[] { 1, payload } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_binary",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "payload"),
+			},
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		Assert.Equal(1, result.RowsAffected);
+		Assert.Empty(result.Warnings);
+
+		using var selectCommand = new SingleStoreCommand("select payload from bulk_update_binary where id = 1;", connection);
+		Assert.Equal(payload, (byte[]) (await selectCommand.ExecuteScalarAsync())!);
+	}
+
+	[Fact]
+	public async Task RoundTripsBitColumn()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// BIT is staged directly; SingleStoreBulkCopy converts the staged value with CAST(... AS UNSIGNED) based on
+		// the staging column's type, so the bit value must round-trip.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_bit;
+create table bulk_update_bit(id int primary key, flags bit(8));
+insert into bulk_update_bit values (1, b'00000000');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("flags", typeof(ulong)),
+			},
+			Rows = { new object[] { 1, 0b1010_0101UL } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_bit",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "flags"),
+			},
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		Assert.Equal(1, result.RowsAffected);
+		Assert.Empty(result.Warnings);
+
+		using var selectCommand = new SingleStoreCommand("select flags from bulk_update_bit where id = 1;", connection);
+		using var reader = await selectCommand.ExecuteReaderAsync();
+		Assert.True(await reader.ReadAsync());
+		Assert.Equal(0b1010_0101UL, reader.GetUInt64(0));
+	}
+
+	[SkippableFact(ServerFeatures.ExtendedDataTypes)]
+	public async Task RoundTripsVectorColumn()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// VECTOR carries both a dimension count and an element type. The staging column mirrors VECTOR(3, F32)
+		// verbatim, and SingleStoreBulkCopy reconstructs the value with UNHEX(...):>VECTOR(3, F32) from that
+		// staging column's metadata, so the vector must round-trip exactly.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_vector;
+create table bulk_update_vector(id int primary key, embedding vector(3, F32));
+insert into bulk_update_vector values (1, '[0,0,0]');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var embedding = new[] { 1.5f, -2.5f, 3.25f };
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("embedding", typeof(float[])),
+			},
+			Rows = { new object[] { 1, embedding } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_vector",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "embedding"),
+			},
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		Assert.Equal(1, result.RowsAffected);
+		Assert.Empty(result.Warnings);
+
+		using var selectCommand = new SingleStoreCommand("select embedding from bulk_update_vector where id = 1;", connection);
+		using var reader = await selectCommand.ExecuteReaderAsync();
+		Assert.True(await reader.ReadAsync());
+		Assert.Equal(embedding, reader.GetFieldValue<ReadOnlyMemory<float>>(0).ToArray());
 	}
 
 	[Fact]
@@ -302,7 +498,8 @@ insert into bulk_update_reader_src values (1, 'new1'), (2, 'new2');", connection
 			await cmd.ExecuteNonQueryAsync();
 		}
 
-		// Read source rows on a second connection so the reader is independent of the update connection.
+		// Read source rows on a second connection: an IDataReader source must not be open on the bulk update's own
+		// connection, which needs to run schema queries, create the staging table, and load data.
 		using var readerConnection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
 		await readerConnection.OpenAsync();
 		using var selectCommand = new SingleStoreCommand("select id, value from bulk_update_reader_src order by id;", readerConnection);
@@ -323,7 +520,7 @@ insert into bulk_update_reader_src values (1, 'new1'), (2, 'new2');", connection
 
 		Assert.Equal(2, result.RowsStaged);
 		Assert.Equal(2, result.RowsMatched);
-		Assert.Equal(2, result.RowsUpdated);
+		Assert.Equal(2, result.RowsAffected);
 
 		using var verifyCommand = new SingleStoreCommand("select value from bulk_update_reader_dest where id = 1;", connection);
 		Assert.Equal("new1", await verifyCommand.ExecuteScalarAsync());
@@ -372,7 +569,7 @@ insert into bulk_update_shard_aligned values (1, 'old1'), (2, 'old2');", connect
 		var result = await bulkUpdate.WriteToServerAsync(dataTable);
 
 		Assert.Equal(2, result.RowsMatched);
-		Assert.Equal(2, result.RowsUpdated);
+		Assert.Equal(2, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select value from bulk_update_shard_aligned where id = 1;", connection);
 		Assert.Equal("new1", await selectCommand.ExecuteScalarAsync());
@@ -427,7 +624,7 @@ insert into bulk_update_shard_composite values (1, 100, 'old1'), (2, 200, 'old2'
 		var result = await bulkUpdate.WriteToServerAsync(dataTable);
 
 		Assert.Equal(2, result.RowsMatched);
-		Assert.Equal(2, result.RowsUpdated);
+		Assert.Equal(2, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select value from bulk_update_shard_composite where tenant_id = 1 and user_id = 100;", connection);
 		Assert.Equal("new1", await selectCommand.ExecuteScalarAsync());
@@ -477,7 +674,7 @@ insert into bulk_update_shard_mismatch values (1, 10, 'old1'), (2, 20, 'old2');"
 		var result = await bulkUpdate.WriteToServerAsync(dataTable);
 
 		Assert.Equal(2, result.RowsMatched);
-		Assert.Equal(2, result.RowsUpdated);
+		Assert.Equal(2, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select value from bulk_update_shard_mismatch where id = 1;", connection);
 		Assert.Equal("new1", await selectCommand.ExecuteScalarAsync());

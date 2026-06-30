@@ -5,7 +5,7 @@ using SingleStoreConnector.Protocol.Serialization;
 
 namespace SingleStoreConnector.Utilities;
 
-internal sealed class SchemaDetector(SingleStoreConnection connection, SingleStoreTransaction? transaction = null)
+internal sealed class SchemaDetector(SingleStoreConnection connection, SingleStoreTransaction? transaction = null, int commandTimeout = 0)
 {
 	private static readonly Regex referenceTableRegex =
 		new(@"CREATE\s+(?:(?:ROWSTORE|COLUMNSTORE)\s+)?REFERENCE\s+TABLE",
@@ -19,6 +19,8 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 		connection ?? throw new ArgumentNullException(nameof(connection));
 
 	private readonly SingleStoreTransaction? m_transaction = transaction;
+
+	private readonly int m_commandTimeout = commandTimeout;
 
 	/// <summary>
 	/// Detects if the specified table is a reference table.
@@ -48,6 +50,7 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 		using (var cmd = m_connection.CreateCommand())
 		{
 			cmd.Transaction = m_transaction;
+			cmd.CommandTimeout = m_commandTimeout;
 			cmd.CommandText = $"SHOW INDEXES FROM {IdentifierHelper.QuoteQualifiedIdentifier(tableName)}";
 
 			await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken)
@@ -111,6 +114,7 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 
 		using var cmd = m_connection.CreateCommand();
 		cmd.Transaction = m_transaction;
+		cmd.CommandTimeout = m_commandTimeout;
 		cmd.CommandText = $"SHOW CREATE TABLE {IdentifierHelper.QuoteQualifiedIdentifier(tableName)}";
 
 		await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken)
@@ -224,6 +228,7 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 
 		using var cmd = m_connection.CreateCommand();
 		cmd.Transaction = m_transaction;
+		cmd.CommandTimeout = m_commandTimeout;
 		cmd.CommandText = $"SELECT * FROM {IdentifierHelper.QuoteQualifiedIdentifier(tableName)} LIMIT 0";
 
 		await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly, ioBehavior, cancellationToken)

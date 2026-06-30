@@ -17,10 +17,10 @@ public sealed class SingleStoreBulkUpdateResult
 	public int RowsStaged { get; }
 
 	/// <summary>
-	/// The number of staged rows that matched rows in the destination table, or <c>-1</c> when
+	/// The number of staged rows that matched rows in the destination table, or <c>null</c> when
 	/// <see cref="SingleStoreBulkUpdate.ComputeRowsMatched"/> was set to <c>false</c> and the count was not computed.
 	/// </summary>
-	public int RowsMatched { get; }
+	public int? RowsMatched { get; }
 
 	/// <summary>
 	/// The number of rows affected by the <c>UPDATE</c>, as reported by the server.
@@ -29,17 +29,17 @@ public sealed class SingleStoreBulkUpdateResult
 	/// setting. With the default (<c>UseAffectedRows=false</c>) this is the number of rows <em>matched</em> by the update —
 	/// including rows that already held the new values — and therefore typically equals <see cref="RowsMatched"/>. With
 	/// <c>UseAffectedRows=true</c> it is the number of rows whose values actually <em>changed</em>.</remarks>
-	public int RowsUpdated { get; }
+	public int RowsAffected { get; }
 
 	internal SingleStoreBulkUpdateResult(
 		IReadOnlyList<SingleStoreError> warnings,
 		int rowsStaged,
-		int rowsMatched,
-		int rowsUpdated)
+		int? rowsMatched,
+		int rowsAffected)
 	{
 		Warnings = warnings;
 		RowsStaged = rowsStaged;
 		RowsMatched = rowsMatched;
-		RowsUpdated = rowsUpdated;
+		RowsAffected = rowsAffected;
 	}
 }

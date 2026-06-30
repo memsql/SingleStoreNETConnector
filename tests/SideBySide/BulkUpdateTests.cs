@@ -45,7 +45,7 @@ insert into bulk_update_basic values (1, 'Alice', 'active'), (2, 'Bob', 'active'
 
 		Assert.Equal(2, result.RowsStaged);
 		Assert.Equal(2, result.RowsMatched);
-		Assert.Equal(2, result.RowsUpdated);
+		Assert.Equal(2, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select status from bulk_update_basic order by id;", connection);
 		using var reader = await selectCommand.ExecuteReaderAsync();
@@ -102,7 +102,7 @@ insert into bulk_update_composite values (1, 100, 'user100@tenant1.com'), (1, 10
 
 		Assert.Equal(2, result.RowsStaged);
 		Assert.Equal(2, result.RowsMatched);
-		Assert.Equal(2, result.RowsUpdated);
+		Assert.Equal(2, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select email from bulk_update_composite where tenant_id = 1 and user_id = 100;", connection);
 		Assert.Equal("new100@tenant1.com", await selectCommand.ExecuteScalarAsync());
@@ -154,7 +154,7 @@ insert into bulk_update_nomatch values (1, 'original');", connection))
 
 		Assert.Equal(1, result.RowsStaged);
 		Assert.Equal(0, result.RowsMatched);
-		Assert.Equal(0, result.RowsUpdated);
+		Assert.Equal(0, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select value from bulk_update_nomatch where id = 1;", connection);
 		Assert.Equal("original", await selectCommand.ExecuteScalarAsync());
@@ -244,7 +244,7 @@ insert into bulk_update_txn values (1, 'original');", connection))
 			};
 
 			var result = await WriteToServerAsync(bulkUpdate, dataTable, isAsync);
-			Assert.Equal(1, result.RowsUpdated);
+			Assert.Equal(1, result.RowsAffected);
 
 			await transaction.RollbackAsync();
 		}
@@ -290,7 +290,7 @@ create table bulk_update_empty(id int primary key, value varchar(100));", connec
 
 		Assert.Equal(0, result.RowsStaged);
 		Assert.Equal(0, result.RowsMatched);
-		Assert.Equal(0, result.RowsUpdated);
+		Assert.Equal(0, result.RowsAffected);
 	}
 
 	[Theory]
@@ -334,7 +334,7 @@ insert into bulk_update_commit values (1, 'original');", connection))
 			};
 
 			var result = await WriteToServerAsync(bulkUpdate, dataTable, isAsync);
-			Assert.Equal(1, result.RowsUpdated);
+			Assert.Equal(1, result.RowsAffected);
 
 			await transaction.CommitAsync();
 		}
@@ -385,7 +385,7 @@ insert into bulk_update_autoopen values (1, 'original');", setupConnection);
 
 		Assert.Equal(ConnectionState.Closed, connection.State);
 		var result = await WriteToServerAsync(bulkUpdate, dataTable, isAsync);
-		Assert.Equal(1, result.RowsUpdated);
+		Assert.Equal(1, result.RowsAffected);
 		Assert.Equal(ConnectionState.Closed, connection.State);
 
 		await connection.OpenAsync();
@@ -440,7 +440,7 @@ insert into bulk_update_datarows values (1, 'old1'), (2, 'old2'), (3, 'old3');",
 
 		Assert.Equal(2, result.RowsStaged);
 		Assert.Equal(2, result.RowsMatched);
-		Assert.Equal(2, result.RowsUpdated);
+		Assert.Equal(2, result.RowsAffected);
 
 		using var selectCommand = new SingleStoreCommand("select value from bulk_update_datarows order by id;", connection);
 		using var reader = await selectCommand.ExecuteReaderAsync();
@@ -492,7 +492,7 @@ create table bulk_update_empty_rows(id int primary key, value varchar(100));", c
 
 		Assert.Equal(0, result.RowsStaged);
 		Assert.Equal(0, result.RowsMatched);
-		Assert.Equal(0, result.RowsUpdated);
+		Assert.Equal(0, result.RowsAffected);
 	}
 
 	[Fact]

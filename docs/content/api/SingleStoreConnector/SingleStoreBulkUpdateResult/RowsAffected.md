@@ -1,9 +1,9 @@
-# SingleStoreBulkUpdateResult.RowsUpdated property
+# SingleStoreBulkUpdateResult.RowsAffected property
 
 The number of rows affected by the `UPDATE`, as reported by the server.
 
 ```csharp
-public int RowsUpdated { get; }
+public int RowsAffected { get; }
 ```
 
 ## Remarks

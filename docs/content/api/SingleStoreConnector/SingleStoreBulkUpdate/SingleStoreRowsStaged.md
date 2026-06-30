@@ -10,7 +10,7 @@ public event SingleStoreRowsStagedEventHandler? SingleStoreRowsStaged;
 
 Receipt of a RowsStaged event does not imply that any rows have been sent to the server or committed.
 
-The [`Abort`](../SingleStoreRowsStagedEventArgs/Abort.md) property can be set to `true` by the event handler to abort the staging.
+The [`Abort`](../SingleStoreRowsStagedEventArgs/Abort.md) property can be set to `true` by the event handler to cancel the operation. Aborting stops staging and skips the `UPDATE`, so no rows in the destination table are modified.
 
 ## See Also
 

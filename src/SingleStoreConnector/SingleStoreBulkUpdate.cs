@@ -52,8 +52,9 @@ namespace SingleStoreConnector;
 /// <remarks>
 /// <para>The following restrictions apply, and <c>WriteToServer</c> throws if they are not met: <see cref="KeyColumns"/>
 /// is required and every key column must be mapped; at least one non-key column must be mapped; the source must not
-/// contain duplicate key values; shard key columns cannot be updated; reference tables are not supported; and
-/// expression column mappings are not supported.</para>
+/// contain duplicate key values; shard key columns and generated (computed) columns cannot be updated; reference tables
+/// are not supported; and expression column mappings are not supported.</para>
+/// <para>An instance of this class is not thread-safe; do not share an instance across concurrent operations.</para>
 /// <para>This API is experimental and may change in the future.</para>
 /// </remarks>
 public sealed class SingleStoreBulkUpdate
@@ -105,7 +106,7 @@ public sealed class SingleStoreBulkUpdate
     /// <summary>
     /// Whether to compute <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> via a <c>COUNT</c> query (default <c>true</c>).
     /// Set this to <c>false</c> to skip that query for better performance, in which case
-    /// <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> is reported as <c>-1</c>.
+    /// <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> is <c>null</c>.
     /// </summary>
     public bool ComputeRowsMatched { get; set; } = true;
 
@@ -114,7 +115,9 @@ public sealed class SingleStoreBulkUpdate
     /// </summary>
     /// <remarks>
     /// <para>Receipt of a RowsStaged event does not imply that any rows have been sent to the server or committed.</para>
-    /// <para>The <see cref="SingleStoreRowsStagedEventArgs.Abort"/> property can be set to <c>true</c> by the event handler to abort the staging.</para>
+    /// <para>The <see cref="SingleStoreRowsStagedEventArgs.Abort"/> property can be set to <c>true</c> by the event handler
+    /// to cancel the operation. Aborting stops staging and skips the <c>UPDATE</c>, so no rows in the destination table
+    /// are modified.</para>
     /// </remarks>
     public event SingleStoreRowsStagedEventHandler? SingleStoreRowsStaged;
 
@@ -225,7 +228,7 @@ public sealed class SingleStoreBulkUpdate
 		// opening the connection and creating a staging table. (An IDataReader's count is unknown, so it still
 		// flows through and stages zero rows naturally.)
 		if (GetRowCount(source) == 0)
-			return CreateResult(rowsStaged: 0, rowsMatched: ComputeRowsMatched ? 0 : -1, rowsUpdated: 0);
+			return CreateResult(rowsStaged: 0, rowsMatched: ComputeRowsMatched ? 0 : null, rowsAffected: 0);
 
 		var stopwatch = Stopwatch.StartNew();
 
@@ -259,7 +262,7 @@ public sealed class SingleStoreBulkUpdate
 			{
 				stopwatch.Stop();
 				Log.CompletedBulkUpdate(m_logger, rowsStaged, -1, 0, stopwatch.ElapsedMilliseconds);
-				return CreateResult(rowsStaged, rowsMatched: -1, rowsUpdated: 0);
+				return CreateResult(rowsStaged, rowsMatched: null, rowsAffected: 0);
 			}
 
 			// Phase 3 (optional): count how many staged rows match a destination row.
@@ -268,13 +271,13 @@ public sealed class SingleStoreBulkUpdate
 				Log.LargeUnmatchedCountForBulkUpdate(m_logger, rowsStaged, matched, rowsStaged - matched);
 
 			// Phase 4: run the UPDATE ... JOIN that copies the non-key values into the matching rows.
-			var rowsUpdated = await ExecuteUpdateAsync(tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+			var rowsAffected = await ExecuteUpdateAsync(tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			stopwatch.Stop();
-			Log.CompletedBulkUpdate(m_logger, rowsStaged, rowsMatched ?? -1, rowsUpdated, stopwatch.ElapsedMilliseconds);
+			Log.CompletedBulkUpdate(m_logger, rowsStaged, rowsMatched ?? -1, rowsAffected, stopwatch.ElapsedMilliseconds);
 
-			// RowsMatched is reported as -1 when ComputeRowsMatched was false (the count was intentionally skipped).
-			return CreateResult(rowsStaged, rowsMatched ?? -1, rowsUpdated);
+			// RowsMatched is null when ComputeRowsMatched was false (the count was intentionally skipped).
+			return CreateResult(rowsStaged, rowsMatched, rowsAffected);
 		}
 		finally
 		{
@@ -304,8 +307,8 @@ public sealed class SingleStoreBulkUpdate
 	/// Builds the operation result, snapshotting the warnings collected so far into a new list so that a result
 	/// returned from one call is not mutated when the same <see cref="SingleStoreBulkUpdate"/> instance is reused.
 	/// </summary>
-	private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, int rowsMatched, int rowsUpdated) =>
-		new(new List<SingleStoreError>(m_warnings), rowsStaged, rowsMatched, rowsUpdated);
+	private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, int? rowsMatched, int rowsAffected) =>
+		new(new List<SingleStoreError>(m_warnings), rowsStaged, rowsMatched, rowsAffected);
 
     private void ValidateColumnMappings()
 	{
@@ -374,7 +377,7 @@ public sealed class SingleStoreBulkUpdate
 
     private async ValueTask ValidateSchemaAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		var schemaDetector = new SchemaDetector(m_connection, m_transaction);
+		var schemaDetector = new SchemaDetector(m_connection, m_transaction, BulkUpdateTimeout);
 
 		// TODO: make changes to support the solutions described here -- https://docs.singlestore.com/cloud/reference/troubleshooting-reference/query-errors/error-1706-hy-000-feature-multi-table-update-delete-with-a-reference-table-as-target-table-is-not-supported-by-memsql/
 		if (await schemaDetector.IsReferenceTableAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false))
@@ -461,7 +464,7 @@ public sealed class SingleStoreBulkUpdate
 		// starts with a letter regardless of the GUID's first hex digit.
 		var tempTableName = $"_bulk_update_staging_g{Guid.NewGuid():N}";
 
-		var schemaDetector = new SchemaDetector(m_connection, m_transaction);
+		var schemaDetector = new SchemaDetector(m_connection, m_transaction, BulkUpdateTimeout);
 
 		// Pull the exact, server-rendered type definition for every column so the staging columns are
 		// byte-for-byte type compatible with the destination (see remarks).

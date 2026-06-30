@@ -1,6 +1,6 @@
 # SingleStoreBulkUpdate.ComputeRowsMatched property
 
-Whether to compute [`RowsMatched`](../SingleStoreBulkUpdateResult/RowsMatched.md) via a `COUNT` query (default `true`). Set this to `false` to skip that query for better performance, in which case [`RowsMatched`](../SingleStoreBulkUpdateResult/RowsMatched.md) is reported as `-1`.
+Whether to compute [`RowsMatched`](../SingleStoreBulkUpdateResult/RowsMatched.md) via a `COUNT` query (default `true`). Set this to `false` to skip that query for better performance, in which case [`RowsMatched`](../SingleStoreBulkUpdateResult/RowsMatched.md) is `null`.
 
 ```csharp
 public bool ComputeRowsMatched { get; set; }
