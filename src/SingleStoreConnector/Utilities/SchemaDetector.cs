@@ -174,6 +174,48 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 	}
 
 	/// <summary>
+	/// Gets the names of the generated (computed) columns of the specified table, as declared in
+	/// <c>SHOW CREATE TABLE</c> via an <c>AS (...)</c> / <c>GENERATED ALWAYS AS (...)</c> / <c>COMPUTED</c> clause.
+	/// </summary>
+	/// <returns>A case-insensitive set of generated column names, or an empty set if there are none.</returns>
+	public async Task<HashSet<string>> GetGeneratedColumnsAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken = default)
+	{
+		EnsureConnectionIsOpen();
+
+		var createTableSql = await GetCreateTableStatementAsync(tableName, ioBehavior, cancellationToken)
+			.ConfigureAwait(false);
+
+		var generatedColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+		var body = ExtractTableBody(createTableSql, tableName);
+		foreach (var item in SplitTopLevel(body))
+		{
+			var trimmed = item.TrimStart();
+
+			// Only column definitions (which begin with a backtick-quoted name) can be generated columns.
+			if (trimmed.Length == 0 || trimmed[0] != '`')
+				continue;
+
+			var (columnName, rest) = ParseQuotedNameAndRest(trimmed);
+
+			// A generated column declares its expression with an "AS (...)" clause (optionally preceded by
+			// GENERATED ALWAYS), or uses the COMPUTED keyword. Look for these tokens at the top level of the
+			// remaining definition so a matching word inside the type, a string default or a comment is ignored.
+			foreach (var token in TokenizeTopLevel(rest))
+			{
+				if (string.Equals(token, "AS", StringComparison.OrdinalIgnoreCase) ||
+					string.Equals(token, "COMPUTED", StringComparison.OrdinalIgnoreCase))
+				{
+					generatedColumns.Add(columnName);
+					break;
+				}
+			}
+		}
+
+		return generatedColumns;
+	}
+
+	/// <summary>
 	/// Gets column metadata for the specified table.
 	/// </summary>
 	public async Task<DataTable> GetTableSchemaAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken = default)

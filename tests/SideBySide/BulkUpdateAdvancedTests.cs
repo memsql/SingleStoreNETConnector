@@ -51,7 +51,7 @@ insert into bulk_update_progress values {SequentialRows(100)};", connection))
 	}
 
 	[Fact]
-	public async Task AbortStopsStaging()
+	public async Task AbortLeavesDestinationUnchanged()
 	{
 		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
 		await connection.OpenAsync();
@@ -85,12 +85,17 @@ insert into bulk_update_abort values {SequentialRows(100)};", connection))
 			},
 		};
 
-		// Abort on the first progress notification; staging must stop before all rows are sent.
+		// Abort on the first progress notification. Aborting must cancel the whole operation, not perform a
+		// partial update: no rows are updated and the destination table is left unchanged.
 		bulkUpdate.SingleStoreRowsStaged += (sender, e) => e.Abort = true;
 
 		var result = await bulkUpdate.WriteToServerAsync(dataTable);
 
-		Assert.True(result.RowsStaged < 100, $"expected staging to stop early after abort, but staged {result.RowsStaged} rows");
+		Assert.Equal(0, result.RowsUpdated);
+
+		// Every row must still hold its seeded value of 0 (the update would have set value = id * 2).
+		using var selectCommand = new SingleStoreCommand("select count(*) from bulk_update_abort where value <> 0;", connection);
+		Assert.Equal(0L, Convert.ToInt64(await selectCommand.ExecuteScalarAsync()));
 	}
 
 	[Fact]

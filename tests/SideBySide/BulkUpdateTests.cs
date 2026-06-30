@@ -452,6 +452,92 @@ insert into bulk_update_datarows values (1, 'old1'), (2, 'old2'), (3, 'old3');",
 		Assert.Equal("new3", reader.GetString(0));
 	}
 
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task EmptyDataRowSequenceReturnsZeroCounts(bool isAsync)
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString(database));
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_empty_rows;
+create table bulk_update_empty_rows(id int primary key, value varchar(100));", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+		};
+
+		// An empty DataRow sequence must behave like an empty DataTable: return zero counts without error.
+		var dataRows = dataTable.Select("id > 0");
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_empty_rows",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var result = isAsync ? await bulkUpdate.WriteToServerAsync(dataRows) : bulkUpdate.WriteToServer(dataRows);
+
+		Assert.Equal(0, result.RowsStaged);
+		Assert.Equal(0, result.RowsMatched);
+		Assert.Equal(0, result.RowsUpdated);
+	}
+
+	[Fact]
+	public async Task ResultWarningsAreNotMutatedByLaterCall()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString(database));
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_warnings;
+create table bulk_update_warnings(id int primary key, value varchar(100));
+insert into bulk_update_warnings values (1, 'original');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows = { new object[] { 1, "updated" } },
+		};
+
+		// Reuse the same instance for two operations; the first result's Warnings collection must be a snapshot
+		// that is unaffected by the second call (which clears and repopulates the internal warnings list).
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_warnings",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var firstResult = await bulkUpdate.WriteToServerAsync(dataTable);
+		var secondResult = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		// Each result must own an independent snapshot of the warnings rather than a view over a shared list that
+		// the second call clears and repopulates.
+		Assert.NotSame(firstResult.Warnings, secondResult.Warnings);
+	}
+
 	private static async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(SingleStoreBulkUpdate bulkUpdate, DataTable dataTable, bool isAsync) =>
 		isAsync ? await bulkUpdate.WriteToServerAsync(dataTable) : bulkUpdate.WriteToServer(dataTable);
 

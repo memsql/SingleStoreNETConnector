@@ -303,6 +303,45 @@ create table bulk_update_shardkey(id int, tenant_id int, value varchar(100), pri
 		Assert.Contains("tenant_id", exception.Message);
 	}
 
+	[Fact]
+	public async Task ThrowsWhenUpdatingGeneratedColumn()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// total is a generated (computed) column; its value is derived from an expression and cannot be updated.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_generated;
+create table bulk_update_generated(id int primary key, price int, total as (price * 2) persisted int);", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("total", typeof(int)),
+			},
+			Rows = { new object[] { 1, 100 } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_generated",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "total"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<NotSupportedException>(async () => await bulkUpdate.WriteToServerAsync(dataTable));
+		Assert.Contains("generated", exception.Message, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("total", exception.Message);
+	}
+
 	private static DataTable NewTable(params string[] columnNames)
 	{
 		var dataTable = new DataTable();

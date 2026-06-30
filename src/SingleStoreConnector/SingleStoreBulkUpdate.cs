@@ -215,11 +215,17 @@ public sealed class SingleStoreBulkUpdate
 		// Reset any warnings from a previous call so the result only reflects this operation.
 		m_warnings.Clear();
 
+		// Materialize a lazy DataRow sequence once, so its row count is known (which makes empty input return a
+		// consistent zero-count result regardless of source type) and so SingleStoreBulkCopy can enumerate it
+		// without re-running the original (possibly single-use) source.
+		if (source is IEnumerable<DataRow> dataRows && source is not ICollection<DataRow> && source is not IReadOnlyCollection<DataRow>)
+			source = dataRows.ToList();
+
 		// Short-circuit input whose row count is known to be zero: there is nothing to stage or update, so avoid
 		// opening the connection and creating a staging table. (An IDataReader's count is unknown, so it still
 		// flows through and stages zero rows naturally.)
 		if (GetRowCount(source) == 0)
-			return new SingleStoreBulkUpdateResult(m_warnings.AsReadOnly(), rowsStaged: 0, rowsMatched: ComputeRowsMatched ? 0 : -1, rowsUpdated: 0);
+			return CreateResult(rowsStaged: 0, rowsMatched: ComputeRowsMatched ? 0 : -1, rowsUpdated: 0);
 
 		var stopwatch = Stopwatch.StartNew();
 
@@ -245,7 +251,16 @@ public sealed class SingleStoreBulkUpdate
 			tempTableName = await CreateStagingTableAsync(destinationTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// Phase 2: stage the source rows into the temporary table via SingleStoreBulkCopy.
-			var rowsStaged = await StageDataAsync(tempTableName, source, ioBehavior, cancellationToken).ConfigureAwait(false);
+			var (rowsStaged, aborted) = await StageDataAsync(tempTableName, source, ioBehavior, cancellationToken).ConfigureAwait(false);
+
+			// If the caller aborted staging via the SingleStoreRowsStaged event, abort the whole operation: do not
+			// run the UPDATE, so no rows are modified. Only the staging table (dropped below) was touched.
+			if (aborted)
+			{
+				stopwatch.Stop();
+				Log.CompletedBulkUpdate(m_logger, rowsStaged, -1, 0, stopwatch.ElapsedMilliseconds);
+				return CreateResult(rowsStaged, rowsMatched: -1, rowsUpdated: 0);
+			}
 
 			// Phase 3 (optional): count how many staged rows match a destination row.
 			var rowsMatched = await ComputeMatchedRowsAsync(tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
@@ -259,7 +274,7 @@ public sealed class SingleStoreBulkUpdate
 			Log.CompletedBulkUpdate(m_logger, rowsStaged, rowsMatched ?? -1, rowsUpdated, stopwatch.ElapsedMilliseconds);
 
 			// RowsMatched is reported as -1 when ComputeRowsMatched was false (the count was intentionally skipped).
-			return new SingleStoreBulkUpdateResult(m_warnings.AsReadOnly(), rowsStaged, rowsMatched ?? -1, rowsUpdated);
+			return CreateResult(rowsStaged, rowsMatched ?? -1, rowsUpdated);
 		}
 		finally
 		{
@@ -284,6 +299,13 @@ public sealed class SingleStoreBulkUpdate
 			IReadOnlyCollection<DataRow> dataRows => dataRows.Count,
 			_ => -1,
 		};
+
+	/// <summary>
+	/// Builds the operation result, snapshotting the warnings collected so far into a new list so that a result
+	/// returned from one call is not mutated when the same <see cref="SingleStoreBulkUpdate"/> instance is reused.
+	/// </summary>
+	private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, int rowsMatched, int rowsUpdated) =>
+		new(new List<SingleStoreError>(m_warnings), rowsStaged, rowsMatched, rowsUpdated);
 
     private void ValidateColumnMappings()
 	{
@@ -382,6 +404,19 @@ public sealed class SingleStoreBulkUpdate
 		{
 			if (!tableColumns.Contains(columnMapping.DestinationColumn))
 				throw new InvalidOperationException($"Column '{columnMapping.DestinationColumn}' does not exist in target table '{tableName}'.");
+		}
+
+		// Reject mapped generated (computed) columns up front with a clear error. Their value is derived from an
+		// expression, so they cannot be staged or assigned in the UPDATE; without this check the operation would
+		// fail later with a confusing server error when the UPDATE tries to write to the generated column.
+		var generatedColumns = await schemaDetector.GetGeneratedColumnsAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+		if (generatedColumns.Count != 0)
+		{
+			foreach (var columnMapping in ColumnMappings)
+			{
+				if (generatedColumns.Contains(columnMapping.DestinationColumn))
+					throw new NotSupportedException($"Column '{columnMapping.DestinationColumn}' is a generated (computed) column, which cannot be updated by SingleStoreBulkUpdate.");
+			}
 		}
 	}
 
@@ -545,7 +580,7 @@ public sealed class SingleStoreBulkUpdate
 	/// destination-name relationship identical between staging and the later <c>UPDATE ... JOIN</c>.
 	/// </para>
 	/// </remarks>
-    private async Task<int> StageDataAsync(string tempTableName, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
+    private async Task<(int RowsStaged, bool Aborted)> StageDataAsync(string tempTableName, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var bulkCopy = new SingleStoreBulkCopy(m_connection, m_transaction)
 		{
@@ -560,12 +595,16 @@ public sealed class SingleStoreBulkUpdate
 
 		// Re-raise SingleStoreBulkCopy's progress event as a bulk-update staging event, and propagate the
 		// caller's request to abort. Only subscribe when progress notifications are actually requested.
+		var aborted = false;
 		void OnRowsCopied(object sender, SingleStoreRowsCopiedEventArgs e)
 		{
 			var args = new SingleStoreRowsStagedEventArgs { RowsStaged = e.RowsCopied };
 			SingleStoreRowsStaged?.Invoke(this, args);
 			if (args.Abort)
+			{
+				aborted = true;
 				e.Abort = true;
+			}
 		}
 
 		var notifyProgress = NotifyAfter > 0 && SingleStoreRowsStaged is not null;
@@ -580,7 +619,7 @@ public sealed class SingleStoreBulkUpdate
 
 			Log.StagedDataForBulkUpdate(m_logger, result.RowsInserted, result.Warnings.Count);
 
-			return result.RowsInserted;
+			return (result.RowsInserted, aborted);
 		}
 		finally
 		{
@@ -598,11 +637,9 @@ public sealed class SingleStoreBulkUpdate
 	/// (<c>WriteToServerAsync</c>) methods rather than an <see cref="IOBehavior"/> overload, so the behavior is
 	/// selected here. Calling the synchronous methods on the synchronous path keeps the whole operation inline,
 	/// preserving the no-sync-over-async guarantee that lets the public synchronous overloads block safely.
-	/// For a <see cref="DataRow"/> sequence, <see cref="SingleStoreBulkCopy"/> needs the column count before it
-	/// enumerates the rows (taken from the owning <see cref="DataTable"/> of the first row); the sequence is
-	/// materialized first so a lazy source is not consumed by the peek and then re-enumerated (empty) by the bulk
-	/// copy. Empty input is short-circuited before staging, so the sequence is expected to be non-empty here; it
-	/// is still guarded so an unexpected empty sequence fails clearly rather than dereferencing a missing row.
+	/// For a <see cref="DataRow"/> sequence, <see cref="SingleStoreBulkCopy"/> needs the column count up front
+	/// (taken from the owning <see cref="DataTable"/> of the first row); the caller has already materialized any
+	/// lazy sequence and short-circuited empty input, so the sequence is a non-empty collection here.
 	/// </remarks>
     private static ValueTask<SingleStoreBulkCopyResult> StageWithBulkCopyAsync(SingleStoreBulkCopy bulkCopy, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
@@ -615,8 +652,6 @@ public sealed class SingleStoreBulkUpdate
 
 		case IEnumerable<DataRow> dataRows:
 			var rows = dataRows as IReadOnlyList<DataRow> ?? dataRows.ToList();
-			if (rows.Count == 0)
-				throw new ArgumentException("Cannot stage an empty sequence of rows.", nameof(source));
 			var columnCount = rows[0].Table.Columns.Count;
 			return ioBehavior == IOBehavior.Synchronous
 				? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(rows, columnCount))
