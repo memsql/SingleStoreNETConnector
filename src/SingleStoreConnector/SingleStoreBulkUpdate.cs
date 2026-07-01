@@ -713,26 +713,27 @@ public sealed class SingleStoreBulkUpdate
 	}
 
 	/// <summary>
-	/// Counts how many staged rows match a row in the destination table, joined on the key columns.
+	/// Counts how many staged rows match at least one row in the destination table, joined on the key columns.
 	/// </summary>
 	/// <param name="tempTableName">The session-scoped staging table populated by <see cref="StageDataAsync"/>.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>
-	/// The number of staged rows that match a destination row, or <see langword="null"/> when
+	/// The number of staged rows that match at least one destination row, or <see langword="null"/> when
 	/// <see cref="ComputeRowsMatched"/> is <see langword="false"/> (the count was intentionally skipped).
 	/// </returns>
 	/// <remarks>
 	/// <para>
-	/// This runs an extra <c>SELECT COUNT(*)</c> over the same <c>INNER JOIN</c> that the subsequent
-	/// <c>UPDATE ... JOIN</c> uses, letting the caller distinguish staged rows that updated a destination row
-	/// from staged rows that matched nothing. Callers that do not need this distinction can set
-	/// <see cref="ComputeRowsMatched"/> to <see langword="false"/> to skip the query.
+	/// This counts staged rows (via <c>WHERE EXISTS</c>) rather than joined pairs, so the result never exceeds the
+	/// number of staged rows even when the destination key columns are not unique and a single staged row matches
+	/// several destination rows. It lets the caller distinguish staged rows that matched a destination row from
+	/// staged rows that matched nothing (<c>RowsStaged - RowsMatched</c>). Callers that do not need this distinction
+	/// can set <see cref="ComputeRowsMatched"/> to <see langword="false"/> to skip the query.
 	/// </para>
 	/// <para>
-	/// The join uses the key columns, which were created in the staging table with the destination's exact
-	/// type and collation (see <see cref="CreateStagingTableAsync"/>), so this count is consistent with the
-	/// rows the UPDATE will match. It must run on the same open connection/transaction as the rest of the
-	/// operation because the staging table is session-scoped.
+	/// The match uses the key columns, which were created in the staging table with the destination's exact type and
+	/// collation (see <see cref="CreateStagingTableAsync"/>), so this count is consistent with the rows the UPDATE
+	/// will match. It must run on the same open connection/transaction as the rest of the operation because the
+	/// staging table is session-scoped.
 	/// </para>
 	/// </remarks>
     private async Task<int?> ComputeMatchedRowsAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
@@ -740,9 +741,12 @@ public sealed class SingleStoreBulkUpdate
 		if (!ComputeRowsMatched)
 			return null;
 
+		// Count staged rows that have at least one matching destination row. Counting from the staging side with
+		// EXISTS (rather than COUNT(*) over an INNER JOIN) keeps the result <= RowsStaged when the destination key
+		// columns are not unique, so RowsStaged - RowsMatched is a correct count of unmatched staged rows.
 		var countSql =
-			$"SELECT COUNT(*) FROM {IdentifierHelper.QuoteQualifiedIdentifier(plan.DestinationTableName)} AS t " +
-			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {BuildKeyJoinCondition(plan)}";
+			$"SELECT COUNT(*) FROM {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s " +
+			$"WHERE EXISTS (SELECT 1 FROM {IdentifierHelper.QuoteQualifiedIdentifier(plan.DestinationTableName)} AS t WHERE {BuildKeyJoinCondition(plan)})";
 
 		using var cmd = m_connection.CreateCommand();
 		cmd.CommandText = countSql;

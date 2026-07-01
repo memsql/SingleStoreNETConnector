@@ -43,6 +43,24 @@ public class SchemaDetectorTests(DatabaseFixture database) : IClassFixture<Datab
 		Assert.True(isReference);
 	}
 
+	[Fact]
+	public async Task IsReferenceTableReturnsFalseWhenPhraseAppearsInComment()
+	{
+		await using var connection = new SingleStoreConnection(database.Connection.ConnectionString);
+		await connection.OpenAsync();
+
+		var tableName = "schema_detector_reference_comment";
+
+		// A regular table whose column comment contains the phrase "CREATE REFERENCE TABLE" must not be detected as
+		// a reference table: reference-table detection is anchored to the start of the CREATE statement.
+		await CreateTableAsync(connection, tableName, "id INT PRIMARY KEY, note VARCHAR(50) COMMENT 'copied via CREATE REFERENCE TABLE x'");
+
+		var detector = new SchemaDetector(connection);
+		var isReference = await detector.IsReferenceTableAsync(tableName, IOBehavior.Asynchronous);
+
+		Assert.False(isReference);
+	}
+
 	[Theory]
 	[InlineData(false)]
 	[InlineData(true)]

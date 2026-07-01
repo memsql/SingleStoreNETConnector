@@ -191,9 +191,56 @@ insert into bulk_update_affected values (1, 'unchanged'), (2, 'before');", conne
 
 		var result = await bulkUpdate.WriteToServerAsync(dataTable);
 
-		// RowsMatched always reflects the join (both rows) regardless of the connection setting.
+		// RowsMatched counts the matched source rows (both) regardless of the connection setting.
 		Assert.Equal(2, result.RowsMatched);
 		Assert.Equal(expectedRowsAffected, result.RowsAffected);
+	}
+
+	[Fact]
+	public async Task NonUniqueDestinationKeyMatchesMultipleRows()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// The destination key column (grp) is not unique: one staged row matches two destination rows. RowsMatched
+		// counts the single matched staged row (never exceeding RowsStaged), while RowsAffected reflects the two
+		// destination rows the UPDATE touched.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_nonunique;
+create rowstore table bulk_update_nonunique(id int primary key, grp int, value varchar(100));
+insert into bulk_update_nonunique values (1, 100, 'old'), (2, 100, 'old'), (3, 200, 'old');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("grp", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows = { new object[] { 100, "updated" } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_nonunique",
+			KeyColumns = { "grp" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "grp"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		Assert.Equal(1, result.RowsStaged);
+		Assert.Equal(1, result.RowsMatched); // the single staged row matched (not the 2 destination rows it joined)
+		Assert.Equal(2, result.RowsAffected); // both grp=100 destination rows were updated
+
+		using var selectCommand = new SingleStoreCommand("select count(*) from bulk_update_nonunique where grp = 100 and value = 'updated';", connection);
+		Assert.Equal(2L, Convert.ToInt64(await selectCommand.ExecuteScalarAsync()));
 	}
 
 	[Fact]

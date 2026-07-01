@@ -7,12 +7,17 @@ namespace SingleStoreConnector.Utilities;
 
 internal sealed class SchemaDetector(SingleStoreConnection connection, SingleStoreTransaction? transaction = null, int commandTimeout = 0)
 {
+	// Anchored to the start of the statement: the CREATE ... TABLE clause is always the first thing in
+	// SHOW CREATE TABLE output, so anchoring avoids a false positive from the phrase appearing in a column
+	// comment or default value later in the statement.
 	private static readonly Regex referenceTableRegex =
-		new(@"CREATE\s+(?:(?:ROWSTORE|COLUMNSTORE)\s+)?REFERENCE\s+TABLE",
+		new(@"\A\s*CREATE\s+(?:(?:ROWSTORE|COLUMNSTORE)\s+)?REFERENCE\s+TABLE",
 			RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+	// Matches a top-level SHARD KEY clause (optionally with an index name), anchored to the start of a table-body
+	// item. The optional name allows forms such as SHARD KEY `name` (col, ...).
 	private static readonly Regex shardKeyRegex =
-		new(@"SHARD\s+KEY(?:\s+(?:`(?:``|[^`])*`|[^\s(]+))?\s*\((?<columns>[^)]*)\)",
+		new(@"\ASHARD\s+KEY(?:\s+(?:`(?:``|[^`])*`|[^\s(]+))?\s*\((?<columns>[^)]*)\)",
 			RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
 	private readonly SingleStoreConnection m_connection =
@@ -94,19 +99,24 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 		}
 
 		// Method 2: Parse SHOW CREATE TABLE for SHARD KEY.
-		// This is a fallback for cases where SHOW INDEXES doesn't expose __SHARDKEY.
+		// This is a fallback for cases where SHOW INDEXES doesn't expose __SHARDKEY. Only the top-level table-body
+		// items are examined (not the raw statement) so that a "SHARD KEY(...)" phrase inside a column comment or
+		// default value cannot be mistaken for the real shard key clause.
 		var createTableSql = await GetCreateTableStatementAsync(tableName, ioBehavior, cancellationToken)
 			.ConfigureAwait(false);
 
-		var match = shardKeyRegex.Match(createTableSql);
-		if (!match.Success)
-			return new List<string>();
+		var body = ExtractTableBody(createTableSql, tableName);
+		foreach (var item in SplitTopLevel(body))
+		{
+			var match = shardKeyRegex.Match(item.TrimStart());
+			if (!match.Success)
+				continue;
 
-		var shardKeyList = match.Groups["columns"].Value;
-		if (string.IsNullOrWhiteSpace(shardKeyList))
-			return new List<string>();
+			var shardKeyList = match.Groups["columns"].Value;
+			return string.IsNullOrWhiteSpace(shardKeyList) ? new List<string>() : ParseIdentifierList(shardKeyList);
+		}
 
-		return ParseIdentifierList(shardKeyList);
+		return new List<string>();
 	}
 
 	/// <summary>
@@ -187,10 +197,17 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 	}
 
 	/// <summary>
-	/// Gets the names of the generated (computed) columns of the specified table, as declared in
-	/// <c>SHOW CREATE TABLE</c> via an <c>AS (...)</c> / <c>GENERATED ALWAYS AS (...)</c> / <c>COMPUTED</c> clause.
+	/// Gets the names of the persistent computed (generated) columns of the specified table, as declared in
+	/// <c>SHOW CREATE TABLE</c>.
 	/// </summary>
-	/// <returns>A case-insensitive set of generated column names, or an empty set if there are none.</returns>
+	/// <remarks>
+	/// SingleStore declares a persistent computed column as <c>`col` AS &lt;expression&gt; PERSISTED &lt;type&gt;</c>
+	/// (see <a href="https://docs.singlestore.com/cloud/create-a-database/using-persistent-computed-columns/">the
+	/// documentation</a>). The <c>AS</c> keyword is what distinguishes such a column definition from a regular one;
+	/// the expression that follows is not necessarily parenthesised. (The <c>COMPUTED</c> keyword only appears in
+	/// <c>DESC</c> output, never in <c>SHOW CREATE TABLE</c>, so it is not matched here.)
+	/// </remarks>
+	/// <returns>A case-insensitive set of computed column names, or an empty set if there are none.</returns>
 	public async Task<HashSet<string>> GetGeneratedColumnsAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken = default)
 	{
 		EnsureConnectionIsOpen();
@@ -205,19 +222,18 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 		{
 			var trimmed = item.TrimStart();
 
-			// Only column definitions (which begin with a backtick-quoted name) can be generated columns.
+			// Only column definitions (which begin with a backtick-quoted name) can be computed columns.
 			if (trimmed.Length == 0 || trimmed[0] != '`')
 				continue;
 
 			var (columnName, rest) = ParseQuotedNameAndRest(trimmed);
 
-			// A generated column declares its expression with an "AS (...)" clause (optionally preceded by
-			// GENERATED ALWAYS), or uses the COMPUTED keyword. Look for these tokens at the top level of the
-			// remaining definition so a matching word inside the type, a string default or a comment is ignored.
+			// A persistent computed column declares its expression with an "AS" clause: `col` AS <expr> PERSISTED <type>.
+			// Look for the AS keyword at the top level so a matching word inside the type, a string default or a
+			// comment is ignored.
 			foreach (var token in TokenizeTopLevel(rest))
 			{
-				if (string.Equals(token, "AS", StringComparison.OrdinalIgnoreCase) ||
-					string.Equals(token, "COMPUTED", StringComparison.OrdinalIgnoreCase))
+				if (string.Equals(token, "AS", StringComparison.OrdinalIgnoreCase))
 				{
 					generatedColumns.Add(columnName);
 					break;

@@ -92,10 +92,10 @@ Interpreting the result
 `WriteToServerAsync` returns a `SingleStoreBulkUpdateResult`:
 
 * `RowsStaged` — the number of source rows loaded into the staging table.
-* `RowsMatched` — the number of destination rows matched by the join on the key columns. When the destination key
-  columns are unique this equals the number of staged rows that matched; if they are not unique, a single staged row
-  can match several destination rows, so this can exceed `RowsStaged`. This is `null` when `ComputeRowsMatched` is set
-  to `false` (see below).
+* `RowsMatched` — the number of staged rows that matched at least one destination row on the key columns. This never
+  exceeds `RowsStaged`, so `RowsStaged - RowsMatched` is the number of source rows that matched nothing. (`RowsAffected`
+  can still exceed this when the destination keys are not unique — see below.) This is `null` when `ComputeRowsMatched`
+  is set to `false` (see below).
 * `RowsAffected` — the number of rows affected by the `UPDATE`, as reported by the server. Its exact meaning depends on
   the connection's `UseAffectedRows` setting: with the default (`UseAffectedRows=false`) it counts the rows *matched* by
   the update — including rows that already held the new values — so it typically equals `RowsMatched`; with
@@ -132,8 +132,9 @@ Other things to be aware of:
 
 * **Key columns need not be unique in the destination.** The key columns identify rows to update via a join; they are
   not required to be a unique or primary key on the destination table. If they are not unique, a single source row can
-  update multiple destination rows, and `RowsMatched`/`RowsAffected` can exceed the number of source rows. Duplicate
-  keys are only rejected in the *source* data (they would collide in the staging table's primary key).
+  update multiple destination rows, so `RowsAffected` can exceed the number of source rows (`RowsMatched`, which counts
+  matched source rows, cannot). Duplicate keys are only rejected in the *source* data (they would collide in the
+  staging table's primary key).
 * **Key column types.** The key columns become the primary key of the staging table, so they must be types that
   SingleStore allows in a primary key. Large `TEXT`/`BLOB`/`JSON`/spatial columns are not usable as key columns.
 * **Required privileges.** In addition to `UPDATE` on the destination table, the connection needs permission to run
@@ -167,6 +168,10 @@ than restrictions imposed by SingleStore, and may be relaxed in a future version
 * **Row counts are `int`.** `RowsStaged`, `RowsMatched`, and `RowsAffected` are `int` for consistency with
   `SingleStoreBulkCopyResult`; they could widen to `long` if very large updates need it.
 * **Update only.** There is no upsert (insert-or-update) mode; a future version could add one.
+* **Reference tables are not supported as the destination.** The `UPDATE ... JOIN` this API generates fails on a
+  reference-table target joined to a (sharded) staging table (SingleStore error 1706). This is a scope decision, not
+  a hard limit — a future version could support it by staging into a reference table or by using an upsert, per the
+  [documented workarounds](https://docs.singlestore.com/cloud/reference/troubleshooting-reference/query-errors/error-1706-hy-000-feature-multi-table-update-delete-with-a-reference-table-as-target-table-is-not-supported-by-memsql/).
 
-By contrast, the following are SingleStore behaviors rather than choices made here, and are not expected to change:
-updating shard key columns is not allowed, and reference tables are not supported as the destination.
+By contrast, the following is a SingleStore behavior rather than a choice made here, and is not expected to change:
+updating shard key columns is not allowed.
