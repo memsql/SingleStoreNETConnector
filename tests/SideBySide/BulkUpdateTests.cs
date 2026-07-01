@@ -538,6 +538,108 @@ insert into bulk_update_warnings values (1, 'original');", connection))
 		Assert.NotSame(firstResult.Warnings, secondResult.Warnings);
 	}
 
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task UpdatesWithSchemaQualifiedDestinationTableName(bool isAsync)
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString(database));
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_qualified;
+create table bulk_update_qualified(id int primary key, value varchar(100));
+insert into bulk_update_qualified values (1, 'original');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows = { new object[] { 1, "updated" } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			// Fully-qualified database.table name.
+			DestinationTableName = $"{connection.Database}.bulk_update_qualified",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var result = await WriteToServerAsync(bulkUpdate, dataTable, isAsync);
+
+		Assert.Equal(1, result.RowsAffected);
+
+		using var selectCommand = new SingleStoreCommand("select value from bulk_update_qualified where id = 1;", connection);
+		Assert.Equal("updated", await selectCommand.ExecuteScalarAsync());
+	}
+
+	[Fact]
+	public async Task MutatingConfigInProgressEventDoesNotAffectOperation()
+	{
+		using var connection = new SingleStoreConnection(GetLocalConnectionString(database));
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_mutate;
+drop table if exists bulk_update_mutate_other;
+create table bulk_update_mutate(id int primary key, value varchar(100));
+create table bulk_update_mutate_other(id int primary key, value varchar(100));
+insert into bulk_update_mutate values (1, 'original'), (2, 'original');", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+		};
+		for (var i = 1; i <= 2; i++)
+			dataTable.Rows.Add(i, "updated");
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_mutate",
+			NotifyAfter = 1,
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		// The handler fires between staging and the UPDATE and tries to repoint the operation at another table and
+		// drop a mapping. Because the operation snapshots its configuration up front, these mutations must have no
+		// effect: the original table is updated and the other table is left untouched.
+		bulkUpdate.SingleStoreRowsStaged += (sender, e) =>
+		{
+			bulkUpdate.DestinationTableName = "bulk_update_mutate_other";
+			bulkUpdate.KeyColumns.Clear();
+			bulkUpdate.ColumnMappings.Clear();
+		};
+
+		var result = await bulkUpdate.WriteToServerAsync(dataTable);
+
+		Assert.Equal(2, result.RowsAffected);
+
+		using var updatedCommand = new SingleStoreCommand("select count(*) from bulk_update_mutate where value = 'updated';", connection);
+		Assert.Equal(2L, Convert.ToInt64(await updatedCommand.ExecuteScalarAsync()));
+
+		using var otherCommand = new SingleStoreCommand("select count(*) from bulk_update_mutate_other;", connection);
+		Assert.Equal(0L, Convert.ToInt64(await otherCommand.ExecuteScalarAsync()));
+	}
+
 	private static async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(SingleStoreBulkUpdate bulkUpdate, DataTable dataTable, bool isAsync) =>
 		isAsync ? await bulkUpdate.WriteToServerAsync(dataTable) : bulkUpdate.WriteToServer(dataTable);
 

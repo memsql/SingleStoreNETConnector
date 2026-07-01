@@ -1,10 +1,14 @@
 # SingleStoreBulkUpdateResult.RowsMatched property
 
-The number of staged rows that matched rows in the destination table, or `null` when [`ComputeRowsMatched`](../SingleStoreBulkUpdate/ComputeRowsMatched.md) was set to `false` and the count was not computed.
+The number of destination rows matched by the join on the key columns, or `null` when [`ComputeRowsMatched`](../SingleStoreBulkUpdate/ComputeRowsMatched.md) was set to `false` and the count was not computed.
 
 ```csharp
 public int? RowsMatched { get; }
 ```
+
+## Remarks
+
+When the destination key columns are unique this equals the number of staged rows that matched a destination row. If the key columns are not unique, a single staged row can match several destination rows, so this (and [`RowsAffected`](./RowsAffected.md)) can exceed the number of staged rows.
 
 ## See Also
 

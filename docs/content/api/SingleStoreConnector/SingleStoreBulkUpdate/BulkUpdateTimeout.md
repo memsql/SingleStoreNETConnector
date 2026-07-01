@@ -1,6 +1,6 @@
 # SingleStoreBulkUpdate.BulkUpdateTimeout property
 
-The number of seconds for each phase of the operation to complete before it times out (default `30`).
+The number of seconds for each phase of the operation to complete before it times out, or `0` for no timeout (the default). A single bulk update can spend a long time staging, counting, or updating, so a finite timeout should be chosen deliberately.
 
 ```csharp
 public int BulkUpdateTimeout { get; set; }

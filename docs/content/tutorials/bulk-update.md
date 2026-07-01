@@ -92,8 +92,10 @@ Interpreting the result
 `WriteToServerAsync` returns a `SingleStoreBulkUpdateResult`:
 
 * `RowsStaged` — the number of source rows loaded into the staging table.
-* `RowsMatched` — the number of staged rows that matched a row in the destination table. This is `null` when
-  `ComputeRowsMatched` is set to `false` (see below).
+* `RowsMatched` — the number of destination rows matched by the join on the key columns. When the destination key
+  columns are unique this equals the number of staged rows that matched; if they are not unique, a single staged row
+  can match several destination rows, so this can exceed `RowsStaged`. This is `null` when `ComputeRowsMatched` is set
+  to `false` (see below).
 * `RowsAffected` — the number of rows affected by the `UPDATE`, as reported by the server. Its exact meaning depends on
   the connection's `UseAffectedRows` setting: with the default (`UseAffectedRows=false`) it counts the rows *matched* by
   the update — including rows that already held the new values — so it typically equals `RowsMatched`; with
@@ -106,7 +108,8 @@ Performance
 
 * Set `ComputeRowsMatched = false` to skip the extra `COUNT(*)` query that populates `RowsMatched`. When disabled,
   `RowsMatched` is `null`.
-* Set `BulkUpdateTimeout` (in seconds) to control how long each phase may run.
+* Set `BulkUpdateTimeout` (in seconds) to bound how long each phase may run. It defaults to `0` (no timeout), so a
+  finite value should be set deliberately if a phase must not run unbounded.
 * Set `NotifyAfter` to a non-zero value to receive `SingleStoreRowsStaged` events while rows are being staged; the
   event handler can set `Abort = true` to cancel the operation. Aborting stops staging and skips the `UPDATE`
   entirely, so no rows in the destination table are modified.
@@ -120,12 +123,17 @@ Limitations
 * At least one non-key column must be mapped, so there is a column to update.
 * Duplicate key values in the source data are rejected; they would collide in the staging table's primary key.
 * Shard key columns cannot be updated, because SingleStore does not allow updating a shard key.
-* Generated (computed) columns cannot be updated, and are rejected if mapped.
+* Generated (computed) columns cannot be mapped (neither as key nor update columns), because the staging table cannot
+  reproduce a generated column's definition.
 * Reference tables are not supported as the destination.
 * Expression column mappings (a `SingleStoreBulkCopyColumnMapping` with an `Expression`) are not supported.
 
 Other things to be aware of:
 
+* **Key columns need not be unique in the destination.** The key columns identify rows to update via a join; they are
+  not required to be a unique or primary key on the destination table. If they are not unique, a single source row can
+  update multiple destination rows, and `RowsMatched`/`RowsAffected` can exceed the number of source rows. Duplicate
+  keys are only rejected in the *source* data (they would collide in the staging table's primary key).
 * **Key column types.** The key columns become the primary key of the staging table, so they must be types that
   SingleStore allows in a primary key. Large `TEXT`/`BLOB`/`JSON`/spatial columns are not usable as key columns.
 * **Required privileges.** In addition to `UPDATE` on the destination table, the connection needs permission to run
@@ -142,3 +150,23 @@ Transactions
 
 A `SingleStoreTransaction` may be passed to the constructor. When supplied, all phases participate in that transaction,
 so the update can be committed or rolled back atomically with other work on the connection.
+
+Future directions
+-----------------
+
+This API is experimental. Several of the limitations above are deliberate scope decisions for the first version rather
+than restrictions imposed by SingleStore, and may be relaxed in a future version:
+
+* **`KeyColumns` is required.** A future version could auto-detect the destination table's primary key when
+  `KeyColumns` is not set.
+* **Expression column mappings are rejected.** Because the source is staged into a real temporary table, a
+  `SingleStoreBulkCopyColumnMapping.Expression` (which relies on user variables during `LOAD DATA`) is not supported;
+  a future version could apply expressions when populating the staging table.
+* **Generated (computed) columns cannot be mapped.** This could be supported for key columns if the staging table
+  learned to reproduce a generated column's underlying type.
+* **Row counts are `int`.** `RowsStaged`, `RowsMatched`, and `RowsAffected` are `int` for consistency with
+  `SingleStoreBulkCopyResult`; they could widen to `long` if very large updates need it.
+* **Update only.** There is no upsert (insert-or-update) mode; a future version could add one.
+
+By contrast, the following are SingleStore behaviors rather than choices made here, and are not expected to change:
+updating shard key columns is not allowed, and reference tables are not supported as the destination.

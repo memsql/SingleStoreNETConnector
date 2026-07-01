@@ -52,8 +52,8 @@ namespace SingleStoreConnector;
 /// <remarks>
 /// <para>The following restrictions apply, and <c>WriteToServer</c> throws if they are not met: <see cref="KeyColumns"/>
 /// is required and every key column must be mapped; at least one non-key column must be mapped; the source must not
-/// contain duplicate key values; shard key columns and generated (computed) columns cannot be updated; reference tables
-/// are not supported; and expression column mappings are not supported.</para>
+/// contain duplicate key values; shard key columns cannot be updated; generated (computed) columns cannot be mapped;
+/// reference tables are not supported; and expression column mappings are not supported.</para>
 /// <para>An instance of this class is not thread-safe; do not share an instance across concurrent operations.</para>
 /// <para>This API is experimental and may change in the future.</para>
 /// </remarks>
@@ -93,9 +93,11 @@ public sealed class SingleStoreBulkUpdate
     public List<SingleStoreBulkCopyColumnMapping> ColumnMappings { get; }
 
     /// <summary>
-    /// The number of seconds for each phase of the operation to complete before it times out (default <c>30</c>).
+    /// The number of seconds for each phase of the operation to complete before it times out, or <c>0</c> for no
+    /// timeout (the default). A single bulk update can spend a long time staging, counting, or updating, so a
+    /// finite timeout should be chosen deliberately.
     /// </summary>
-    public int BulkUpdateTimeout { get; set; } = 30;
+    public int BulkUpdateTimeout { get; set; }
 
     /// <summary>
     /// If non-zero, this specifies the number of rows to be staged before raising the <see cref="SingleStoreRowsStaged"/>
@@ -212,8 +214,10 @@ public sealed class SingleStoreBulkUpdate
 		// Validate configuration before touching the connection so misconfiguration fails fast and cheaply.
 		ValidateColumnMappings();
 
-		var destinationTableName = DestinationTableName ??
-			throw new InvalidOperationException("DestinationTableName must be set before calling WriteToServer.");
+		// Snapshot all operation inputs now so that a SingleStoreRowsStaged event handler (which fires between
+		// staging and the UPDATE) cannot change the destination table, key columns or mappings mid-operation and
+		// produce a staging table and UPDATE built from different configurations.
+		var plan = CreatePlan();
 
 		// Reset any warnings from a previous call so the result only reflects this operation.
 		m_warnings.Clear();
@@ -241,20 +245,23 @@ public sealed class SingleStoreBulkUpdate
 			closeConnection = true;
 		}
 
+		// A single SchemaDetector per operation so the destination's SHOW CREATE TABLE is fetched once and reused
+		// across reference-table, shard-key, generated-column and column-type inspection.
+		var schemaDetector = new SchemaDetector(m_connection, m_transaction, BulkUpdateTimeout);
+
 		string? tempTableName = null;
 		try
 		{
-			// Reject reference tables and shard-key updates, and confirm every mapped column exists.
-			await ValidateSchemaAsync(destinationTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+			// Reject reference tables and shard-key/generated updates, and confirm every mapped column exists.
+			await ValidateSchemaAsync(schemaDetector, plan, ioBehavior, cancellationToken).ConfigureAwait(false);
 
-			var updateColumns = GetUpdateColumns();
-			Log.StartingBulkUpdate(m_logger, destinationTableName, string.Join(", ", KeyColumns), string.Join(", ", updateColumns), GetRowCount(source));
+			Log.StartingBulkUpdate(m_logger, plan.DestinationTableName, string.Join(", ", plan.KeyColumns), string.Join(", ", plan.UpdateColumns), GetRowCount(source));
 
 			// Phase 1: create the staging table mirroring the destination column types.
-			tempTableName = await CreateStagingTableAsync(destinationTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+			tempTableName = await CreateStagingTableAsync(schemaDetector, plan, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// Phase 2: stage the source rows into the temporary table via SingleStoreBulkCopy.
-			var (rowsStaged, aborted) = await StageDataAsync(tempTableName, source, ioBehavior, cancellationToken).ConfigureAwait(false);
+			var (rowsStaged, aborted) = await StageDataAsync(plan, tempTableName, source, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			// If the caller aborted staging via the SingleStoreRowsStaged event, abort the whole operation: do not
 			// run the UPDATE, so no rows are modified. Only the staging table (dropped below) was touched.
@@ -266,12 +273,12 @@ public sealed class SingleStoreBulkUpdate
 			}
 
 			// Phase 3 (optional): count how many staged rows match a destination row.
-			var rowsMatched = await ComputeMatchedRowsAsync(tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+			var rowsMatched = await ComputeMatchedRowsAsync(plan, tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
 			if (rowsMatched is { } matched && rowsStaged > matched)
 				Log.LargeUnmatchedCountForBulkUpdate(m_logger, rowsStaged, matched, rowsStaged - matched);
 
 			// Phase 4: run the UPDATE ... JOIN that copies the non-key values into the matching rows.
-			var rowsAffected = await ExecuteUpdateAsync(tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+			var rowsAffected = await ExecuteUpdateAsync(plan, tempTableName, ioBehavior, cancellationToken).ConfigureAwait(false);
 
 			stopwatch.Stop();
 			Log.CompletedBulkUpdate(m_logger, rowsStaged, rowsMatched ?? -1, rowsAffected, stopwatch.ElapsedMilliseconds);
@@ -291,6 +298,38 @@ public sealed class SingleStoreBulkUpdate
 	}
 
 	/// <summary>
+	/// Captures an immutable snapshot of the operation inputs (destination table, key columns, column mappings and
+	/// the derived update columns) so the rest of the operation is unaffected by later mutations of the public
+	/// properties.
+	/// </summary>
+    private BulkUpdatePlan CreatePlan()
+	{
+		var destinationTableName = DestinationTableName ??
+			throw new InvalidOperationException("DestinationTableName must be set before calling WriteToServer.");
+
+		return new BulkUpdatePlan(
+			destinationTableName,
+			[.. KeyColumns],
+			[.. ColumnMappings],
+			GetUpdateColumns());
+	}
+
+	/// <summary>
+	/// An immutable snapshot of the inputs for a single bulk update operation.
+	/// </summary>
+    private sealed class BulkUpdatePlan(
+		string destinationTableName,
+		IReadOnlyList<string> keyColumns,
+		IReadOnlyList<SingleStoreBulkCopyColumnMapping> columnMappings,
+		IReadOnlyList<string> updateColumns)
+	{
+		public string DestinationTableName { get; } = destinationTableName;
+		public IReadOnlyList<string> KeyColumns { get; } = keyColumns;
+		public IReadOnlyList<SingleStoreBulkCopyColumnMapping> ColumnMappings { get; } = columnMappings;
+		public IReadOnlyList<string> UpdateColumns { get; } = updateColumns;
+	}
+
+	/// <summary>
 	/// Returns the number of rows in the source for logging, or <c>-1</c> when the count is not known in advance
 	/// (for example an <see cref="IDataReader"/>, which is consumed as it is staged).
 	/// </summary>
@@ -307,7 +346,7 @@ public sealed class SingleStoreBulkUpdate
 	/// Builds the operation result, snapshotting the warnings collected so far into a new list so that a result
 	/// returned from one call is not mutated when the same <see cref="SingleStoreBulkUpdate"/> instance is reused.
 	/// </summary>
-	private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, int? rowsMatched, int rowsAffected) =>
+    private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, int? rowsMatched, int rowsAffected) =>
 		new(new List<SingleStoreError>(m_warnings), rowsStaged, rowsMatched, rowsAffected);
 
     private void ValidateColumnMappings()
@@ -375,18 +414,17 @@ public sealed class SingleStoreBulkUpdate
 			throw new InvalidOperationException("ColumnMappings must contain at least one non-key column to update.");
 	}
 
-    private async ValueTask ValidateSchemaAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+    private async ValueTask ValidateSchemaAsync(SchemaDetector schemaDetector, BulkUpdatePlan plan, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		var schemaDetector = new SchemaDetector(m_connection, m_transaction, BulkUpdateTimeout);
+		var tableName = plan.DestinationTableName;
 
 		// TODO: make changes to support the solutions described here -- https://docs.singlestore.com/cloud/reference/troubleshooting-reference/query-errors/error-1706-hy-000-feature-multi-table-update-delete-with-a-reference-table-as-target-table-is-not-supported-by-memsql/
 		if (await schemaDetector.IsReferenceTableAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false))
 			throw new NotSupportedException($"Target table '{tableName}' is a reference table. Bulk updates on reference tables are not supported in this version.");
 
 		var shardKeyColumns = await schemaDetector.GetShardKeyColumnsAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false);
-		var updateColumns = GetUpdateColumns();
 
-		foreach (var updateColumn in updateColumns)
+		foreach (var updateColumn in plan.UpdateColumns)
 		{
 			if (shardKeyColumns.Contains(updateColumn, StringComparer.OrdinalIgnoreCase))
 				throw new InvalidOperationException($"Column '{updateColumn}' is a shard key. SingleStore does not support updating shard key columns.");
@@ -403,22 +441,24 @@ public sealed class SingleStoreBulkUpdate
 				tableColumns.Add(columnName);
 		}
 
-		foreach (var columnMapping in ColumnMappings)
+		foreach (var columnMapping in plan.ColumnMappings)
 		{
 			if (!tableColumns.Contains(columnMapping.DestinationColumn))
 				throw new InvalidOperationException($"Column '{columnMapping.DestinationColumn}' does not exist in target table '{tableName}'.");
 		}
 
-		// Reject mapped generated (computed) columns up front with a clear error. Their value is derived from an
-		// expression, so they cannot be staged or assigned in the UPDATE; without this check the operation would
-		// fail later with a confusing server error when the UPDATE tries to write to the generated column.
+		// Reject mapped generated (computed) columns with a clear error. An update column cannot be assigned (its
+		// value is derived from an expression), and a key column cannot be staged either: the staging table mirrors
+		// the destination column's type, but a generated column's definition (AS (expr) [PERSISTED] type) has no
+		// plain, reproducible column type to copy. Without this check the operation would fail later with a
+		// confusing server error.
 		var generatedColumns = await schemaDetector.GetGeneratedColumnsAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false);
 		if (generatedColumns.Count != 0)
 		{
-			foreach (var columnMapping in ColumnMappings)
+			foreach (var columnMapping in plan.ColumnMappings)
 			{
 				if (generatedColumns.Contains(columnMapping.DestinationColumn))
-					throw new NotSupportedException($"Column '{columnMapping.DestinationColumn}' is a generated (computed) column, which cannot be updated by SingleStoreBulkUpdate.");
+					throw new NotSupportedException($"Column '{columnMapping.DestinationColumn}' is a generated (computed) column, which is not supported by SingleStoreBulkUpdate.");
 			}
 		}
 	}
@@ -434,7 +474,9 @@ public sealed class SingleStoreBulkUpdate
 	/// Creates a session-scoped temporary staging table containing only the mapped (key + update) columns
 	/// of the destination table, ready to receive the source data via <see cref="SingleStoreBulkCopy"/>.
 	/// </summary>
-	/// <param name="destinationTableName">The destination table whose column types are mirrored.</param>
+	/// <param name="schemaDetector">The schema detector used to read the destination table's definition.</param>
+	/// <param name="plan">The snapshot of the operation inputs.</param>
+	/// <param name="ioBehavior">Whether to perform database I/O synchronously or asynchronously.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>The name of the created temporary table.</returns>
 	/// <remarks>
@@ -444,7 +486,7 @@ public sealed class SingleStoreBulkUpdate
 	/// <c>VARBINARY</c> is reported as <c>BLOB</c> and <c>BIT(1)</c> as <c>BIGINT</c>, and <c>UNSIGNED</c>,
 	/// character set, collation and <c>ENUM</c>/<c>SET</c> member lists are not exposed), so copying the exact
 	/// definition is the only way to guarantee the staging column matches the destination column. Matching the
-	/// collation in particular keeps the key-column equality used by the <c>UPDATE ... JOIN</c> well defined.
+	/// collation in particular keeps the key-column equality used by the <c>UPDATE ... JOIN</c> well-defined.
 	/// </para>
 	/// <para>
 	/// The key columns form the staging table's <c>PRIMARY KEY</c>, so they are always declared <c>NOT NULL</c>
@@ -458,13 +500,12 @@ public sealed class SingleStoreBulkUpdate
 	/// because the temporary table is session-scoped.
 	/// </para>
 	/// </remarks>
-    private async Task<string> CreateStagingTableAsync(string destinationTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+    private async Task<string> CreateStagingTableAsync(SchemaDetector schemaDetector, BulkUpdatePlan plan, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
-		// Generate a unique temporary table name. The "g" suffix on the GUID guarantees the identifier
-		// starts with a letter regardless of the GUID's first hex digit.
-		var tempTableName = $"_bulk_update_staging_g{Guid.NewGuid():N}";
+		// Generate a unique temporary table name.
+		var tempTableName = $"_bulk_update_staging_{Guid.NewGuid():N}";
 
-		var schemaDetector = new SchemaDetector(m_connection, m_transaction, BulkUpdateTimeout);
+		var destinationTableName = plan.DestinationTableName;
 
 		// Pull the exact, server-rendered type definition for every column so the staging columns are
 		// byte-for-byte type compatible with the destination (see remarks).
@@ -474,11 +515,11 @@ public sealed class SingleStoreBulkUpdate
 		// Emit a column definition for each mapped column, preserving the order in which the columns appear
 		// in the destination table is unnecessary here: the staging table only needs the columns to exist by
 		// name. SingleStoreBulkCopy maps source ordinals to these destination column names when staging.
-		var keyColumnSet = new HashSet<string>(KeyColumns, StringComparer.OrdinalIgnoreCase);
+		var keyColumnSet = new HashSet<string>(plan.KeyColumns, StringComparer.OrdinalIgnoreCase);
 		var seenColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		var columnDefinitions = new List<string>(ColumnMappings.Count);
+		var columnDefinitions = new List<string>(plan.ColumnMappings.Count);
 
-		foreach (var mapping in ColumnMappings)
+		foreach (var mapping in plan.ColumnMappings)
 		{
 			var columnName = mapping.DestinationColumn;
 
@@ -500,12 +541,13 @@ public sealed class SingleStoreBulkUpdate
 
 		// The key columns identify the rows to update, so they are the natural primary key of the staging
 		// table. This also rejects duplicate keys in the source data with a clear primary-key violation.
-		var primaryKey = $"PRIMARY KEY ({string.Join(", ", KeyColumns.Select(IdentifierHelper.QuoteIdentifier))})";
+		var primaryKey = $"PRIMARY KEY ({string.Join(", ", plan.KeyColumns.Select(IdentifierHelper.QuoteIdentifier))})";
 
-		var stagingShardKey = ComputeStagingShardKey(shardKeyColumns, keyColumnSet);
+		var stagingShardKey = ComputeStagingShardKey(plan, shardKeyColumns, keyColumnSet);
 
+		// Create the staging table as ROWSTORE explicitly: it is small, primary-key indexed and short-lived
 		var createTableSql = new StringBuilder();
-		createTableSql.Append("CREATE TEMPORARY TABLE ");
+		createTableSql.Append("CREATE ROWSTORE TEMPORARY TABLE ");
 		createTableSql.Append(IdentifierHelper.QuoteIdentifier(tempTableName));
 		createTableSql.Append(" (");
 		createTableSql.Append(string.Join(", ", columnDefinitions));
@@ -545,7 +587,7 @@ public sealed class SingleStoreBulkUpdate
 	/// sharded on a column that is not a join key — the staging table cannot be aligned, so we fall back to the
 	/// primary-key distribution (by returning an empty list, which omits an explicit shard key) and warn.
 	/// </remarks>
-    private List<string> ComputeStagingShardKey(List<string> destinationShardKeyColumns, HashSet<string> keyColumnSet)
+    private List<string> ComputeStagingShardKey(BulkUpdatePlan plan, List<string> destinationShardKeyColumns, HashSet<string> keyColumnSet)
 	{
 		if (destinationShardKeyColumns.Count == 0)
 			return [];
@@ -555,7 +597,7 @@ public sealed class SingleStoreBulkUpdate
 
 		Log.ShardKeyMismatchForBulkUpdate(
 			m_logger,
-			string.Join(", ", KeyColumns),
+			string.Join(", ", plan.KeyColumns),
 			string.Join(", ", destinationShardKeyColumns));
 
 		return [];
@@ -583,7 +625,7 @@ public sealed class SingleStoreBulkUpdate
 	/// destination-name relationship identical between staging and the later <c>UPDATE ... JOIN</c>.
 	/// </para>
 	/// </remarks>
-    private async Task<(int RowsStaged, bool Aborted)> StageDataAsync(string tempTableName, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
+    private async Task<(int RowsStaged, bool Aborted)> StageDataAsync(BulkUpdatePlan plan, string tempTableName, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var bulkCopy = new SingleStoreBulkCopy(m_connection, m_transaction)
 		{
@@ -593,7 +635,7 @@ public sealed class SingleStoreBulkUpdate
 		};
 
 		// Forward our column mappings unchanged: source ordinal -> staging column name.
-		foreach (var mapping in ColumnMappings)
+		foreach (var mapping in plan.ColumnMappings)
 			bulkCopy.ColumnMappings.Add(mapping);
 
 		// Re-raise SingleStoreBulkCopy's progress event as a bulk-update staging event, and propagate the
@@ -693,14 +735,14 @@ public sealed class SingleStoreBulkUpdate
 	/// operation because the staging table is session-scoped.
 	/// </para>
 	/// </remarks>
-    private async Task<int?> ComputeMatchedRowsAsync(string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+    private async Task<int?> ComputeMatchedRowsAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!ComputeRowsMatched)
 			return null;
 
 		var countSql =
-			$"SELECT COUNT(*) FROM {IdentifierHelper.QuoteQualifiedIdentifier(DestinationTableName!)} AS t " +
-			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {BuildKeyJoinCondition()}";
+			$"SELECT COUNT(*) FROM {IdentifierHelper.QuoteQualifiedIdentifier(plan.DestinationTableName)} AS t " +
+			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {BuildKeyJoinCondition(plan)}";
 
 		using var cmd = m_connection.CreateCommand();
 		cmd.CommandText = countSql;
@@ -744,16 +786,16 @@ public sealed class SingleStoreBulkUpdate
 	/// operation result.
 	/// </para>
 	/// </remarks>
-    private async Task<int> ExecuteUpdateAsync(string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+    private async Task<int> ExecuteUpdateAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		// Assign each non-key mapped column from the staging row: t.`c1` = s.`c1`, t.`c2` = s.`c2` ...
 		var setClause = string.Join(
 			", ",
-			GetUpdateColumns().Select(c => $"t.{IdentifierHelper.QuoteIdentifier(c)} = s.{IdentifierHelper.QuoteIdentifier(c)}"));
+			plan.UpdateColumns.Select(c => $"t.{IdentifierHelper.QuoteIdentifier(c)} = s.{IdentifierHelper.QuoteIdentifier(c)}"));
 
 		var updateSql =
-			$"UPDATE {IdentifierHelper.QuoteQualifiedIdentifier(DestinationTableName!)} AS t " +
-			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {BuildKeyJoinCondition()} " +
+			$"UPDATE {IdentifierHelper.QuoteQualifiedIdentifier(plan.DestinationTableName)} AS t " +
+			$"INNER JOIN {IdentifierHelper.QuoteIdentifier(tempTableName)} AS s ON {BuildKeyJoinCondition(plan)} " +
 			$"SET {setClause}";
 
 		using var cmd = m_connection.CreateCommand();
@@ -761,7 +803,7 @@ public sealed class SingleStoreBulkUpdate
 		cmd.Transaction = m_transaction;
 		cmd.CommandTimeout = BulkUpdateTimeout;
 
-		// Collect any warnings raised during the UPDATE. Errors is already IReadOnlyList<SingleStoreError>.
+		// Collect any warnings raised during the UPDATE. Errors are already IReadOnlyList<SingleStoreError>.
 		void OnInfoMessage(object sender, SingleStoreInfoMessageEventArgs args) => m_warnings.AddRange(args.Errors);
 
 		m_connection.InfoMessage += OnInfoMessage;
@@ -826,10 +868,10 @@ public sealed class SingleStoreBulkUpdate
 	/// Builds the key-column equi-join predicate shared by the match-count query and the update, joining the
 	/// destination table (alias <c>t</c>) to the staging table (alias <c>s</c>) on every key column.
 	/// </summary>
-    private string BuildKeyJoinCondition() =>
+    private static string BuildKeyJoinCondition(BulkUpdatePlan plan) =>
 		string.Join(
 			" AND ",
-			KeyColumns.Select(k => $"t.{IdentifierHelper.QuoteIdentifier(k)} = s.{IdentifierHelper.QuoteIdentifier(k)}"));
+			plan.KeyColumns.Select(k => $"t.{IdentifierHelper.QuoteIdentifier(k)} = s.{IdentifierHelper.QuoteIdentifier(k)}"));
 
     private readonly SingleStoreConnection m_connection;
     private readonly SingleStoreTransaction? m_transaction;

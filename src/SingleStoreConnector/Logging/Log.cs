@@ -401,9 +401,6 @@ internal static partial class Log
 	[LoggerMessage(EventIds.CompletedBulkUpdate, LogLevel.Information, "Completed bulk update: Staged={Staged}, Matched={Matched}, Updated={Updated}, Duration={Duration}ms")]
 	public static partial void CompletedBulkUpdate(ILogger logger, int staged, int matched, int updated, long duration);
 
-	[LoggerMessage(EventIds.KeyColumnsNotIndexedForBulkUpdate, LogLevel.Warning, "Key columns not indexed for bulk update, performance may be slow: {Columns}")]
-	public static partial void KeyColumnsNotIndexedForBulkUpdate(ILogger logger, string columns);
-
 	[LoggerMessage(EventIds.ShardKeyMismatchForBulkUpdate, LogLevel.Warning, "Shard key mismatch for bulk update: Staging=[{StagingKey}], Target=[{TargetKey}]")]
 	public static partial void ShardKeyMismatchForBulkUpdate(ILogger logger, string stagingKey, string targetKey);
 

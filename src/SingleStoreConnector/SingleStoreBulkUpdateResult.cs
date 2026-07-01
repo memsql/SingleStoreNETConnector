@@ -17,9 +17,12 @@ public sealed class SingleStoreBulkUpdateResult
 	public int RowsStaged { get; }
 
 	/// <summary>
-	/// The number of staged rows that matched rows in the destination table, or <c>null</c> when
+	/// The number of destination rows matched by the join on the key columns, or <c>null</c> when
 	/// <see cref="SingleStoreBulkUpdate.ComputeRowsMatched"/> was set to <c>false</c> and the count was not computed.
 	/// </summary>
+	/// <remarks>When the destination key columns are unique this equals the number of staged rows that matched a
+	/// destination row. If the key columns are not unique, a single staged row can match several destination rows,
+	/// so this (and <see cref="RowsAffected"/>) can exceed the number of staged rows.</remarks>
 	public int? RowsMatched { get; }
 
 	/// <summary>

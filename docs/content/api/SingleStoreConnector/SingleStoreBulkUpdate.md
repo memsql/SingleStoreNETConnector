@@ -46,7 +46,7 @@ public sealed class SingleStoreBulkUpdate
 | name | description |
 | --- | --- |
 | [SingleStoreBulkUpdate](SingleStoreBulkUpdate/SingleStoreBulkUpdate.md)(…) | Initializes a [`SingleStoreBulkUpdate`](./SingleStoreBulkUpdate.md) object with the specified connection, and optionally the active transaction. |
-| [BulkUpdateTimeout](SingleStoreBulkUpdate/BulkUpdateTimeout.md) { get; set; } | The number of seconds for each phase of the operation to complete before it times out (default `30`). |
+| [BulkUpdateTimeout](SingleStoreBulkUpdate/BulkUpdateTimeout.md) { get; set; } | The number of seconds for each phase of the operation to complete before it times out, or `0` for no timeout (the default). A single bulk update can spend a long time staging, counting, or updating, so a finite timeout should be chosen deliberately. |
 | [ColumnMappings](SingleStoreBulkUpdate/ColumnMappings.md) { get; } | A collection of [`SingleStoreBulkCopyColumnMapping`](./SingleStoreBulkCopyColumnMapping.md) objects that map source column ordinals onto destination column names. Every key column and at least one non-key (updated) column must be mapped. |
 | [ComputeRowsMatched](SingleStoreBulkUpdate/ComputeRowsMatched.md) { get; set; } | Whether to compute [`RowsMatched`](./SingleStoreBulkUpdateResult/RowsMatched.md) via a `COUNT` query (default `true`). Set this to `false` to skip that query for better performance, in which case [`RowsMatched`](./SingleStoreBulkUpdateResult/RowsMatched.md) is `null`. |
 | [DestinationTableName](SingleStoreBulkUpdate/DestinationTableName.md) { get; set; } | The name of the table whose rows are updated. |
@@ -58,7 +58,7 @@ public sealed class SingleStoreBulkUpdate
 
 ## Remarks
 
-The following restrictions apply, and `WriteToServer` throws if they are not met: [`KeyColumns`](./SingleStoreBulkUpdate/KeyColumns.md) is required and every key column must be mapped; at least one non-key column must be mapped; the source must not contain duplicate key values; shard key columns and generated (computed) columns cannot be updated; reference tables are not supported; and expression column mappings are not supported.
+The following restrictions apply, and `WriteToServer` throws if they are not met: [`KeyColumns`](./SingleStoreBulkUpdate/KeyColumns.md) is required and every key column must be mapped; at least one non-key column must be mapped; the source must not contain duplicate key values; shard key columns cannot be updated; generated (computed) columns cannot be mapped; reference tables are not supported; and expression column mappings are not supported.
 
 An instance of this class is not thread-safe; do not share an instance across concurrent operations.
 

@@ -22,6 +22,10 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 
 	private readonly int m_commandTimeout = commandTimeout;
 
+	// Caches the SHOW CREATE TABLE text per table name so a single operation that inspects reference-table status,
+	// shard keys, column type definitions and generated columns only queries the server once.
+	private readonly Dictionary<string, string> m_createTableCache = new(StringComparer.OrdinalIgnoreCase);
+
 	/// <summary>
 	/// Detects if the specified table is a reference table.
 	/// </summary>
@@ -112,6 +116,9 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 	{
 		EnsureConnectionIsOpen();
 
+		if (m_createTableCache.TryGetValue(tableName, out var cached))
+			return cached;
+
 		using var cmd = m_connection.CreateCommand();
 		cmd.Transaction = m_transaction;
 		cmd.CommandTimeout = m_commandTimeout;
@@ -123,7 +130,9 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 		if (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
 		{
 			// SHOW CREATE TABLE returns the CREATE TABLE statement in the second column.
-			return reader.GetString(1);
+			var createTableSql = reader.GetString(1);
+			m_createTableCache[tableName] = createTableSql;
+			return createTableSql;
 		}
 
 		throw new InvalidOperationException($"Unable to retrieve CREATE TABLE statement for {tableName}.");

@@ -299,6 +299,45 @@ public class SchemaDetectorTests(DatabaseFixture database) : IClassFixture<Datab
 	}
 
 	[Fact]
+	public async Task GetColumnTypeDefinitionsHandlesMultiWordType()
+	{
+		await using var connection = new SingleStoreConnection(database.Connection.ConnectionString);
+		await connection.OpenAsync();
+
+		var tableName = "schema_detector_coldefs_multiword";
+
+		// DOUBLE PRECISION is a multi-token type name; the parser must keep both words rather than stopping after
+		// the first token (which would drop "PRECISION" or misread it as a column option).
+		await CreateTableAsync(connection, tableName, "id INT PRIMARY KEY, measurement DOUBLE PRECISION");
+
+		var detector = new SchemaDetector(connection);
+		var definitions = await detector.GetColumnTypeDefinitionsAsync(tableName, IOBehavior.Asynchronous);
+
+		Assert.Contains("double", definitions["measurement"], StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public async Task GetColumnTypeDefinitionsPreservesCharacterSetAndCollation()
+	{
+		await using var connection = new SingleStoreConnection(database.Connection.ConnectionString);
+		await connection.OpenAsync();
+
+		var tableName = "schema_detector_coldefs_charset";
+
+		// A string column can carry both a CHARACTER SET and a COLLATE modifier; both are part of the type and must
+		// be preserved so the staging column compares values the same way as the destination.
+		await CreateTableAsync(connection, tableName, "id INT PRIMARY KEY, name VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin");
+
+		var detector = new SchemaDetector(connection);
+		var definitions = await detector.GetColumnTypeDefinitionsAsync(tableName, IOBehavior.Asynchronous);
+
+		var nameDefinition = definitions["name"];
+		Assert.Contains("varchar(100)", nameDefinition, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("utf8mb4", nameDefinition, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("collate", nameDefinition, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
 	public async Task IsReferenceTableThrowsForNonexistentTable()
 	{
 		await using var connection = new SingleStoreConnection(database.Connection.ConnectionString);

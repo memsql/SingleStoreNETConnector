@@ -342,6 +342,46 @@ create table bulk_update_generated(id int primary key, price int, total as (pric
 		Assert.Contains("total", exception.Message);
 	}
 
+	[Fact]
+	public async Task ThrowsWhenGeneratedColumnUsedAsKey()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+
+		// gen_key is a generated column used as a key column. It is still rejected: a generated column has no plain
+		// column type that the staging table can reproduce, so it cannot be staged even as a key.
+		using (var cmd = new SingleStoreCommand(@"drop table if exists bulk_update_generated_key;
+create table bulk_update_generated_key(id int, gen_key as (id * 10) persisted int, value varchar(100), primary key (id, gen_key));", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("gen_key", typeof(int)),
+				new DataColumn("value", typeof(string)),
+			},
+			Rows = { new object[] { 10, "updated" } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_generated_key",
+			KeyColumns = { "gen_key" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "gen_key"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<NotSupportedException>(async () => await bulkUpdate.WriteToServerAsync(dataTable));
+		Assert.Contains("generated", exception.Message, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("gen_key", exception.Message);
+	}
+
 	private static DataTable NewTable(params string[] columnNames)
 	{
 		var dataTable = new DataTable();
