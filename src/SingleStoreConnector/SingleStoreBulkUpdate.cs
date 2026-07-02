@@ -690,25 +690,25 @@ public sealed class SingleStoreBulkUpdate
 	{
 		switch (source)
 		{
-		case DataTable dataTable:
-			return ioBehavior == IOBehavior.Synchronous
-				? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(dataTable))
-				: bulkCopy.WriteToServerAsync(dataTable, cancellationToken);
+			case DataTable dataTable:
+				return ioBehavior == IOBehavior.Synchronous
+					? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(dataTable))
+					: bulkCopy.WriteToServerAsync(dataTable, cancellationToken);
 
-		case IEnumerable<DataRow> dataRows:
-			var rows = dataRows as IReadOnlyList<DataRow> ?? dataRows.ToList();
-			var columnCount = rows[0].Table.Columns.Count;
-			return ioBehavior == IOBehavior.Synchronous
-				? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(rows, columnCount))
-				: bulkCopy.WriteToServerAsync(rows, columnCount, cancellationToken);
+			case IEnumerable<DataRow> dataRows:
+				var rows = dataRows as IReadOnlyList<DataRow> ?? dataRows.ToList();
+				var columnCount = rows[0].Table.Columns.Count;
+				return ioBehavior == IOBehavior.Synchronous
+					? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(rows, columnCount))
+					: bulkCopy.WriteToServerAsync(rows, columnCount, cancellationToken);
 
-		case IDataReader dataReader:
-			return ioBehavior == IOBehavior.Synchronous
-				? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(dataReader))
-				: bulkCopy.WriteToServerAsync(dataReader, cancellationToken);
+			case IDataReader dataReader:
+				return ioBehavior == IOBehavior.Synchronous
+					? new ValueTask<SingleStoreBulkCopyResult>(bulkCopy.WriteToServer(dataReader))
+					: bulkCopy.WriteToServerAsync(dataReader, cancellationToken);
 
-		default:
-			throw new ArgumentException($"Unsupported source type '{source.GetType()}'.", nameof(source));
+			default:
+				throw new ArgumentException($"Unsupported source type '{source.GetType()}'.", nameof(source));
 		}
 	}
 

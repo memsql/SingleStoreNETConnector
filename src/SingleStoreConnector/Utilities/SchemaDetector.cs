@@ -31,6 +31,10 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 	// shard keys, column type definitions and generated columns only queries the server once.
 	private readonly Dictionary<string, string> m_createTableCache = new(StringComparer.OrdinalIgnoreCase);
 
+	// Caches the shard key columns per table name so SHOW INDEXES is not issued more than once per operation
+	// (GetShardKeyColumnsAsync is called during both schema validation and staging-table creation).
+	private readonly Dictionary<string, List<string>> m_shardKeyCache = new(StringComparer.OrdinalIgnoreCase);
+
 	/// <summary>
 	/// Detects if the specified table is a reference table.
 	/// </summary>
@@ -45,10 +49,21 @@ internal sealed class SchemaDetector(SingleStoreConnection connection, SingleSto
 	}
 
 	/// <summary>
-	/// Gets the shard key columns for the specified table.
+	/// Gets the shard key columns for the specified table, caching the result so <c>SHOW INDEXES</c> is issued at
+	/// most once per table for the lifetime of this <see cref="SchemaDetector"/>.
 	/// </summary>
 	/// <returns>List of shard key column names, or empty list if no shard key.</returns>
 	public async Task<List<string>> GetShardKeyColumnsAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken = default)
+	{
+		if (m_shardKeyCache.TryGetValue(tableName, out var cached))
+			return cached;
+
+		var shardKeyColumns = await ComputeShardKeyColumnsAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false);
+		m_shardKeyCache[tableName] = shardKeyColumns;
+		return shardKeyColumns;
+	}
+
+	private async Task<List<string>> ComputeShardKeyColumnsAsync(string tableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		EnsureConnectionIsOpen();
 
