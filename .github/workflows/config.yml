@@ -250,12 +250,11 @@ jobs:
           echo "----- release_notes.md -----"
           cat release_notes.md
 
-      # Create a draft GitHub Release; the release notes are reviewed and published manually
       - name: Create draft GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           prerelease: false
-          name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           body_path: release_notes.md
           files: net_connector/*
