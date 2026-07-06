@@ -24,6 +24,10 @@ dotnet test tests\SingleStoreConnector.Tests
 
 To run the side-by-side tests, see [the instructions](tests/README.md).
 
+## Release process
+
+Releases are automated through GitHub Actions: a new NuGet package is built and published, and a draft GitHub Release is created, whenever a new version tag is pushed to the repository. See [RELEASE.md](RELEASE.md) for the full publishing instructions.
+
 ## Goals
 
 The goals of this project are:
