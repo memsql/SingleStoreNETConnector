@@ -382,6 +382,45 @@ create table bulk_update_generated_key(id int, gen_key as (id * 10) persisted in
 		Assert.Contains("gen_key", exception.Message);
 	}
 
+	[Fact]
+	public async Task ThrowsWhenAllowLoadLocalInfileNotSet()
+	{
+		// Deliberately build a connection string with AllowLoadLocalInfile=false; staging relies on it, so the
+		// operation must fail early with a clear message before opening the connection or running any command.
+		var csb = new SingleStoreConnectionStringBuilder(database.Connection.ConnectionString)
+		{
+			AllowLoadLocalInfile = false,
+		};
+		using var connection = new SingleStoreConnection(csb.ConnectionString);
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(int)),
+			},
+			Rows = { { 1, 10 } },
+		};
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "any_table",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		var exception = await Assert.ThrowsAsync<NotSupportedException>(async () => await bulkUpdate.WriteToServerAsync(dataTable));
+		Assert.Contains("AllowLoadLocalInfile", exception.Message);
+
+		// The connection was never opened: the failure happened before any I/O.
+		Assert.Equal(ConnectionState.Closed, connection.State);
+	}
+
 	private static DataTable NewTable(params string[] columnNames)
 	{
 		var dataTable = new DataTable();

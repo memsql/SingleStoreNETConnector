@@ -771,6 +771,73 @@ insert into bulk_update_large values {SequentialRows(5000)};", connection))
 		Assert.Equal(5000, Convert.ToInt32(await selectCommand.ExecuteScalarAsync()));
 	}
 
+	[Fact]
+	public async Task CancellationRunsCleanupAndLeavesDestinationUnchanged()
+	{
+		using var connection = new SingleStoreConnection(BulkUpdateTests.GetLocalConnectionString(database));
+		await connection.OpenAsync();
+		using (var cmd = new SingleStoreCommand($@"drop table if exists bulk_update_cancel;
+create table bulk_update_cancel(id int primary key, value int);
+insert into bulk_update_cancel values {SequentialRows(100)};", connection))
+		{
+			await cmd.ExecuteNonQueryAsync();
+		}
+
+		var dataTable = new DataTable
+		{
+			Columns =
+			{
+				new DataColumn("id", typeof(int)),
+				new DataColumn("value", typeof(int)),
+			},
+		};
+		for (var i = 1; i <= 100; i++)
+			dataTable.Rows.Add(i, i * 2);
+
+		using var cts = new CancellationTokenSource();
+
+		var bulkUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_cancel",
+			NotifyAfter = 10,
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+
+		// Cancel the token from the progress handler, i.e. after the staging table has been created and data is
+		// being staged. The cancellation is then observed before the UPDATE runs, so this exercises the real
+		// cleanup path (the staging table gets dropped) rather than cancelling before anything was created.
+		bulkUpdate.SingleStoreRowsStaged += (_, _) => cts.Cancel();
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await bulkUpdate.WriteToServerAsync(dataTable, cts.Token));
+
+		// Cleanup ran: the connection the caller supplied is still open and usable, and no staging table leaked —
+		// a fresh bulk update on the same connection succeeds. (If the temporary table had not been dropped, or the
+		// connection had been left in a bad state, this second operation would fail.)
+		Assert.Equal(ConnectionState.Open, connection.State);
+
+		// No partial update happened: the destination still holds its original values (value = 0 for every row).
+		using (var verifyCommand = new SingleStoreCommand("select count(*) from bulk_update_cancel where value <> 0;", connection))
+			Assert.Equal(0L, Convert.ToInt64(await verifyCommand.ExecuteScalarAsync()));
+
+		var secondUpdate = new SingleStoreBulkUpdate(connection)
+		{
+			DestinationTableName = "bulk_update_cancel",
+			KeyColumns = { "id" },
+			ColumnMappings =
+			{
+				new SingleStoreBulkCopyColumnMapping(0, "id"),
+				new SingleStoreBulkCopyColumnMapping(1, "value"),
+			},
+		};
+		var result = await secondUpdate.WriteToServerAsync(dataTable);
+		Assert.Equal(100, result.RowsStaged);
+	}
+
 	// Builds a "(1,0),(2,0),...,(count,0)" VALUES list to seed a table with sequential ids.
 	private static string SequentialRows(int count)
 	{

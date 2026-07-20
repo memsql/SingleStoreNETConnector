@@ -9,7 +9,7 @@ using SingleStoreConnector.Utilities;
 
 namespace SingleStoreConnector;
 
-// TODO: consider upsert support in a future version.
+// TODO: PLAT-8044 (consider upsert support in a future version)
 
 /// <summary>
 /// <para><see cref="SingleStoreBulkUpdate"/> lets you efficiently update many existing rows in a SingleStore table
@@ -214,6 +214,12 @@ public sealed class SingleStoreBulkUpdate
 		// Validate configuration before touching the connection so misconfiguration fails fast and cheaply.
 		ValidateColumnMappings();
 
+		// Staging loads the source rows with LOAD DATA LOCAL INFILE (via SingleStoreBulkCopy), which requires
+		// AllowLoadLocalInfile=true. Check it up front (reading the connection string works whether or not the
+		// connection is open) so a misconfigured connection fails with a clear message before any command runs.
+		if (!new SingleStoreConnectionStringBuilder(m_connection.ConnectionString).AllowLoadLocalInfile)
+			throw new NotSupportedException("SingleStoreBulkUpdate requires AllowLoadLocalInfile=true in the connection string, because it stages data using LOAD DATA LOCAL INFILE.");
+
 		// Snapshot all operation inputs now so that a SingleStoreRowsStaged event handler (which fires between
 		// staging and the UPDATE) cannot change the destination table, key columns or mappings mid-operation and
 		// produce a staging table and UPDATE built from different configurations.
@@ -414,11 +420,11 @@ public sealed class SingleStoreBulkUpdate
 			throw new InvalidOperationException("ColumnMappings must contain at least one non-key column to update.");
 	}
 
-    private async ValueTask ValidateSchemaAsync(SchemaDetector schemaDetector, BulkUpdatePlan plan, IOBehavior ioBehavior, CancellationToken cancellationToken)
+    private static async ValueTask ValidateSchemaAsync(SchemaDetector schemaDetector, BulkUpdatePlan plan, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var tableName = plan.DestinationTableName;
 
-		// TODO: make changes to support the solutions described here -- https://docs.singlestore.com/cloud/reference/troubleshooting-reference/query-errors/error-1706-hy-000-feature-multi-table-update-delete-with-a-reference-table-as-target-table-is-not-supported-by-memsql/
+		// TODO: PLAT-8044 (make changes to support the solutions described here -- https://docs.singlestore.com/cloud/reference/troubleshooting-reference/query-errors/error-1706-hy-000-feature-multi-table-update-delete-with-a-reference-table-as-target-table-is-not-supported-by-memsql/)
 		if (await schemaDetector.IsReferenceTableAsync(tableName, ioBehavior, cancellationToken).ConfigureAwait(false))
 			throw new NotSupportedException($"Target table '{tableName}' is a reference table. Bulk updates on reference tables are not supported in this version.");
 
