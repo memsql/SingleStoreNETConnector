@@ -51,6 +51,8 @@ public enum SingleStoreDbType
 | LongText | `751` |  |
 | Text | `752` |  |
 | Guid | `800` |  |
+| Bson | `801` |  |
+| Vector | `802` |  |
 
 ## See Also
 

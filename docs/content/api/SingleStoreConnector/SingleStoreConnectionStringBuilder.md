@@ -35,6 +35,7 @@ public sealed class SingleStoreConnectionStringBuilder : DbConnectionStringBuild
 | [DateTimeKind](SingleStoreConnectionStringBuilder/DateTimeKind.md) { get; set; } | The [`DateTimeKind`](./SingleStoreConnectionStringBuilder/DateTimeKind.md) to use when deserializing `DATETIME` values. |
 | [DefaultCommandTimeout](SingleStoreConnectionStringBuilder/DefaultCommandTimeout.md) { get; set; } | The length of time (in seconds) each command can execute before the query is cancelled on the server, or zero to disable timeouts. |
 | [DnsCheckInterval](SingleStoreConnectionStringBuilder/DnsCheckInterval.md) { get; set; } | The number of seconds between checks for DNS changes, or 0 to disable periodic checks. |
+| [EnableExtendedDataTypes](SingleStoreConnectionStringBuilder/EnableExtendedDataTypes.md) { get; set; } | Enable SingleStore extended type metadata for types such as VECTOR and BSON. |
 | [ForceSynchronous](SingleStoreConnectionStringBuilder/ForceSynchronous.md) { get; set; } | Forces all async methods to execute synchronously. This can be useful for debugging. |
 | [GuidFormat](SingleStoreConnectionStringBuilder/GuidFormat.md) { get; set; } | Determines which column type (if any) should be read as a Guid. |
 | [IgnoreCommandTransaction](SingleStoreConnectionStringBuilder/IgnoreCommandTransaction.md) { get; set; } | Does not check the [`Transaction`](./SingleStoreCommand/Transaction.md) property for validity when executing a command. |

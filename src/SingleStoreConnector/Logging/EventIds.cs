@@ -152,6 +152,17 @@ internal static class EventIds
 	public const int RollingBackTransaction = 2704;
 	public const int RolledBackTransaction = 2705;
 
+	// Bulk update events, 2800-2899
+	public const int StartingBulkUpdate = 2800;
+	public const int CreatedStagingTableForBulkUpdate = 2801;
+	public const int StagedDataForBulkUpdate = 2802;
+	public const int QueriedMatchCountForBulkUpdate = 2803;
+	public const int ExecutedBulkUpdate = 2804;
+	public const int CompletedBulkUpdate = 2805;
+	public const int ShardKeyMismatchForBulkUpdate = 2806;
+	public const int LargeUnmatchedCountForBulkUpdate = 2807;
+	public const int FailedToDropStagingTableForBulkUpdate = 2808;
+
 	// Connection pool events, 3000-3099
 	public const int WaitingForAvailableSession = 3000;
 	public const int CreatingNewConnectionPool = 3001;
