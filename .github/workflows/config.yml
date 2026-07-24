@@ -6,7 +6,7 @@ on:
   push:
     branches: [master]
     tags:
-      - 'v*'
+      - 'v[0-9]*.[0-9]*.[0-9]*'
   workflow_call:
   workflow_dispatch:
 
@@ -194,11 +194,12 @@ jobs:
 
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [test-ubuntu, test-windows]
     runs-on: windows-latest
     permissions:
       id-token: write
+      contents: write
 
     steps:
       - uses: actions/checkout@v5
@@ -236,3 +237,24 @@ jobs:
           dotnet nuget push "net_connector/SingleStoreConnector.${{ env.CONNECTOR_VERSION }}.nupkg"
           --api-key ${{steps.login.outputs.NUGET_API_KEY}}
           --source https://api.nuget.org/v3/index.json
+
+      # Extract the notes for this version from docs/VersionHistory.md
+      - name: Extract release notes
+        shell: bash
+        run: |
+          awk -v ver="### ${CONNECTOR_VERSION}" '
+            $0 == ver { flag = 1; next }
+            /^### / && flag { flag = 0 }
+            flag { print }
+          ' docs/VersionHistory.md > release_notes.md
+          echo "----- release_notes.md -----"
+          cat release_notes.md
+
+      - name: Create draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: false
+          name: Release ${{ github.ref_name }}
+          body_path: release_notes.md
+          files: net_connector/*
