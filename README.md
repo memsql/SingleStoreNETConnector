@@ -32,7 +32,7 @@ Code style is defined in [`.editorconfig`](.editorconfig) (C# files use tabs). B
 dotnet format whitespace SingleStoreConnector.slnx
 ```
 
-CI runs `dotnet format whitespace SingleStoreConnector.slnx --verify-no-changes` and fails if any file is not formatted, so run the command above to fix any drift it reports.
+CI runs `dotnet format whitespace SingleStoreConnector.slnx --verify-no-changes` and fails if any file is not formatted, so run the command above to fix any drift it reports. The test jobs depend on this check, so they are skipped entirely when formatting fails.
 
 We deliberately scope this to `whitespace` rather than running the full `dotnet format` (which also applies `.editorconfig` code-style and analyzer fixes). The connector multi-targets several frameworks, and some analyzer fixes resolve differently per target (for example, CA1865 rewrites `EndsWith("]", ...)` to the `EndsWith(']')` char overload, which does not exist on `netstandard2.0`/`netstandard2.1`). Full `dotnet format` cannot reconcile those and injects fake merge-conflict markers into the source. The remaining `.editorconfig` style rules are still surfaced as build warnings; enforcing them automatically would require per-framework handling that is out of scope here.
 

@@ -78,7 +78,7 @@ jobs:
 
   test-ubuntu:
     name: ${{ matrix.name }}
-    needs: build-matrix
+    needs: [format, build-matrix]
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -165,6 +165,7 @@ jobs:
 
 
   test-windows:
+    needs: format
     runs-on: windows-latest
     strategy:
       fail-fast: false
