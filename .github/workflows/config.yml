@@ -19,6 +19,25 @@ env:
   S2MS_API_KEY: ${{ secrets.S2MS_API_KEY }}
 
 jobs:
+  format:
+    name: Check formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Scoped to `whitespace` on purpose. Full `dotnet format` also runs
+      # analyzer/code-style fixes, but this project multi-targets several
+      # frameworks and some fixes resolve differently per target,
+      # causing dotnet format to emit fake merge-conflict
+      # markers. See the "Code formatting" section in README.md.
+      - name: Verify whitespace formatting
+        run: dotnet format whitespace SingleStoreConnector.slnx --verify-no-changes
+
   fetch-s2-versions:
     name: Fetch SingleStore supported versions
     runs-on: ubuntu-latest

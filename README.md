@@ -24,6 +24,18 @@ dotnet test tests\SingleStoreConnector.Tests
 
 To run the side-by-side tests, see [the instructions](tests/README.md).
 
+## Code formatting
+
+Code style is defined in [`.editorconfig`](.editorconfig) (C# files use tabs). Before pushing, normalize whitespace to match it:
+
+```
+dotnet format whitespace SingleStoreConnector.slnx
+```
+
+CI runs `dotnet format whitespace SingleStoreConnector.slnx --verify-no-changes` and fails if any file is not formatted, so run the command above to fix any drift it reports.
+
+We deliberately scope this to `whitespace` rather than running the full `dotnet format` (which also applies `.editorconfig` code-style and analyzer fixes). The connector multi-targets several frameworks, and some analyzer fixes resolve differently per target (for example, CA1865 rewrites `EndsWith("]", ...)` to the `EndsWith(']')` char overload, which does not exist on `netstandard2.0`/`netstandard2.1`). Full `dotnet format` cannot reconcile those and injects fake merge-conflict markers into the source. The remaining `.editorconfig` style rules are still surfaced as build warnings; enforcing them automatically would require per-framework handling that is out of scope here.
+
 ## Release process
 
 Releases are automated through GitHub Actions: a new NuGet package is built and published, and a draft GitHub Release is created, whenever a new version tag is pushed to the repository. See [RELEASE.md](RELEASE.md) for the full publishing instructions.
