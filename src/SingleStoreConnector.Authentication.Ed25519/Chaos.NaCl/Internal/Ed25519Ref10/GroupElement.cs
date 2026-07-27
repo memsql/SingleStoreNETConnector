@@ -21,7 +21,7 @@ namespace Chaos.NaCl.Internal.Ed25519Ref10
 		public FieldElement X;
 		public FieldElement Y;
 		public FieldElement Z;
-	} ;
+	};
 
 	internal struct GroupElementP3
 	{
@@ -29,7 +29,7 @@ namespace Chaos.NaCl.Internal.Ed25519Ref10
 		public FieldElement Y;
 		public FieldElement Z;
 		public FieldElement T;
-	} ;
+	};
 
 	internal struct GroupElementP1P1
 	{
@@ -37,7 +37,7 @@ namespace Chaos.NaCl.Internal.Ed25519Ref10
 		public FieldElement Y;
 		public FieldElement Z;
 		public FieldElement T;
-	} ;
+	};
 
 	internal struct GroupElementPreComp
 	{
@@ -51,7 +51,7 @@ namespace Chaos.NaCl.Internal.Ed25519Ref10
 			this.yminusx = yminusx;
 			this.xy2d = xy2d;
 		}
-	} ;
+	};
 
 	internal struct GroupElementCached
 	{
@@ -59,5 +59,5 @@ namespace Chaos.NaCl.Internal.Ed25519Ref10
 		public FieldElement YminusX;
 		public FieldElement Z;
 		public FieldElement T2d;
-	} ;
+	};
 }

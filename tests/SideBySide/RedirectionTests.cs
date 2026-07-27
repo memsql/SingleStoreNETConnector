@@ -33,7 +33,7 @@ public class RedirectionTests : IClassFixture<DatabaseFixture>, IDisposable
 		{
 			// changing to proxy port
 			csb.Server = "localhost";
-			csb.Port = (uint)proxy.ListenPort;
+			csb.Port = (uint) proxy.ListenPort;
 			csb.ServerRedirectionMode = SingleStoreServerRedirectionMode.Preferred;
 
 			// ensure that connection has been redirected
@@ -98,18 +98,18 @@ public class RedirectionTests : IClassFixture<DatabaseFixture>, IDisposable
 	}
 
 	protected void StartProxy()
-    {
-	    var csb = AppConfig.CreateConnectionStringBuilder();
-	    proxy = new ServerConfiguration( csb.Server, (int)csb.Port );
-	    Thread serverThread = new Thread( ServerThread );
-	    serverThread.Start( proxy );
-    }
+	{
+		var csb = AppConfig.CreateConnectionStringBuilder();
+		proxy = new ServerConfiguration(csb.Server, (int) csb.Port);
+		Thread serverThread = new Thread(ServerThread);
+		serverThread.Start(proxy);
+	}
 
 	protected void StopProxy()
-    {
-	    proxy.RunServer = false;
-	    proxy.ServerSocket.Close();
-    }
+	{
+		proxy.RunServer = false;
+		proxy.ServerSocket.Close();
+	}
 
 	private class ServerConfiguration
 	{
@@ -117,21 +117,22 @@ public class RedirectionTests : IClassFixture<DatabaseFixture>, IDisposable
 		public int RemotePort { get; set; }
 		public int ListenPort { get; set; }
 		public Socket ServerSocket { get; set; }
-		public ServerConfiguration(string remoteAddress, int remotePort) {
+		public ServerConfiguration(string remoteAddress, int remotePort)
+		{
 			var ipHostEntry = Dns.GetHostEntry(remoteAddress);
 			RemoteAddress = ipHostEntry.AddressList[0];
 			RemotePort = remotePort;
 			ListenPort = 0;
-        }
+		}
 		public bool RunServer { get; set; } = true;
-    }
+	}
 
 	private static void ServerThread(object configObj)
 	{
-		ServerConfiguration config = (ServerConfiguration)configObj;
+		ServerConfiguration config = (ServerConfiguration) configObj;
 		Socket serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-		serverSocket.Bind( new IPEndPoint( IPAddress.Any, 0 ) );
+		serverSocket.Bind(new IPEndPoint(IPAddress.Any, 0));
 		serverSocket.Listen(1);
 		config.ListenPort = ((IPEndPoint) serverSocket.LocalEndPoint).Port;
 		config.ServerSocket = serverSocket;

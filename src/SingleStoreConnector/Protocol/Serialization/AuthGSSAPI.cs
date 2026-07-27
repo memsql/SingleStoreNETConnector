@@ -56,10 +56,10 @@ internal class NegotiateToSingleStoreConverterStream : Stream
 	private static void CreateNegotiateStreamMessageHeader(byte[] buffer, int offset, byte messageId, long payloadLength)
 	{
 		buffer[offset] = messageId;
-		buffer[offset+1] = NegotiateStreamConstants.MajorVersion;
-		buffer[offset+2] = NegotiateStreamConstants.MinorVersion;
-		buffer[offset+3] = (byte) (payloadLength >> 8);
-		buffer[offset+4] = (byte) (payloadLength & 0xff);
+		buffer[offset + 1] = NegotiateStreamConstants.MajorVersion;
+		buffer[offset + 2] = NegotiateStreamConstants.MinorVersion;
+		buffer[offset + 3] = (byte) (payloadLength >> 8);
+		buffer[offset + 4] = (byte) (payloadLength & 0xff);
 	}
 	public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
 	{
@@ -125,11 +125,11 @@ internal class NegotiateToSingleStoreConverterStream : Stream
 				throw new InvalidDataException("Cannot parse NegotiateStream handshake message header");
 
 			// Parse NegotiateStream handshake header
-			var messageId = buffer[offset+0];
-			var majorProtocolVersion = buffer[offset+1];
-			var minorProtocolVersion = buffer[offset+2];
-			var payloadSizeLow = buffer[offset+4];
-			var payloadSizeHigh = buffer[offset+3];
+			var messageId = buffer[offset + 0];
+			var majorProtocolVersion = buffer[offset + 1];
+			var minorProtocolVersion = buffer[offset + 2];
+			var payloadSizeLow = buffer[offset + 4];
+			var payloadSizeHigh = buffer[offset + 3];
 
 			if (majorProtocolVersion != NegotiateStreamConstants.MajorVersion ||
 				minorProtocolVersion != NegotiateStreamConstants.MinorVersion)
@@ -137,8 +137,8 @@ internal class NegotiateToSingleStoreConverterStream : Stream
 				throw new FormatException($"Unknown version of NegotiateStream protocol {majorProtocolVersion:d}.{minorProtocolVersion:d}, expected {NegotiateStreamConstants.MajorVersion:d}.{NegotiateStreamConstants.MinorVersion:d}");
 			}
 			if (messageId is not NegotiateStreamConstants.HandshakeDone and
-			    not NegotiateStreamConstants.HandshakeError and
-			    not NegotiateStreamConstants.HandshakeInProgress)
+				not NegotiateStreamConstants.HandshakeError and
+				not NegotiateStreamConstants.HandshakeInProgress)
 			{
 				throw new FormatException($"Invalid NegotiateStream MessageId 0x{messageId:X2}");
 			}

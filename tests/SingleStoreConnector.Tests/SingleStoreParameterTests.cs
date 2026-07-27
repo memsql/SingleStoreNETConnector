@@ -27,7 +27,7 @@ public class SingleStoreParameterTests
 	[Fact]
 	public void ZeroByteInGuid()
 	{
-		var parameter = new SingleStoreParameter { Direction = ParameterDirection.Input, Value = new Guid(new byte[] { 0x44, 0x49, 0x55, 0x47,  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }) };
+		var parameter = new SingleStoreParameter { Direction = ParameterDirection.Input, Value = new Guid(new byte[] { 0x44, 0x49, 0x55, 0x47, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }) };
 		Assert.Equal(@"_binary'GUID\0\0\0\0\0\0\0\0\0\0\0\0'", EncodeParameterToAscii(parameter, StatementPreparerOptions.GuidFormatBinary16));
 	}
 }

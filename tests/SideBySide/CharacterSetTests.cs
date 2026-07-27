@@ -90,8 +90,8 @@ VALUES ('a'), ('b'), ('c'), ('d'), ('e'), ('f'), ('g'), ('h'), ('i'), ('j');");
 		 */
 		var parts = connection.S2ServerVersion.Split('.');
 		if (parts.Length < 2
-		    || !int.TryParse(parts[0], out var major)
-		    || !int.TryParse(parts[1], out var minor))
+			|| !int.TryParse(parts[0], out var major)
+			|| !int.TryParse(parts[1], out var minor))
 			throw new InvalidOperationException($"Unrecognized version: {connection.S2ServerVersion}");
 
 		string expected;

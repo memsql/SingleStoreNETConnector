@@ -1474,8 +1474,8 @@ create table bulk_load_data_table(
 		Assert.Empty(result.Warnings);
 
 		using (var cmd = new SingleStoreCommand(
-			       "select GEOGRAPHY_LONGITUDE(point_data), GEOGRAPHY_LATITUDE(point_data) from bulk_load_data_table order by id;",
-			       connection))
+				   "select GEOGRAPHY_LONGITUDE(point_data), GEOGRAPHY_LATITUDE(point_data) from bulk_load_data_table order by id;",
+				   connection))
 		using (var reader = cmd.ExecuteReader())
 		{
 			Assert.True(reader.Read());
@@ -1653,8 +1653,8 @@ create table bulk_load_data_table(
 		connection2.Open();
 
 		using (var select = new SingleStoreCommand(
-			       "select id, vec, doc from bulk_copy_extended_source order by id;",
-			       connection1))
+				   "select id, vec, doc from bulk_copy_extended_source order by id;",
+				   connection1))
 		using (var reader = select.ExecuteReader())
 		{
 			var bulkCopy = new SingleStoreBulkCopy(connection2)
@@ -1668,8 +1668,8 @@ create table bulk_load_data_table(
 		}
 
 		using (var verify = new SingleStoreCommand(
-			       "select vec, doc :> json from bulk_copy_extended_destination where id = 1;",
-			       connection1))
+				   "select vec, doc :> json from bulk_copy_extended_destination where id = 1;",
+				   connection1))
 		using (var verifyReader = verify.ExecuteReader())
 		{
 			Assert.True(verifyReader.Read());

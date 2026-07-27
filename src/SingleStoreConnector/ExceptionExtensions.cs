@@ -41,7 +41,7 @@ internal static class ExceptionExtensions
 #endif
 
 #if !NET8_0_OR_GREATER
-	extension (ArgumentOutOfRangeException)
+	extension(ArgumentOutOfRangeException)
 	{
 		/// <summary>Throws an <see cref="ArgumentOutOfRangeException"/> if <paramref name="value"/> is negative.</summary>
 		/// <param name="value">The argument to validate as non-negative.</param>

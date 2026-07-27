@@ -50,10 +50,10 @@ public sealed class SingleStoreDbColumn : DbColumn
 		// for text types (e.g. Text, TinyText, MediumText, LongText)
 		// (see https://grizzly.internal.memcompute.com/D54237)
 		else if (serverVersion >= new Version(7, 8, 0) &&
-		    mySqlDbType is SingleStoreDbType.LongText or SingleStoreDbType.MediumText or SingleStoreDbType.Text or SingleStoreDbType.TinyText)
+			mySqlDbType is SingleStoreDbType.LongText or SingleStoreDbType.MediumText or SingleStoreDbType.Text or SingleStoreDbType.TinyText)
 		{
 			// overflow may occur here for SingleStoreDbType.LongText
-			ColumnSize = (int)column.ColumnLength;
+			ColumnSize = (int) column.ColumnLength;
 		}
 		else
 		{
@@ -91,8 +91,8 @@ public sealed class SingleStoreDbColumn : DbColumn
 		IsHidden = false;
 		IsKey = (column.ColumnFlags & ColumnFlags.PrimaryKey) != 0;
 		IsLong = mySqlDbType != SingleStoreDbType.Vector &&
-		         column.ColumnLength > 255 &&
-		         ((column.ColumnFlags & ColumnFlags.Blob) != 0 || column.ColumnType is ColumnType.TinyBlob or ColumnType.Blob or ColumnType.MediumBlob or ColumnType.LongBlob);
+				 column.ColumnLength > 255 &&
+				 ((column.ColumnFlags & ColumnFlags.Blob) != 0 || column.ColumnType is ColumnType.TinyBlob or ColumnType.Blob or ColumnType.MediumBlob or ColumnType.LongBlob);
 		IsReadOnly = false;
 		IsUnique = (column.ColumnFlags & ColumnFlags.UniqueKey) != 0;
 		if (column.ColumnType is ColumnType.Decimal or ColumnType.NewDecimal)

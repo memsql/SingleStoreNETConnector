@@ -5,7 +5,7 @@ internal static partial class GroupOperations
 	/*
 	r = p + q
 	*/
-	public static void ge_madd(out GroupElementP1P1 r, ref  GroupElementP3 p, ref GroupElementPreComp q)
+	public static void ge_madd(out GroupElementP1P1 r, ref GroupElementP3 p, ref GroupElementPreComp q)
 	{
 		FieldElement t0;
 

@@ -22,7 +22,8 @@ namespace Chaos.NaCl.Internal.Ed25519Ref10
 			GroupOperations.ge_scalarmult_base(out A, h, 0);
 			GroupOperations.ge_p3_tobytes(pk, pkoffset, ref A);
 
-			for (i = 0; i < 32; ++i) sk[skoffset + 32 + i] = pk[pkoffset + i];
+			for (i = 0; i < 32; ++i)
+				sk[skoffset + 32 + i] = pk[pkoffset + i];
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_1_OR_GREATER
             CryptographicOperations.ZeroMemory(h);
 #else

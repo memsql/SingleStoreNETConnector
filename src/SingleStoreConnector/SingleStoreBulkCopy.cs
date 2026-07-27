@@ -237,7 +237,7 @@ public sealed class SingleStoreBulkCopy
 				var variableName = $"@`temporary_column_dotnet_connector_col{i}`";
 
 				if (schema[i] is SingleStoreDbColumn singleStoreColumn &&
-				    TryAddExtendedTypeColumnMapping(singleStoreColumn, i, destinationColumn, variableName))
+					TryAddExtendedTypeColumnMapping(singleStoreColumn, i, destinationColumn, variableName))
 				{
 					continue;
 				}
@@ -334,23 +334,23 @@ public sealed class SingleStoreBulkCopy
 			switch (column.ProviderType)
 			{
 				case SingleStoreDbType.Vector:
-				{
-					if (column.VectorDimensions is not { } dims || string.IsNullOrEmpty(column.VectorElementTypeName))
 					{
-						throw new InvalidOperationException(
-							$"VECTOR destination column '{destinationColumn}' is missing dimension or element type metadata.");
+						if (column.VectorDimensions is not { } dims || string.IsNullOrEmpty(column.VectorElementTypeName))
+						{
+							throw new InvalidOperationException(
+								$"VECTOR destination column '{destinationColumn}' is missing dimension or element type metadata.");
+						}
+
+						var expression = $"%COL% = UNHEX(%VAR%):>VECTOR({dims}, {column.VectorElementTypeName})";
+						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, expression);
+						return true;
 					}
 
-					var expression = $"%COL% = UNHEX(%VAR%):>VECTOR({dims}, {column.VectorElementTypeName})";
-					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, expression);
-					return true;
-				}
-
 				case SingleStoreDbType.Bson:
-				{
-					AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = UNHEX(%VAR%):>BSON");
-					return true;
-				}
+					{
+						AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = UNHEX(%VAR%):>BSON");
+						return true;
+					}
 
 				default:
 					return false;
@@ -367,7 +367,7 @@ public sealed class SingleStoreBulkCopy
 
 			var type = column.DataType;
 			if (type == typeof(byte[]) ||
-			    (type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
+				(type == typeof(Guid) && (m_connection.GuidFormat is SingleStoreGuidFormat.Binary16 or SingleStoreGuidFormat.LittleEndianBinary16 or SingleStoreGuidFormat.TimeSwapBinary16)))
 			{
 				AddColumnMapping(m_logger, columnMappings, addDefaultMappings, destinationOrdinal, destinationColumn, variableName, "%COL% = UNHEX(%VAR%)");
 			}
@@ -512,12 +512,12 @@ public sealed class SingleStoreBulkCopy
 				return Utf8Formatter.TryFormat(decimalValue, output, out bytesWritten);
 			}
 			else if (value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream or
-			         float[] or ReadOnlyMemory<float> or Memory<float> or
-			         double[] or ReadOnlyMemory<double> or Memory<double> or
-			         sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
-			         short[] or ReadOnlyMemory<short> or Memory<short> or
-			         int[] or ReadOnlyMemory<int> or Memory<int> or
-			         long[] or ReadOnlyMemory<long> or Memory<long>)
+					 float[] or ReadOnlyMemory<float> or Memory<float> or
+					 double[] or ReadOnlyMemory<double> or Memory<double> or
+					 sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
+					 short[] or ReadOnlyMemory<short> or Memory<short> or
+					 int[] or ReadOnlyMemory<int> or Memory<int> or
+					 long[] or ReadOnlyMemory<long> or Memory<long>)
 			{
 				var inputSpan = value switch
 				{

@@ -399,8 +399,10 @@ internal static class Utility
 		{
 			var uri = new Uri(redirectUrl);
 			host = uri.Host;
-			if (string.IsNullOrEmpty(host)) return false;
-			if (host.StartsWith('[') && host.EndsWith("]", StringComparison.Ordinal)) host = host.Substring(1, host.Length - 2);
+			if (string.IsNullOrEmpty(host))
+				return false;
+			if (host.StartsWith('[') && host.EndsWith("]", StringComparison.Ordinal))
+				host = host.Substring(1, host.Length - 2);
 
 			port = uri.Port;
 			user = Uri.UnescapeDataString(uri.UserInfo.Split(':')[0]);
@@ -417,7 +419,8 @@ internal static class Utility
 				}
 			}
 
-			if (string.IsNullOrEmpty(user)) user = initialUser;
+			if (string.IsNullOrEmpty(user))
+				user = initialUser;
 			return true;
 		}
 		catch (UriFormatException)
@@ -432,7 +435,7 @@ internal static class Utility
 
 		// parse (optional) leading minus sign
 		var isNegative = false;
-		if (value is [0x2D, .. ])
+		if (value is [0x2D, ..])
 		{
 			isNegative = true;
 			value = value[1..];

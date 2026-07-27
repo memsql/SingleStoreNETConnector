@@ -165,7 +165,7 @@ internal sealed class ConnectionPool : IConnectionPoolMetadata, IDisposable
 		if (session.PoolGeneration != m_generation)
 			return 2;
 		if (ConnectionSettings.ConnectionLifeTime > 0
-		    && Utility.GetElapsedMilliseconds(session.CreatedTimestamp) >= ConnectionSettings.ConnectionLifeTime)
+			&& Utility.GetElapsedMilliseconds(session.CreatedTimestamp) >= ConnectionSettings.ConnectionLifeTime)
 			return 3;
 
 		return 0;

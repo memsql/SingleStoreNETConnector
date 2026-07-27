@@ -221,7 +221,7 @@ insert into data_adapter(int_value, text_value) values
 		Assert.Equal(new[] { null, "", "one", "two", "three", "four" }, m_connection.Query<string>("SELECT text_value FROM data_adapter ORDER BY id"));
 	}
 
-	#if !BASELINE
+#if !BASELINE
 	[Theory]
 	[InlineData("INSERT INTO table(col1, col2) VALUES(@col1, @col2);", "@col1,@col2", "0,1")]
 	[InlineData("INSERT INTO table(col1, col2) VALUES(@col1, @col2);", "@col2,@col1", "1,0")]

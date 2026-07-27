@@ -18,7 +18,7 @@ public class GetValueConversionTests : GetValueConversionTestBase<SelectValueFix
 	- there is no way to differ BOOLEAN from TINYINT. As a result, we stick to usage of sbyte.
 	- usage of 'TreatTinyAsBoolean' variable is redundant.
 	*/
-	public override void GetValue_for_Boolean() => TestGetValue(DbType.Boolean, ValueKind.One, (sbyte)1);
+	public override void GetValue_for_Boolean() => TestGetValue(DbType.Boolean, ValueKind.One, (sbyte) 1);
 	public override void GetFieldType_for_Boolean() => TestGetFieldType(DbType.Boolean, ValueKind.One, typeof(sbyte));
 
 	// GetBoolean allows conversions from any integral type and decimal for backwards compatibility

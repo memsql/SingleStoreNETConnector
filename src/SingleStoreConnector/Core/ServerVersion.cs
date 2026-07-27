@@ -21,7 +21,7 @@ internal sealed class ServerVersion
 				if (Utf8Parser.TryParse(versionString, out minor, out bytesConsumed))
 				{
 					versionString = versionString[bytesConsumed..];
-					if (versionString is [0x2E, .. ])
+					if (versionString is [0x2E, ..])
 					{
 						versionString = versionString[1..];
 						if (Utf8Parser.TryParse(versionString, out build, out bytesConsumed))

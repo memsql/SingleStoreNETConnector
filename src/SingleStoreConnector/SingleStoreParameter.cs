@@ -93,7 +93,7 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 		set
 		{
 			if (value is not (ParameterDirection.Input or ParameterDirection.Output or
-			    ParameterDirection.InputOutput or ParameterDirection.ReturnValue))
+				ParameterDirection.InputOutput or ParameterDirection.ReturnValue))
 			{
 				throw new ArgumentOutOfRangeException(nameof(value), $"{value} is not a supported value for ParameterDirection");
 			}
@@ -306,12 +306,12 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 			writer.WriteString(ulongValue);
 		}
 		else if (Value is byte[] or ReadOnlyMemory<byte> or Memory<byte> or ArraySegment<byte> or MemoryStream or
-		         float[] or ReadOnlyMemory<float> or Memory<float> or
-		         double[] or ReadOnlyMemory<double> or Memory<double> or
-		         sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
-		         short[] or ReadOnlyMemory<short> or Memory<short> or
-		         int[] or ReadOnlyMemory<int> or Memory<int> or
-		         long[] or ReadOnlyMemory<long> or Memory<long>)
+				 float[] or ReadOnlyMemory<float> or Memory<float> or
+				 double[] or ReadOnlyMemory<double> or Memory<double> or
+				 sbyte[] or ReadOnlyMemory<sbyte> or Memory<sbyte> or
+				 short[] or ReadOnlyMemory<short> or Memory<short> or
+				 int[] or ReadOnlyMemory<int> or Memory<int> or
+				 long[] or ReadOnlyMemory<long> or Memory<long>)
 		{
 			var inputSpan = Value switch
 			{
@@ -798,11 +798,11 @@ public sealed class SingleStoreParameter : DbParameter, IDbDataParameter, IClone
 #endif
 		}
 		else if (value is float[] or Memory<float> or ReadOnlyMemory<float> or
-		         double[] or Memory<double> or ReadOnlyMemory<double> or
-		         sbyte[] or Memory<sbyte> or ReadOnlyMemory<sbyte> or
-		         short[] or Memory<short> or ReadOnlyMemory<short> or
-		         int[] or Memory<int> or ReadOnlyMemory<int> or
-		         long[] or Memory<long> or ReadOnlyMemory<long>)
+				 double[] or Memory<double> or ReadOnlyMemory<double> or
+				 sbyte[] or Memory<sbyte> or ReadOnlyMemory<sbyte> or
+				 short[] or Memory<short> or ReadOnlyMemory<short> or
+				 int[] or Memory<int> or ReadOnlyMemory<int> or
+				 long[] or Memory<long> or ReadOnlyMemory<long>)
 		{
 			var bytes = SingleStoreBinaryValueConverter.GetVectorBytes(value);
 			writer.WriteLengthEncodedInteger(unchecked((ulong) bytes.Length));

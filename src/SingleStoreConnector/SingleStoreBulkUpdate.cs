@@ -64,71 +64,71 @@ public sealed class SingleStoreBulkUpdate
 	/// </summary>
 	/// <param name="connection">The <see cref="SingleStoreConnection"/> to use.</param>
 	/// <param name="transaction">(Optional) The <see cref="SingleStoreTransaction"/> to use.</param>
-    public SingleStoreBulkUpdate(SingleStoreConnection connection, SingleStoreTransaction? transaction = null)
-    {
-        m_connection = connection ?? throw new ArgumentNullException(nameof(connection));
-        m_transaction = transaction;
-        m_logger = m_connection.LoggingConfiguration.BulkUpdateLogger;
-        m_warnings = [];
-        ColumnMappings = [];
-        KeyColumns = [];
-    }
+	public SingleStoreBulkUpdate(SingleStoreConnection connection, SingleStoreTransaction? transaction = null)
+	{
+		m_connection = connection ?? throw new ArgumentNullException(nameof(connection));
+		m_transaction = transaction;
+		m_logger = m_connection.LoggingConfiguration.BulkUpdateLogger;
+		m_warnings = [];
+		ColumnMappings = [];
+		KeyColumns = [];
+	}
 
-    /// <summary>
-    /// The name of the table whose rows are updated.
-    /// </summary>
-    /// <remarks>This name needs to be quoted if it contains special characters.</remarks>
-    public string? DestinationTableName { get; set; }
+	/// <summary>
+	/// The name of the table whose rows are updated.
+	/// </summary>
+	/// <remarks>This name needs to be quoted if it contains special characters.</remarks>
+	public string? DestinationTableName { get; set; }
 
-    /// <summary>
-    /// The columns that identify which rows to update. They form the <c>JOIN</c> condition between the destination
-    /// table and the staging table, so every key column must also appear in <see cref="ColumnMappings"/>.
-    /// </summary>
-    public List<string> KeyColumns { get; }
+	/// <summary>
+	/// The columns that identify which rows to update. They form the <c>JOIN</c> condition between the destination
+	/// table and the staging table, so every key column must also appear in <see cref="ColumnMappings"/>.
+	/// </summary>
+	public List<string> KeyColumns { get; }
 
-    /// <summary>
-    /// A collection of <see cref="SingleStoreBulkCopyColumnMapping"/> objects that map source column ordinals onto
-    /// destination column names. Every key column and at least one non-key (updated) column must be mapped.
-    /// </summary>
-    public List<SingleStoreBulkCopyColumnMapping> ColumnMappings { get; }
+	/// <summary>
+	/// A collection of <see cref="SingleStoreBulkCopyColumnMapping"/> objects that map source column ordinals onto
+	/// destination column names. Every key column and at least one non-key (updated) column must be mapped.
+	/// </summary>
+	public List<SingleStoreBulkCopyColumnMapping> ColumnMappings { get; }
 
-    /// <summary>
-    /// The number of seconds for each phase of the operation to complete before it times out, or <c>0</c> for no
-    /// timeout (the default). A single bulk update can spend a long time staging, counting, or updating, so a
-    /// finite timeout should be chosen deliberately.
-    /// </summary>
-    public int BulkUpdateTimeout { get; set; }
+	/// <summary>
+	/// The number of seconds for each phase of the operation to complete before it times out, or <c>0</c> for no
+	/// timeout (the default). A single bulk update can spend a long time staging, counting, or updating, so a
+	/// finite timeout should be chosen deliberately.
+	/// </summary>
+	public int BulkUpdateTimeout { get; set; }
 
-    /// <summary>
-    /// If non-zero, this specifies the number of rows to be staged before raising the <see cref="SingleStoreRowsStaged"/>
-    /// event. This applies only to the staging phase, not to the <c>UPDATE</c> execution.
-    /// </summary>
-    public int NotifyAfter { get; set; }
+	/// <summary>
+	/// If non-zero, this specifies the number of rows to be staged before raising the <see cref="SingleStoreRowsStaged"/>
+	/// event. This applies only to the staging phase, not to the <c>UPDATE</c> execution.
+	/// </summary>
+	public int NotifyAfter { get; set; }
 
-    /// <summary>
-    /// Whether to compute <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> via a <c>COUNT</c> query (default <c>true</c>).
-    /// Set this to <c>false</c> to skip that query for better performance, in which case
-    /// <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> is <c>null</c>.
-    /// </summary>
-    public bool ComputeRowsMatched { get; set; } = true;
+	/// <summary>
+	/// Whether to compute <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> via a <c>COUNT</c> query (default <c>true</c>).
+	/// Set this to <c>false</c> to skip that query for better performance, in which case
+	/// <see cref="SingleStoreBulkUpdateResult.RowsMatched"/> is <c>null</c>.
+	/// </summary>
+	public bool ComputeRowsMatched { get; set; } = true;
 
-    /// <summary>
-    /// This event is raised every time that the number of rows specified by the <see cref="NotifyAfter"/> property have been processed.
-    /// </summary>
-    /// <remarks>
-    /// <para>Receipt of a RowsStaged event does not imply that any rows have been sent to the server or committed.</para>
-    /// <para>The <see cref="SingleStoreRowsStagedEventArgs.Abort"/> property can be set to <c>true</c> by the event handler
-    /// to cancel the operation. Aborting stops staging and skips the <c>UPDATE</c>, so no rows in the destination table
-    /// are modified.</para>
-    /// </remarks>
-    public event SingleStoreRowsStagedEventHandler? SingleStoreRowsStaged;
+	/// <summary>
+	/// This event is raised every time that the number of rows specified by the <see cref="NotifyAfter"/> property have been processed.
+	/// </summary>
+	/// <remarks>
+	/// <para>Receipt of a RowsStaged event does not imply that any rows have been sent to the server or committed.</para>
+	/// <para>The <see cref="SingleStoreRowsStagedEventArgs.Abort"/> property can be set to <c>true</c> by the event handler
+	/// to cancel the operation. Aborting stops staging and skips the <c>UPDATE</c>, so no rows in the destination table
+	/// are modified.</para>
+	/// </remarks>
+	public event SingleStoreRowsStagedEventHandler? SingleStoreRowsStaged;
 
 	/// <summary>
 	/// Updates rows in the destination table using the data in the supplied <see cref="DataTable"/>.
 	/// </summary>
 	/// <param name="dataTable">The <see cref="DataTable"/> containing the key and update column values.</param>
 	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
-    public SingleStoreBulkUpdateResult WriteToServer(DataTable dataTable)
+	public SingleStoreBulkUpdateResult WriteToServer(DataTable dataTable)
 	{
 		ArgumentNullException.ThrowIfNull(dataTable);
 #pragma warning disable CA2012 // Safe because method completes synchronously
@@ -142,7 +142,7 @@ public sealed class SingleStoreBulkUpdate
 	/// <param name="dataTable">The <see cref="DataTable"/> containing the key and update column values.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
-    public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(DataTable dataTable, CancellationToken cancellationToken = default)
+	public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(DataTable dataTable, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(dataTable);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, dataTable, cancellationToken).ConfigureAwait(false);
@@ -153,7 +153,7 @@ public sealed class SingleStoreBulkUpdate
 	/// </summary>
 	/// <param name="dataRows">The collection of <see cref="DataRow"/> objects containing the key and update column values.</param>
 	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
-    public SingleStoreBulkUpdateResult WriteToServer(IEnumerable<DataRow> dataRows)
+	public SingleStoreBulkUpdateResult WriteToServer(IEnumerable<DataRow> dataRows)
 	{
 		ArgumentNullException.ThrowIfNull(dataRows);
 #pragma warning disable CA2012 // Safe because method completes synchronously
@@ -167,7 +167,7 @@ public sealed class SingleStoreBulkUpdate
 	/// <param name="dataRows">The collection of <see cref="DataRow"/> objects containing the key and update column values.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
-    public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IEnumerable<DataRow> dataRows, CancellationToken cancellationToken = default)
+	public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IEnumerable<DataRow> dataRows, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(dataRows);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, dataRows, cancellationToken).ConfigureAwait(false);
@@ -178,7 +178,7 @@ public sealed class SingleStoreBulkUpdate
 	/// </summary>
 	/// <param name="dataReader">The <see cref="IDataReader"/> to read the key and update column values from.</param>
 	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
-    public SingleStoreBulkUpdateResult WriteToServer(IDataReader dataReader)
+	public SingleStoreBulkUpdateResult WriteToServer(IDataReader dataReader)
 	{
 		ArgumentNullException.ThrowIfNull(dataReader);
 #pragma warning disable CA2012 // Safe because method completes synchronously
@@ -192,7 +192,7 @@ public sealed class SingleStoreBulkUpdate
 	/// <param name="dataReader">The <see cref="IDataReader"/> to read the key and update column values from.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
 	/// <returns>A <see cref="SingleStoreBulkUpdateResult"/> describing the result of the operation.</returns>
-    public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IDataReader dataReader, CancellationToken cancellationToken = default)
+	public async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IDataReader dataReader, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(dataReader);
 		return await WriteToServerAsync(IOBehavior.Asynchronous, dataReader, cancellationToken).ConfigureAwait(false);
@@ -209,7 +209,7 @@ public sealed class SingleStoreBulkUpdate
 	/// </param>
 	/// <param name="source">The source data: a <see cref="DataTable"/>, a sequence of <see cref="DataRow"/>, or an <see cref="IDataReader"/>.</param>
 	/// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-    private async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IOBehavior ioBehavior, object source, CancellationToken cancellationToken)
+	private async ValueTask<SingleStoreBulkUpdateResult> WriteToServerAsync(IOBehavior ioBehavior, object source, CancellationToken cancellationToken)
 	{
 		// Validate configuration before touching the connection so misconfiguration fails fast and cheaply.
 		ValidateColumnMappings();
@@ -308,7 +308,7 @@ public sealed class SingleStoreBulkUpdate
 	/// the derived update columns) so the rest of the operation is unaffected by later mutations of the public
 	/// properties.
 	/// </summary>
-    private BulkUpdatePlan CreatePlan()
+	private BulkUpdatePlan CreatePlan()
 	{
 		var destinationTableName = DestinationTableName ??
 			throw new InvalidOperationException("DestinationTableName must be set before calling WriteToServer.");
@@ -323,7 +323,7 @@ public sealed class SingleStoreBulkUpdate
 	/// <summary>
 	/// An immutable snapshot of the inputs for a single bulk update operation.
 	/// </summary>
-    private sealed class BulkUpdatePlan(
+	private sealed class BulkUpdatePlan(
 		string destinationTableName,
 		IReadOnlyList<string> keyColumns,
 		IReadOnlyList<SingleStoreBulkCopyColumnMapping> columnMappings,
@@ -339,7 +339,7 @@ public sealed class SingleStoreBulkUpdate
 	/// Returns the number of rows in the source for logging, or <c>-1</c> when the count is not known in advance
 	/// (for example an <see cref="IDataReader"/>, which is consumed as it is staged).
 	/// </summary>
-    private static int GetRowCount(object source) =>
+	private static int GetRowCount(object source) =>
 		source switch
 		{
 			DataTable dataTable => dataTable.Rows.Count,
@@ -352,10 +352,10 @@ public sealed class SingleStoreBulkUpdate
 	/// Builds the operation result, snapshotting the warnings collected so far into a new list so that a result
 	/// returned from one call is not mutated when the same <see cref="SingleStoreBulkUpdate"/> instance is reused.
 	/// </summary>
-    private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, int? rowsMatched, int rowsAffected) =>
+	private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, int? rowsMatched, int rowsAffected) =>
 		new(new List<SingleStoreError>(m_warnings), rowsStaged, rowsMatched, rowsAffected);
 
-    private void ValidateColumnMappings()
+	private void ValidateColumnMappings()
 	{
 		// Ensure the caller specified at least one key column.
 		// Key columns define the JOIN condition between the destination table and the staging table.
@@ -420,7 +420,7 @@ public sealed class SingleStoreBulkUpdate
 			throw new InvalidOperationException("ColumnMappings must contain at least one non-key column to update.");
 	}
 
-    private static async ValueTask ValidateSchemaAsync(SchemaDetector schemaDetector, BulkUpdatePlan plan, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private static async ValueTask ValidateSchemaAsync(SchemaDetector schemaDetector, BulkUpdatePlan plan, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var tableName = plan.DestinationTableName;
 
@@ -469,7 +469,7 @@ public sealed class SingleStoreBulkUpdate
 		}
 	}
 
-    private List<string> GetUpdateColumns() =>
+	private List<string> GetUpdateColumns() =>
 		ColumnMappings
 			.Select(x => x.DestinationColumn)
 			.Where(x => !KeyColumns.Contains(x, StringComparer.OrdinalIgnoreCase))
@@ -506,7 +506,7 @@ public sealed class SingleStoreBulkUpdate
 	/// because the temporary table is session-scoped.
 	/// </para>
 	/// </remarks>
-    private async Task<string> CreateStagingTableAsync(SchemaDetector schemaDetector, BulkUpdatePlan plan, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<string> CreateStagingTableAsync(SchemaDetector schemaDetector, BulkUpdatePlan plan, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		// Generate a unique temporary table name.
 		var tempTableName = $"_bulk_update_staging_{Guid.NewGuid():N}";
@@ -593,7 +593,7 @@ public sealed class SingleStoreBulkUpdate
 	/// sharded on a column that is not a join key — the staging table cannot be aligned, so we fall back to the
 	/// primary-key distribution (by returning an empty list, which omits an explicit shard key) and warn.
 	/// </remarks>
-    private List<string> ComputeStagingShardKey(BulkUpdatePlan plan, List<string> destinationShardKeyColumns, HashSet<string> keyColumnSet)
+	private List<string> ComputeStagingShardKey(BulkUpdatePlan plan, List<string> destinationShardKeyColumns, HashSet<string> keyColumnSet)
 	{
 		if (destinationShardKeyColumns.Count == 0)
 			return [];
@@ -631,7 +631,7 @@ public sealed class SingleStoreBulkUpdate
 	/// destination-name relationship identical between staging and the later <c>UPDATE ... JOIN</c>.
 	/// </para>
 	/// </remarks>
-    private async Task<(int RowsStaged, bool Aborted)> StageDataAsync(BulkUpdatePlan plan, string tempTableName, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<(int RowsStaged, bool Aborted)> StageDataAsync(BulkUpdatePlan plan, string tempTableName, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		var bulkCopy = new SingleStoreBulkCopy(m_connection, m_transaction)
 		{
@@ -692,7 +692,7 @@ public sealed class SingleStoreBulkUpdate
 	/// (taken from the owning <see cref="DataTable"/> of the first row); the caller has already materialized any
 	/// lazy sequence and short-circuited empty input, so the sequence is a non-empty collection here.
 	/// </remarks>
-    private static ValueTask<SingleStoreBulkCopyResult> StageWithBulkCopyAsync(SingleStoreBulkCopy bulkCopy, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private static ValueTask<SingleStoreBulkCopyResult> StageWithBulkCopyAsync(SingleStoreBulkCopy bulkCopy, object source, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		switch (source)
 		{
@@ -742,7 +742,7 @@ public sealed class SingleStoreBulkUpdate
 	/// staging table is session-scoped.
 	/// </para>
 	/// </remarks>
-    private async Task<int?> ComputeMatchedRowsAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<int?> ComputeMatchedRowsAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!ComputeRowsMatched)
 			return null;
@@ -796,7 +796,7 @@ public sealed class SingleStoreBulkUpdate
 	/// operation result.
 	/// </para>
 	/// </remarks>
-    private async Task<int> ExecuteUpdateAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<int> ExecuteUpdateAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		// Assign each non-key mapped column from the staging row: t.`c1` = s.`c1`, t.`c2` = s.`c2` ...
 		var setClause = string.Join(
@@ -849,7 +849,7 @@ public sealed class SingleStoreBulkUpdate
 	/// is used deliberately so cleanup still runs after a cancelled or timed-out operation.
 	/// </para>
 	/// </remarks>
-    private async Task DropStagingTableAsync(string? tempTableName, IOBehavior ioBehavior)
+	private async Task DropStagingTableAsync(string? tempTableName, IOBehavior ioBehavior)
 	{
 		if (string.IsNullOrEmpty(tempTableName))
 			return;
@@ -878,13 +878,13 @@ public sealed class SingleStoreBulkUpdate
 	/// Builds the key-column equi-join predicate shared by the match-count query and the update, joining the
 	/// destination table (alias <c>t</c>) to the staging table (alias <c>s</c>) on every key column.
 	/// </summary>
-    private static string BuildKeyJoinCondition(BulkUpdatePlan plan) =>
+	private static string BuildKeyJoinCondition(BulkUpdatePlan plan) =>
 		string.Join(
 			" AND ",
 			plan.KeyColumns.Select(k => $"t.{IdentifierHelper.QuoteIdentifier(k)} = s.{IdentifierHelper.QuoteIdentifier(k)}"));
 
-    private readonly SingleStoreConnection m_connection;
-    private readonly SingleStoreTransaction? m_transaction;
-    private readonly ILogger m_logger;
-    private readonly List<SingleStoreError> m_warnings;
+	private readonly SingleStoreConnection m_connection;
+	private readonly SingleStoreTransaction? m_transaction;
+	private readonly ILogger m_logger;
+	private readonly List<SingleStoreError> m_warnings;
 }

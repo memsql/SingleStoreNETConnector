@@ -61,17 +61,20 @@ internal sealed class UnixDomainSocketEndPoint : EndPoint
 
 	public override EndPoint Create(SocketAddress socketAddress)
 	{
-		if (socketAddress.Size == 2) {
+		if (socketAddress.Size == 2)
+		{
 			// Empty filename.
 			// Probably from RemoteEndPoint which on linux does not return the file name.
 			return new UnixDomainSocketEndPoint();
 		}
 		var size = socketAddress.Size - 2;
 		var bytes = new byte[size];
-		for (var i = 0; i < bytes.Length; i++) {
+		for (var i = 0; i < bytes.Length; i++)
+		{
 			bytes[i] = socketAddress[i + 2];
 			// There may be junk after the null terminator, so ignore it all.
-			if (bytes[i] == 0) {
+			if (bytes[i] == 0)
+			{
 				size = i;
 				break;
 			}
@@ -96,7 +99,7 @@ internal sealed class UnixDomainSocketEndPoint : EndPoint
 
 	public override string ToString() => Filename;
 
-	public override int GetHashCode() => Filename.GetHashCode ();
+	public override int GetHashCode() => Filename.GetHashCode();
 
 	public override bool Equals(object? obj) => obj is UnixDomainSocketEndPoint other && Filename == other.Filename;
 }
