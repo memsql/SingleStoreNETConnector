@@ -234,7 +234,7 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 			m_commandTimeout = value;
 			((ICancellableCommand) this).EffectiveCommandTimeout = null;
 		}
-}
+	}
 
 	/// <inheritdoc/>
 	public override CommandType CommandType

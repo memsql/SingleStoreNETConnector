@@ -385,7 +385,7 @@ SELECT data FROM prepared_command_test ORDER BY rowid;", connection);
 			yield return new object[] { isPrepared, "ENUM('small', 'medium', 'large')", "medium", SingleStoreDbType.Enum };
 			yield return new object[] { isPrepared, "SET('one','two','four','eight')", "two,eight", SingleStoreDbType.Set };
 #if !BASELINE
-			yield return new object[] { isPrepared, "BOOL", (sbyte)1, SingleStoreDbType.Bool };
+			yield return new object[] { isPrepared, "BOOL", (sbyte) 1, SingleStoreDbType.Bool };
 #else
 			yield return new object[] { isPrepared, "BOOL", true, SingleStoreDbType.Int32 };
 #endif

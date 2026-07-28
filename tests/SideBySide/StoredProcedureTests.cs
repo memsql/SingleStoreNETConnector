@@ -304,19 +304,19 @@ public class StoredProcedureTests : IClassFixture<StoredProcedureFixture>
 	{
 		if (executorType == "Reader")
 		{
-		    var reader = (SingleStoreDataReader) await cmd.ExecuteReaderAsync();
-		    var result = await reader.ReadAsync();
+			var reader = (SingleStoreDataReader) await cmd.ExecuteReaderAsync();
+			var result = await reader.ReadAsync();
 
-		    Assert.True(result);
+			Assert.True(result);
 
-		    var radius = (double)cmd.Parameters["@radius"].Value;
-		    var height = (double)cmd.Parameters["@height"].Value;
-		    var area = reader.GetDouble("area");
+			var radius = (double) cmd.Parameters["@radius"].Value;
+			var height = (double) cmd.Parameters["@height"].Value;
+			var area = reader.GetDouble("area");
 
-		    Assert.Equal(2 * radius, reader.GetDouble("diameter"));
-		    Assert.Equal(2.0 * Math.PI * radius, reader.GetDouble("circumference"));
-		    Assert.Equal(Math.PI * Math.Pow(radius, 2), area);
-		    Assert.Equal(area * height, reader.GetDouble("volume"));
+			Assert.Equal(2 * radius, reader.GetDouble("diameter"));
+			Assert.Equal(2.0 * Math.PI * radius, reader.GetDouble("circumference"));
+			Assert.Equal(Math.PI * Math.Pow(radius, 2), area);
+			Assert.Equal(area * height, reader.GetDouble("volume"));
 		}
 		else
 		{

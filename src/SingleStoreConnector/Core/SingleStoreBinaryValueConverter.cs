@@ -12,10 +12,10 @@ internal static class SingleStoreBinaryValueConverter
 
 		// byte[] and related types should NOT infer as Vector - they use normal Blob type mapping
 		if (type == typeof(byte[]) ||
-		    type == typeof(ReadOnlyMemory<byte>) ||
-		    type == typeof(Memory<byte>) ||
-		    type == typeof(ArraySegment<byte>) ||
-		    value is MemoryStream)
+			type == typeof(ReadOnlyMemory<byte>) ||
+			type == typeof(Memory<byte>) ||
+			type == typeof(ArraySegment<byte>) ||
+			value is MemoryStream)
 		{
 			dbType = default;
 			return false;
@@ -23,11 +23,11 @@ internal static class SingleStoreBinaryValueConverter
 
 		// Numeric array types infer as Vector
 		if (type == typeof(float[]) || type == typeof(ReadOnlyMemory<float>) || type == typeof(Memory<float>) ||
-		    type == typeof(double[]) || type == typeof(ReadOnlyMemory<double>) || type == typeof(Memory<double>) ||
-		    type == typeof(sbyte[]) || type == typeof(ReadOnlyMemory<sbyte>) || type == typeof(Memory<sbyte>) ||
-		    type == typeof(short[]) || type == typeof(ReadOnlyMemory<short>) || type == typeof(Memory<short>) ||
-		    type == typeof(int[]) || type == typeof(ReadOnlyMemory<int>) || type == typeof(Memory<int>) ||
-		    type == typeof(long[]) || type == typeof(ReadOnlyMemory<long>) || type == typeof(Memory<long>))
+			type == typeof(double[]) || type == typeof(ReadOnlyMemory<double>) || type == typeof(Memory<double>) ||
+			type == typeof(sbyte[]) || type == typeof(ReadOnlyMemory<sbyte>) || type == typeof(Memory<sbyte>) ||
+			type == typeof(short[]) || type == typeof(ReadOnlyMemory<short>) || type == typeof(Memory<short>) ||
+			type == typeof(int[]) || type == typeof(ReadOnlyMemory<int>) || type == typeof(Memory<int>) ||
+			type == typeof(long[]) || type == typeof(ReadOnlyMemory<long>) || type == typeof(Memory<long>))
 		{
 			dbType = SingleStoreDbType.Vector;
 			return true;

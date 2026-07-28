@@ -8,11 +8,11 @@ namespace SingleStoreConnector.Utilities;
 internal static class IdentifierHelper
 {
 	/// <summary>
-    /// Quotes a SQL identifier with backticks, escaping any backticks within the identifier.
-    /// </summary>
-    /// <param name="identifier">The identifier to quote.</param>
-    /// <returns>The quoted identifier.</returns>
-    /// <exception cref="ArgumentException">If identifier is null, empty, or contains null characters.</exception>
+	/// Quotes a SQL identifier with backticks, escaping any backticks within the identifier.
+	/// </summary>
+	/// <param name="identifier">The identifier to quote.</param>
+	/// <returns>The quoted identifier.</returns>
+	/// <exception cref="ArgumentException">If identifier is null, empty, or contains null characters.</exception>
 	public static string QuoteIdentifier(string identifier)
 	{
 		ValidateIdentifierInput(identifier, nameof(identifier), "Identifier");

@@ -754,8 +754,8 @@ create table bulk_load_data_table(
 		Assert.Empty(result.Warnings);
 
 		using (var cmd = new SingleStoreCommand(
-			       "select GEOGRAPHY_LONGITUDE(point_data), GEOGRAPHY_LATITUDE(point_data) from bulk_load_data_table order by id;",
-			       connection))
+				   "select GEOGRAPHY_LONGITUDE(point_data), GEOGRAPHY_LATITUDE(point_data) from bulk_load_data_table order by id;",
+				   connection))
 		using (var reader = await cmd.ExecuteReaderAsync())
 		{
 			Assert.True(await reader.ReadAsync());

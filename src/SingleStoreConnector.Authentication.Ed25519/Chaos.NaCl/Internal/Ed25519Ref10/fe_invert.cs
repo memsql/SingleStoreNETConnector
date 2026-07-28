@@ -66,7 +66,9 @@ internal static partial class FieldOperations
 		/* qhasm: z8 = z2^2^2 */
 		/* asm 1: fe_sq(>z8=fe#2,<z2=fe#1); for (i = 1;i < 2;++i) fe_sq(>z8=fe#2,>z8=fe#2); */
 		/* asm 2: fe_sq(>z8=t1,<z2=t0); for (i = 1;i < 2;++i) fe_sq(>z8=t1,>z8=t1); */
-		fe_sq(out t1, ref t0); for (i = 1; i < 2; ++i) fe_sq(out t1, ref t1);
+		fe_sq(out t1, ref t0);
+		for (i = 1; i < 2; ++i)
+			fe_sq(out t1, ref t1);
 
 		/* qhasm: z9 = z1*z8 */
 		/* asm 1: fe_mul(>z9=fe#2,<z1=fe#11,<z8=fe#2); */
@@ -91,7 +93,9 @@ internal static partial class FieldOperations
 		/* qhasm: z_10_5 = z_5_0^2^5 */
 		/* asm 1: fe_sq(>z_10_5=fe#3,<z_5_0=fe#2); for (i = 1;i < 5;++i) fe_sq(>z_10_5=fe#3,>z_10_5=fe#3); */
 		/* asm 2: fe_sq(>z_10_5=t2,<z_5_0=t1); for (i = 1;i < 5;++i) fe_sq(>z_10_5=t2,>z_10_5=t2); */
-		fe_sq(out t2, ref t1); for (i = 1; i < 5; ++i) fe_sq(out t2, ref t2);
+		fe_sq(out t2, ref t1);
+		for (i = 1; i < 5; ++i)
+			fe_sq(out t2, ref t2);
 
 		/* qhasm: z_10_0 = z_10_5*z_5_0 */
 		/* asm 1: fe_mul(>z_10_0=fe#2,<z_10_5=fe#3,<z_5_0=fe#2); */
@@ -101,7 +105,9 @@ internal static partial class FieldOperations
 		/* qhasm: z_20_10 = z_10_0^2^10 */
 		/* asm 1: fe_sq(>z_20_10=fe#3,<z_10_0=fe#2); for (i = 1;i < 10;++i) fe_sq(>z_20_10=fe#3,>z_20_10=fe#3); */
 		/* asm 2: fe_sq(>z_20_10=t2,<z_10_0=t1); for (i = 1;i < 10;++i) fe_sq(>z_20_10=t2,>z_20_10=t2); */
-		fe_sq(out t2, ref t1); for (i = 1; i < 10; ++i) fe_sq(out t2, ref t2);
+		fe_sq(out t2, ref t1);
+		for (i = 1; i < 10; ++i)
+			fe_sq(out t2, ref t2);
 
 		/* qhasm: z_20_0 = z_20_10*z_10_0 */
 		/* asm 1: fe_mul(>z_20_0=fe#3,<z_20_10=fe#3,<z_10_0=fe#2); */
@@ -111,7 +117,9 @@ internal static partial class FieldOperations
 		/* qhasm: z_40_20 = z_20_0^2^20 */
 		/* asm 1: fe_sq(>z_40_20=fe#4,<z_20_0=fe#3); for (i = 1;i < 20;++i) fe_sq(>z_40_20=fe#4,>z_40_20=fe#4); */
 		/* asm 2: fe_sq(>z_40_20=t3,<z_20_0=t2); for (i = 1;i < 20;++i) fe_sq(>z_40_20=t3,>z_40_20=t3); */
-		fe_sq(out t3, ref t2); for (i = 1; i < 20; ++i) fe_sq(out t3, ref t3);
+		fe_sq(out t3, ref t2);
+		for (i = 1; i < 20; ++i)
+			fe_sq(out t3, ref t3);
 
 		/* qhasm: z_40_0 = z_40_20*z_20_0 */
 		/* asm 1: fe_mul(>z_40_0=fe#3,<z_40_20=fe#4,<z_20_0=fe#3); */
@@ -121,7 +129,9 @@ internal static partial class FieldOperations
 		/* qhasm: z_50_10 = z_40_0^2^10 */
 		/* asm 1: fe_sq(>z_50_10=fe#3,<z_40_0=fe#3); for (i = 1;i < 10;++i) fe_sq(>z_50_10=fe#3,>z_50_10=fe#3); */
 		/* asm 2: fe_sq(>z_50_10=t2,<z_40_0=t2); for (i = 1;i < 10;++i) fe_sq(>z_50_10=t2,>z_50_10=t2); */
-		fe_sq(out t2, ref t2); for (i = 1; i < 10; ++i) fe_sq(out t2, ref t2);
+		fe_sq(out t2, ref t2);
+		for (i = 1; i < 10; ++i)
+			fe_sq(out t2, ref t2);
 
 		/* qhasm: z_50_0 = z_50_10*z_10_0 */
 		/* asm 1: fe_mul(>z_50_0=fe#2,<z_50_10=fe#3,<z_10_0=fe#2); */
@@ -131,7 +141,9 @@ internal static partial class FieldOperations
 		/* qhasm: z_100_50 = z_50_0^2^50 */
 		/* asm 1: fe_sq(>z_100_50=fe#3,<z_50_0=fe#2); for (i = 1;i < 50;++i) fe_sq(>z_100_50=fe#3,>z_100_50=fe#3); */
 		/* asm 2: fe_sq(>z_100_50=t2,<z_50_0=t1); for (i = 1;i < 50;++i) fe_sq(>z_100_50=t2,>z_100_50=t2); */
-		fe_sq(out t2, ref t1); for (i = 1; i < 50; ++i) fe_sq(out t2, ref t2);
+		fe_sq(out t2, ref t1);
+		for (i = 1; i < 50; ++i)
+			fe_sq(out t2, ref t2);
 
 		/* qhasm: z_100_0 = z_100_50*z_50_0 */
 		/* asm 1: fe_mul(>z_100_0=fe#3,<z_100_50=fe#3,<z_50_0=fe#2); */
@@ -141,7 +153,9 @@ internal static partial class FieldOperations
 		/* qhasm: z_200_100 = z_100_0^2^100 */
 		/* asm 1: fe_sq(>z_200_100=fe#4,<z_100_0=fe#3); for (i = 1;i < 100;++i) fe_sq(>z_200_100=fe#4,>z_200_100=fe#4); */
 		/* asm 2: fe_sq(>z_200_100=t3,<z_100_0=t2); for (i = 1;i < 100;++i) fe_sq(>z_200_100=t3,>z_200_100=t3); */
-		fe_sq(out t3, ref t2); for (i = 1; i < 100; ++i) fe_sq(out t3, ref t3);
+		fe_sq(out t3, ref t2);
+		for (i = 1; i < 100; ++i)
+			fe_sq(out t3, ref t3);
 
 		/* qhasm: z_200_0 = z_200_100*z_100_0 */
 		/* asm 1: fe_mul(>z_200_0=fe#3,<z_200_100=fe#4,<z_100_0=fe#3); */
@@ -151,7 +165,9 @@ internal static partial class FieldOperations
 		/* qhasm: z_250_50 = z_200_0^2^50 */
 		/* asm 1: fe_sq(>z_250_50=fe#3,<z_200_0=fe#3); for (i = 1;i < 50;++i) fe_sq(>z_250_50=fe#3,>z_250_50=fe#3); */
 		/* asm 2: fe_sq(>z_250_50=t2,<z_200_0=t2); for (i = 1;i < 50;++i) fe_sq(>z_250_50=t2,>z_250_50=t2); */
-		fe_sq(out t2, ref t2); for (i = 1; i < 50; ++i) fe_sq(out t2, ref t2);
+		fe_sq(out t2, ref t2);
+		for (i = 1; i < 50; ++i)
+			fe_sq(out t2, ref t2);
 
 		/* qhasm: z_250_0 = z_250_50*z_50_0 */
 		/* asm 1: fe_mul(>z_250_0=fe#2,<z_250_50=fe#3,<z_50_0=fe#2); */
@@ -161,7 +177,9 @@ internal static partial class FieldOperations
 		/* qhasm: z_255_5 = z_250_0^2^5 */
 		/* asm 1: fe_sq(>z_255_5=fe#2,<z_250_0=fe#2); for (i = 1;i < 5;++i) fe_sq(>z_255_5=fe#2,>z_255_5=fe#2); */
 		/* asm 2: fe_sq(>z_255_5=t1,<z_250_0=t1); for (i = 1;i < 5;++i) fe_sq(>z_255_5=t1,>z_255_5=t1); */
-		fe_sq(out t1, ref t1); for (i = 1; i < 5; ++i) fe_sq(out t1, ref t1);
+		fe_sq(out t1, ref t1);
+		for (i = 1; i < 5; ++i)
+			fe_sq(out t1, ref t1);
 
 		/* qhasm: z_255_21 = z_255_5*z11 */
 		/* asm 1: fe_mul(>z_255_21=fe#12,<z_255_5=fe#2,<z11=fe#1); */

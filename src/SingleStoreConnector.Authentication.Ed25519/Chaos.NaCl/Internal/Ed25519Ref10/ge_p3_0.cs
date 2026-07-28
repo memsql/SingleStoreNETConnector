@@ -7,6 +7,6 @@ internal static partial class GroupOperations
 		FieldOperations.fe_0(out h.X);
 		FieldOperations.fe_1(out h.Y);
 		FieldOperations.fe_1(out h.Z);
-		FieldOperations.fe_0(out  h.T);
+		FieldOperations.fe_0(out h.T);
 	}
 }

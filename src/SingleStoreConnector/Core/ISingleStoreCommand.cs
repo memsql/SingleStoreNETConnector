@@ -30,7 +30,7 @@ internal static class ISingleStoreCommandExtensions
 		var connection = command.Connection!;
 		var statementPreparerOptions = StatementPreparerOptions.None;
 		if (connection.AllowUserVariables || command.CommandType == CommandType.StoredProcedure ||
-		    command.AllowUserVariables)
+			command.AllowUserVariables)
 			statementPreparerOptions |= StatementPreparerOptions.AllowUserVariables;
 		if (connection.DateTimeKind == DateTimeKind.Utc)
 			statementPreparerOptions |= StatementPreparerOptions.DateTimeUtc;

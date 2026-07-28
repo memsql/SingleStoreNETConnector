@@ -473,7 +473,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 			// disable pipelining for SingleStore
 			m_supportsPipelining = false;
 
-			Log.SessionMadeConnection(m_logger, Id, MySqlCompatVersion.OriginalString, ConnectionId,  m_useCompression, m_supportsConnectionAttributes, SupportsDeprecateEof, SupportsCachedPreparedMetadata, serverSupportsSsl, SupportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
+			Log.SessionMadeConnection(m_logger, Id, MySqlCompatVersion.OriginalString, ConnectionId, m_useCompression, m_supportsConnectionAttributes, SupportsDeprecateEof, SupportsCachedPreparedMetadata, serverSupportsSsl, SupportsSessionTrack, m_supportsPipelining, SupportsQueryAttributes);
 
 			if (cs.SslMode != SingleStoreSslMode.None && (cs.SslMode != SingleStoreSslMode.Preferred || serverSupportsSsl))
 			{
@@ -1001,7 +1001,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 			}
 		}
 
-		if (cs.AllowPublicKeyRetrieval|| m_isLoopbackConnection)
+		if (cs.AllowPublicKeyRetrieval || m_isLoopbackConnection)
 		{
 			// request the RSA public key
 			var payloadContent = switchRequestName == "caching_sha2_password" ? (byte) 0x02 : (byte) 0x01;
@@ -1601,10 +1601,10 @@ internal sealed partial class ServerSession : IServerCapabilities
 
 			// if there are errors, then try to build a path to a root certificate from the certificates presented by the remote host
 			if ((rcbPolicyErrors & SslPolicyErrors.RemoteCertificateChainErrors) != 0 &&
-			    rcbChain is not null &&
-			    caCertificateChain is not null &&
-			    caCertificateChain.Build(rcbChain.ChainElements[^1].Certificate) &&
-			    caCertificateChain.ChainStatus.Length > 0)
+				rcbChain is not null &&
+				caCertificateChain is not null &&
+				caCertificateChain.Build(rcbChain.ChainElements[^1].Certificate) &&
+				caCertificateChain.ChainStatus.Length > 0)
 			{
 				// if the only error is an Untrusted Root Certificate, then check all provided SSL CA certificates to see if one is the root
 				if (caCertificateChain.ChainStatus[0].Status == X509ChainStatusFlags.UntrustedRoot)
@@ -1875,7 +1875,7 @@ internal sealed partial class ServerSession : IServerCapabilities
 
 		// detect AWS RDS Proxy, if hostname like <name>.proxy-<random-chars>.<region>.rds.amazonaws.com
 		if (HostName.EndsWith(".rds.amazonaws.com", StringComparison.OrdinalIgnoreCase) &&
-		    HostName.AsSpan().Contains(".proxy-".AsSpan(), StringComparison.OrdinalIgnoreCase))
+			HostName.AsSpan().Contains(".proxy-".AsSpan(), StringComparison.OrdinalIgnoreCase))
 		{
 			return true;
 		}

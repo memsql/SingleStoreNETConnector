@@ -538,11 +538,11 @@ INSERT INTO zeroByteEscaping VALUES(1, BINARY('\012\0\0'));
 ");
 
 		using (var command = new SingleStoreCommand(@"CREATE TABLE zeroByteEscapingCTAS as SELECT * FROM zeroByteEscaping WHERE Content=@content", connection))
-        {
-                command.Parameters.AddWithValue("@content", new byte[] { 0x00, 0x31, 0x32, 0x00, 0x00 });
-                Assert.False(command.IsPrepared);
-                command.ExecuteNonQuery();
-        }
+		{
+			command.Parameters.AddWithValue("@content", new byte[] { 0x00, 0x31, 0x32, 0x00, 0x00 });
+			Assert.False(command.IsPrepared);
+			command.ExecuteNonQuery();
+		}
 
 		using (var command = new SingleStoreCommand(@"SELECT COUNT(*) FROM `zeroByteEscapingCTAS` WHERE BINARY(`Content`) = 0x0031320000", connection))
 		{

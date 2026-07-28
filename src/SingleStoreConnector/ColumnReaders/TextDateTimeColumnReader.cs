@@ -89,7 +89,7 @@ internal sealed class TextDateTimeColumnReader : ColumnReader
 			exception = ex;
 		}
 
-InvalidDateTime:
+		InvalidDateTime:
 		throw new FormatException($"Couldn't interpret value as a valid DateTime: {Encoding.UTF8.GetString(data)}", exception);
 	}
 

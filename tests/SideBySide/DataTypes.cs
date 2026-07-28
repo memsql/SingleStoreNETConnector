@@ -1241,7 +1241,7 @@ create table schema_table({createColumn});");
 
 			// this if is here because wrong charset is reported in 7.5 and 7.6 for utf8mb4 fields
 			if ((column == "utf8" || column == "utf8bin") &&
-				connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 5, 0)) >=0 &&
+				connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 5, 0)) >= 0 &&
 				connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 8, 0)) < 0)
 			{
 			}
@@ -1427,8 +1427,8 @@ create table schema_table({createColumn});");
 		// the condition below accounts for wrong charset reported in SingleStore 7.5 and 7.6
 		// when dealing with utf8mb4 data
 		if (!((column == "utf8" || column == "utf8bin") &&
-		      connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 5, 0)) > 0 &&
-		      connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 8, 0)) < 0))
+			  connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 5, 0)) > 0 &&
+			  connection.Session.S2ServerVersion.Version.CompareTo(new Version(7, 8, 0)) < 0))
 		{
 			// TODO: PLAT-6085: remove this if
 			if (column != "Single" && column != "Double")
@@ -1471,7 +1471,7 @@ create table schema_table({createColumn});");
 	[InlineData("Boolean", "datatypes_bools", "BOOL", typeof(sbyte), 3, true)]
 	[InlineData("TinyInt1", "datatypes_bools", "TINYINT(1)", typeof(sbyte), 3, true)]
 	[InlineData("TinyInt1U", "datatypes_bools", "TINYINT(1) UNSIGNED", typeof(byte), 3, (byte) 1)]
-	[InlineData("char38", "datatypes_guids",  "CHAR(38)", typeof(string), 2, "0")]
+	[InlineData("char38", "datatypes_guids", "CHAR(38)", typeof(string), 2, "0")]
 	[InlineData("char38bin", "datatypes_guids", "CHAR(38)", typeof(string), 2, "0")]
 	[InlineData("SByte", "datatypes_integers", "TINYINT", typeof(sbyte), 4, (sbyte) 127)]
 	[InlineData("Byte", "datatypes_integers", "TINYINT UNSIGNED", typeof(byte), 4, (byte) 255)]

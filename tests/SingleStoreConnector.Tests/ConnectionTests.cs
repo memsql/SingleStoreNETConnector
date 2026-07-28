@@ -303,27 +303,27 @@ public class ConnectionTests : IDisposable
 				switch (threadId % 3)
 				{
 					case 0:
-					{
-						using (var command = connection.CreateCommand())
 						{
-							command.CommandText = "SELECT 1;";
-							var exception = Assert.Throws<SingleStoreException>(() => command.ExecuteScalar());
-							Assert.Equal("Failed to read the result set.", exception.Message);
+							using (var command = connection.CreateCommand())
+							{
+								command.CommandText = "SELECT 1;";
+								var exception = Assert.Throws<SingleStoreException>(() => command.ExecuteScalar());
+								Assert.Equal("Failed to read the result set.", exception.Message);
+							}
+							break;
 						}
-						break;
-					}
 					case 1:
-					{
-						// NOTE: duplicate of PingWhenReset, but included here for completeness
-						var ping = await connection.PingAsync().ConfigureAwait(false);
-						Assert.False(ping);
-						break;
-					}
+						{
+							// NOTE: duplicate of PingWhenReset, but included here for completeness
+							var ping = await connection.PingAsync().ConfigureAwait(false);
+							Assert.False(ping);
+							break;
+						}
 					case 2:
-					{
-						await Assert.ThrowsAsync<SingleStoreException>(async () => await connection.ResetConnectionAsync().ConfigureAwait(false));
-						break;
-					}
+						{
+							await Assert.ThrowsAsync<SingleStoreException>(async () => await connection.ResetConnectionAsync().ConfigureAwait(false));
+							break;
+						}
 				}
 
 				Assert.Equal(ConnectionState.Broken, connection.State);

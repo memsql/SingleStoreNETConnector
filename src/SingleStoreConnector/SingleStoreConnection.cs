@@ -421,7 +421,7 @@ namespace SingleStoreConnector
 						hasXaTransaction = enlistedTransaction.Connection.GetInitializedConnectionSettings()
 							.UseXaTransactions;
 						if (enlistedTransaction.IsIdle &&
-						    enlistedTransaction.Connection.m_connectionString == m_connectionString)
+							enlistedTransaction.Connection.m_connectionString == m_connectionString)
 						{
 							var existingConnection = enlistedTransaction.Connection;
 							enlistedTransaction.Connection = this;
@@ -582,10 +582,10 @@ namespace SingleStoreConnector
 				SetState(ConnectionState.Connecting);
 
 				var pool = m_dataSource?.Pool ??
-				           ConnectionPool.GetPool(m_connectionString, LoggingConfiguration, createIfNotFound: true);
+						   ConnectionPool.GetPool(m_connectionString, LoggingConfiguration, createIfNotFound: true);
 				m_connectionSettings ??= pool?.ConnectionSettings ??
-				                         new ConnectionSettings(
-					                         new SingleStoreConnectionStringBuilder(m_connectionString));
+										 new ConnectionSettings(
+											 new SingleStoreConnectionStringBuilder(m_connectionString));
 
 				// check if there is an open session (in the current transaction) that can be adopted
 				if (m_connectionSettings.AutoEnlist && System.Transactions.Transaction.Current is not null)
@@ -951,10 +951,10 @@ namespace SingleStoreConnector
 		{
 			var newBuilder =
 				new SingleStoreConnectionStringBuilder(connectionString ??
-				                                       throw new ArgumentNullException(nameof(connectionString)));
+													   throw new ArgumentNullException(nameof(connectionString)));
 			var currentBuilder = GetConnectionSettings().ConnectionStringBuilder;
 			var shouldCopyPassword = newBuilder.Password.Length == 0 &&
-			                         (!newBuilder.PersistSecurityInfo || currentBuilder.PersistSecurityInfo);
+									 (!newBuilder.PersistSecurityInfo || currentBuilder.PersistSecurityInfo);
 			if (shouldCopyPassword)
 				newBuilder.Password = currentBuilder.Password;
 			var newConnectionString = newBuilder.ConnectionString;
@@ -996,7 +996,8 @@ namespace SingleStoreConnector
 				// open a dedicated connection to the server to kill the active query
 				var csb = new SingleStoreConnectionStringBuilder(m_connectionString)
 				{
-					AutoEnlist = false, Pooling = false,
+					AutoEnlist = false,
+					Pooling = false,
 				};
 
 				// connect directly to the session's IP address to ensure we're cancelling the query on the right server (in a load-balanced scenario)
@@ -1115,7 +1116,7 @@ namespace SingleStoreConnector
 		internal SingleStoreGuidFormat GuidFormat => GetInitializedConnectionSettings().GuidFormat;
 
 		internal bool IgnoreCommandTransaction => GetInitializedConnectionSettings().IgnoreCommandTransaction ||
-		                                          m_enlistedTransaction is StandardEnlistedTransaction;
+												  m_enlistedTransaction is StandardEnlistedTransaction;
 
 		internal bool IgnorePrepare => GetInitializedConnectionSettings().IgnorePrepare;
 		internal bool NoBackslashEscapes => GetInitializedConnectionSettings().NoBackslashEscapes;
@@ -1170,9 +1171,9 @@ namespace SingleStoreConnector
 			MetricsReporter.AddPendingRequest(pool);
 			var connectionSettings = GetInitializedConnectionSettings();
 			var actualIOBehavior = ioBehavior ??
-			                       (connectionSettings.ForceSynchronous
-				                       ? IOBehavior.Synchronous
-				                       : IOBehavior.Asynchronous);
+								   (connectionSettings.ForceSynchronous
+									   ? IOBehavior.Synchronous
+									   : IOBehavior.Asynchronous);
 
 			CancellationTokenSource? timeoutSource = null;
 			CancellationTokenSource? linkedSource = null;
@@ -1218,7 +1219,7 @@ namespace SingleStoreConnector
 					"Connect Timeout expired." + messageSuffix);
 			}
 			catch (SingleStoreException ex) when ((timeoutSource?.IsCancellationRequested is true) ||
-			                                      (ex.ErrorCode == SingleStoreErrorCode.CommandTimeoutExpired))
+												  (ex.ErrorCode == SingleStoreErrorCode.CommandTimeoutExpired))
 			{
 				MetricsReporter.AddTimeout(pool, connectionSettings);
 				throw new SingleStoreException(SingleStoreErrorCode.UnableToConnectToHost, "Connect Timeout expired.",
@@ -1299,9 +1300,9 @@ namespace SingleStoreConnector
 		{
 			// check fast path
 			if (m_activeReader is null &&
-			    CurrentTransaction is null &&
-			    m_enlistedTransaction is null &&
-			    (m_connectionSettings?.Pooling is true))
+				CurrentTransaction is null &&
+				m_enlistedTransaction is null &&
+				(m_connectionSettings?.Pooling is true))
 			{
 				m_cachedProcedures = null;
 				if (m_session is not null)
@@ -1344,7 +1345,7 @@ namespace SingleStoreConnector
 				lock (s_lock)
 				{
 					foreach (var enlistedTransaction in s_transactionConnections[
-						         connection.m_enlistedTransaction!.Transaction])
+								 connection.m_enlistedTransaction!.Transaction])
 					{
 						if (enlistedTransaction.Connection == this)
 						{
