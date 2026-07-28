@@ -1,4 +1,4 @@
-# SingleStore Connector for .NET and .NET Core 1.4.0
+# SingleStore Connector for .NET and .NET Core 1.4.1
 
 This is an [ADO.NET](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/) data
 provider for [SingleStore](https://www.singlestore.com/). It provides implementations of
