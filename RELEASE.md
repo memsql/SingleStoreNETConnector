@@ -69,3 +69,23 @@ The GitHub Release is intentionally kept as a draft because it requires complete
 If the release workflow fails before publishing to NuGet, fix the issue and rerun the workflow or recreate the tag as needed.
 
 If the package was already published to NuGet, do not reuse the same version number. NuGet package versions are immutable, so a fix must be released with a new version.
+
+## Driver-Server Version Compatibility Matrix
+
+After each release, add a row for the new version rather than copying an older row's engine list. While CI has no pinned engine matrix, take the list from the [EOL policy](https://docs.singlestore.com/db/v9.1/support/singlestore-software-end-of-life-eol-policy/) as of the new tag's date.
+
+| Driver Version | Release date | Supported engine versions |
+| -------------- | ------------ | ------------------------- |
+| 1.4.1          | 2026-07-28   | 8.9, 9.0, 9.1 RC          |
+| 1.4.0          | 2026-05-26   | 8.7, 8.9, 9.0, 9.1 RC     |
+| 1.3.0          | 2025-09-11   | 8.5, 8.7                  |
+| 1.2.0          | 2025-03-27   | 7.8, 8.0, 8.1, 8.5, 8.7   |
+| 1.1.6          | 2024-11-28   | 7.8, 8.0, 8.1, 8.5        |
+| 1.1.5          | 2024-11-27   | 7.8, 8.0, 8.1, 8.5        |
+| 1.1.4          | 2023-09-21   | 7.5, 7.6, 7.8, 8.0, 8.1   |
+| 1.1.3          | 2023-08-04   | 7.5, 7.6, 7.8, 8.0, 8.1   |
+| 1.1.2          | 2023-07-24   | 7.5, 7.6, 7.8, 8.0, 8.1   |
+| 1.1.1-beta     | 2023-07-19   | 7.5, 7.6, 7.8             |
+| 1.1.0          | 2023-04-19   | 7.3, 7.5, 7.6, 7.8        |
+| 1.0.1          | 2023-02-06   | 7.3, 7.5, 7.6, 7.8        |
+| 1.0.0          | 2022-06-09   | 7.3, 7.5, 7.6             |
