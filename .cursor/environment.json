@@ -1,0 +1,8 @@
+{
+  "name": "SingleStore .NET Connector",
+  "user": "root",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "install": "dotnet restore SingleStoreConnector.slnx && dotnet build -c Release"
+}
