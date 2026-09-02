@@ -721,6 +721,13 @@ insert into query_null_parameter (id, value) VALUES (1, 'one'), (2, 'two'), (3, 
 		var csb = AppConfig.CreateConnectionStringBuilder();
 		csb.MaximumPoolSize = 8;
 
+		// This test intentionally starts more threads than MaximumPoolSize and leaves readers undisposed,
+		// so returning each connection to the pool requires a session reset. Against a high-latency managed
+		// server those resets are slow enough that excess threads can exceed the default 15s pool-wait
+		// timeout and fail with "Connect Timeout expired. All pooled connections are in use." Use a generous
+		// timeout so the test exercises pool reuse without being sensitive to connection latency.
+		csb.ConnectionTimeout = 60;
+
 		using (var connection = new SingleStoreConnection(csb.ConnectionString))
 		{
 			connection.Execute(@"drop table if exists dispose_reader;
