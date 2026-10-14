@@ -20,6 +20,15 @@ public class ConnectionTests : IDisposable
 	}
 
 	[Fact]
+	public void RecordsAffectedAboveInt32MaxValueIsClamped()
+	{
+		using var connection = new SingleStoreConnection(m_csb.ConnectionString);
+		connection.Open();
+		using var command = new SingleStoreCommand("ALTER TABLE big_table ADD COLUMN c INT", connection);
+		Assert.Equal(int.MaxValue, command.ExecuteNonQuery());
+	}
+
+	[Fact]
 	public void PooledConnectionIsReturnedToPool()
 	{
 		Assert.Equal(0, m_server.ActiveConnections);

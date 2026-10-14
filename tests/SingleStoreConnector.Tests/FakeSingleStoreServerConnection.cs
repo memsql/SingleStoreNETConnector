@@ -167,6 +167,18 @@ internal sealed class FakeSingleStoreServerConnection
 								var wasSet = CancelQueryEvent.Wait(0, token);
 								await SendAsync(stream, 1, WriteOk);
 							}
+							else if (query == "ALTER TABLE big_table ADD COLUMN c INT")
+							{
+								await SendAsync(stream, 1, x =>
+								{
+									x.Write((byte) 0); // signature
+									x.Write((byte) 0xFE); // 8-byte length-encoded integer
+									x.Write(4_000_000_000UL); // rows affected
+									x.Write((byte) 0); // last insert ID
+									x.Write((ushort) 0); // server status
+									x.Write((ushort) 0); // warning count
+								});
+							}
 							else if (query == "select infinity")
 							{
 								var packets = new[]

@@ -208,8 +208,9 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	/// </summary>
 	/// <remarks>For UPDATE, INSERT, and DELETE statements, the return value is the number of rows affected by the command.
 	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
-	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
-	public override int RecordsAffected => RealRecordsAffected is ulong recordsAffected ? checked((int) recordsAffected) : -1;
+	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.
+	/// If the number of affected rows exceeds <see cref="int.MaxValue"/>, the return value is <see cref="int.MaxValue"/>.</remarks>
+	public override int RecordsAffected => RealRecordsAffected is ulong recordsAffected ? (int) Math.Min(recordsAffected, int.MaxValue) : -1;
 	public override int GetOrdinal(string name) => GetResultSet().GetOrdinal(name);
 
 	public override bool GetBoolean(int ordinal) => GetResultSet().GetCurrentRow().GetBoolean(ordinal);
