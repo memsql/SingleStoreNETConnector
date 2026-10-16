@@ -104,7 +104,9 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	/// <returns>The number of rows affected.</returns>
 	/// <remarks>For UPDATE, INSERT, and DELETE statements, the return value is the number of rows affected by the command.
 	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
-	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
+	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.
+	/// If the number of affected rows exceeds <see cref="int.MaxValue"/>, the return value is <see cref="int.MaxValue"/>;
+	/// use <see cref="SingleStoreDataReader.RealRecordsAffected"/> to get the exact count.</remarks>
 	public override int ExecuteNonQuery() => ExecuteNonQueryAsync(IOBehavior.Synchronous, CancellationToken.None).Result;
 
 	public override object? ExecuteScalar() => ExecuteScalarAsync(IOBehavior.Synchronous, CancellationToken.None).Result;
@@ -292,7 +294,9 @@ public sealed class SingleStoreCommand : DbCommand, ISingleStoreCommand, ICancel
 	/// <returns>A task representing the asynchronous operation.</returns>
 	/// <remarks>For UPDATE, INSERT, and DELETE statements, the return value is the number of rows affected by the command.
 	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
-	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
+	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.
+	/// If the number of affected rows exceeds <see cref="int.MaxValue"/>, the return value is <see cref="int.MaxValue"/>;
+	/// use <see cref="SingleStoreDataReader.RealRecordsAffected"/> to get the exact count.</remarks>
 	public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) =>
 		ExecuteNonQueryAsync(AsyncIOBehavior, cancellationToken).AsTask();
 

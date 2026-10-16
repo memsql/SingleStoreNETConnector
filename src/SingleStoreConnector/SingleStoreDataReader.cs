@@ -208,8 +208,10 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	/// </summary>
 	/// <remarks>For UPDATE, INSERT, and DELETE statements, the return value is the number of rows affected by the command.
 	/// For stored procedures, the return value is the number of rows affected by the last statement in the stored procedure,
-	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.</remarks>
-	public override int RecordsAffected => RealRecordsAffected is ulong recordsAffected ? checked((int) recordsAffected) : -1;
+	/// or zero if the last statement is a SELECT. For all other types of statements, the return value is -1.
+	/// If the number of affected rows exceeds <see cref="int.MaxValue"/>, the return value is <see cref="int.MaxValue"/>;
+	/// use <see cref="RealRecordsAffected"/> to get the exact count.</remarks>
+	public override int RecordsAffected => RealRecordsAffected is ulong recordsAffected ? (int) Math.Min(recordsAffected, int.MaxValue) : -1;
 	public override int GetOrdinal(string name) => GetResultSet().GetOrdinal(name);
 
 	public override bool GetBoolean(int ordinal) => GetResultSet().GetCurrentRow().GetBoolean(ordinal);
@@ -463,7 +465,11 @@ public sealed class SingleStoreDataReader : DbDataReader, IDbColumnSchemaGenerat
 	internal Activity? Activity { get; private set; }
 	internal ISingleStoreCommand? Command { get; private set; }
 	internal SingleStoreConnection? Connection => Command?.Connection;
-	internal ulong? RealRecordsAffected { get; set; }
+	/// <summary>
+	/// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement, without truncation to <see cref="int"/>.
+	/// </summary>
+	/// <remarks>Returns <c>null</c> when <see cref="RecordsAffected"/> would return -1.</remarks>
+	public ulong? RealRecordsAffected { get; internal set; }
 	internal ServerSession? Session => Command?.Connection!.Session;
 
 	internal async Task InitAsync(CommandListPosition commandListPosition, ICommandPayloadCreator payloadCreator, IDictionary<string, CachedProcedure?>? cachedProcedures, ISingleStoreCommand command, CommandBehavior behavior, Activity? activity, IOBehavior ioBehavior, CancellationToken cancellationToken)

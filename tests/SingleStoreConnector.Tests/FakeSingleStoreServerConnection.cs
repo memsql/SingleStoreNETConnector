@@ -167,6 +167,10 @@ internal sealed class FakeSingleStoreServerConnection
 								var wasSet = CancelQueryEvent.Wait(0, token);
 								await SendAsync(stream, 1, WriteOk);
 							}
+							else if (query == "ALTER TABLE big_table ADD COLUMN c INT")
+							{
+								await SendAsync(stream, 1, x => WriteOk(x, 4_000_000_000UL));
+							}
 							else if (query == "select infinity")
 							{
 								var packets = new[]
@@ -295,10 +299,20 @@ internal sealed class FakeSingleStoreServerConnection
 			writer.Write((byte) 0);
 	}
 
-	private static void WriteOk(BinaryWriter writer)
+	private static void WriteOk(BinaryWriter writer) => WriteOk(writer, 0);
+
+	private static void WriteOk(BinaryWriter writer, ulong affectedRows)
 	{
 		writer.Write((byte) 0); // signature
-		writer.Write((byte) 0); // 0 rows affected
+		if (affectedRows < 251)
+		{
+			writer.Write((byte) affectedRows); // rows affected
+		}
+		else
+		{
+			writer.Write((byte) 0xFE); // 8-byte length-encoded integer
+			writer.Write(affectedRows); // rows affected
+		}
 		writer.Write((byte) 0); // last insert ID
 		writer.Write((ushort) 0); // server status
 		writer.Write((ushort) 0); // warning count
