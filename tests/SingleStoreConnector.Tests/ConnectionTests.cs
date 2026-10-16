@@ -26,6 +26,9 @@ public class ConnectionTests : IDisposable
 		connection.Open();
 		using var command = new SingleStoreCommand("ALTER TABLE big_table ADD COLUMN c INT", connection);
 		Assert.Equal(int.MaxValue, command.ExecuteNonQuery());
+		using var reader = command.ExecuteReader();
+		Assert.Equal(int.MaxValue, reader.RecordsAffected);
+		Assert.Equal(4_000_000_000UL, reader.RealRecordsAffected);
 	}
 
 	[Fact]
