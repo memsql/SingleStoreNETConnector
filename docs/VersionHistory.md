@@ -2,6 +2,12 @@
 
 ## Release Notes
 
+### Unreleased
+
+* **Breaking** (experimental API) `SingleStoreBulkUpdateResult.RowsMatched` is now `long?` and `SingleStoreBulkUpdateResult.RowsAffected` is now `long`.
+  Previously, a bulk update whose match count exceeded `int.MaxValue` failed with an `OverflowException`, and the affected-row
+  count could not represent values above `int.MaxValue`. Both counts are now reported exactly.
+
 ### 1.4.1
 
 * Add `SingleStoreBulkUpdate` for bulk `UPDATE` operations: [#20](https://github.com/memsql/SingleStoreNETConnector/pull/20)

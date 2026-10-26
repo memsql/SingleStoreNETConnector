@@ -352,7 +352,7 @@ public sealed class SingleStoreBulkUpdate
 	/// Builds the operation result, snapshotting the warnings collected so far into a new list so that a result
 	/// returned from one call is not mutated when the same <see cref="SingleStoreBulkUpdate"/> instance is reused.
 	/// </summary>
-	private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, int? rowsMatched, int rowsAffected) =>
+	private SingleStoreBulkUpdateResult CreateResult(int rowsStaged, long? rowsMatched, long rowsAffected) =>
 		new(new List<SingleStoreError>(m_warnings), rowsStaged, rowsMatched, rowsAffected);
 
 	private void ValidateColumnMappings()
@@ -742,7 +742,7 @@ public sealed class SingleStoreBulkUpdate
 	/// staging table is session-scoped.
 	/// </para>
 	/// </remarks>
-	private async Task<int?> ComputeMatchedRowsAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<long?> ComputeMatchedRowsAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		if (!ComputeRowsMatched)
 			return null;
@@ -761,8 +761,9 @@ public sealed class SingleStoreBulkUpdate
 
 		var scalar = await cmd.ExecuteScalarAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
 
-		// COUNT(*) comes back as a long; convert rather than cast so the boxed type is handled correctly.
-		var rowsMatched = scalar is null or DBNull ? 0 : Convert.ToInt32(scalar, CultureInfo.InvariantCulture);
+		// COUNT(*) comes back as a long; convert rather than cast so the boxed type is handled correctly. Keep it as a
+		// long so that very large match counts (above int.MaxValue) are reported exactly instead of overflowing.
+		var rowsMatched = scalar is null or DBNull ? 0L : Convert.ToInt64(scalar, CultureInfo.InvariantCulture);
 
 		Log.QueriedMatchCountForBulkUpdate(m_logger, rowsMatched);
 
@@ -791,12 +792,17 @@ public sealed class SingleStoreBulkUpdate
 	/// of rows whose values actually changed.
 	/// </para>
 	/// <para>
+	/// The count is read from <see cref="SingleStoreDataReader.RealRecordsAffected"/> rather than
+	/// <see cref="SingleStoreCommand.ExecuteNonQuery"/>, because the latter clamps the result to <see cref="int.MaxValue"/>
+	/// and a bulk update can legitimately affect more rows than that.
+	/// </para>
+	/// <para>
 	/// Warnings raised while executing the statement (for example truncation or conversion warnings) are
 	/// collected via the connection's <see cref="SingleStoreConnection.InfoMessage"/> event and surfaced on the
 	/// operation result.
 	/// </para>
 	/// </remarks>
-	private async Task<int> ExecuteUpdateAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
+	private async Task<long> ExecuteUpdateAsync(BulkUpdatePlan plan, string tempTableName, IOBehavior ioBehavior, CancellationToken cancellationToken)
 	{
 		// Assign each non-key mapped column from the staging row: t.`c1` = s.`c1`, t.`c2` = s.`c2` ...
 		var setClause = string.Join(
@@ -819,7 +825,17 @@ public sealed class SingleStoreBulkUpdate
 		m_connection.InfoMessage += OnInfoMessage;
 		try
 		{
-			var rowsUpdated = await cmd.ExecuteNonQueryAsync(ioBehavior, cancellationToken).ConfigureAwait(false);
+			// Drain the reader the same way ExecuteNonQueryAsync does, then read the unclamped affected-row count.
+			// RealRecordsAffected is accumulated across result sets, so every result set must be consumed first.
+			using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, ioBehavior, cancellationToken).ConfigureAwait(false);
+			do
+			{
+				while (await reader.ReadAsync(ioBehavior, cancellationToken).ConfigureAwait(false))
+				{
+				}
+			} while (await reader.NextResultAsync(ioBehavior, cancellationToken).ConfigureAwait(false));
+
+			var rowsUpdated = reader.RealRecordsAffected is ulong realRecordsAffected ? (long) realRecordsAffected : 0L;
 
 			Log.ExecutedBulkUpdate(m_logger, rowsUpdated);
 

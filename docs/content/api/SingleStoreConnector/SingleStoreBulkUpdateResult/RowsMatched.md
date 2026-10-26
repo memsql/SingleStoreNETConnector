@@ -3,7 +3,7 @@
 The number of destination rows matched by the join on the key columns, or `null` when [`ComputeRowsMatched`](../SingleStoreBulkUpdate/ComputeRowsMatched.md) was set to `false` and the count was not computed.
 
 ```csharp
-public int? RowsMatched { get; }
+public long? RowsMatched { get; }
 ```
 
 ## Remarks
