@@ -3,12 +3,14 @@
 The number of rows affected by the `UPDATE`, as reported by the server.
 
 ```csharp
-public int RowsAffected { get; }
+public long RowsAffected { get; }
 ```
 
 ## Remarks
 
 The exact meaning depends on the connection's [`UseAffectedRows`](../SingleStoreConnectionStringBuilder/UseAffectedRows.md) setting. With the default (`UseAffectedRows=false`) this is the number of rows matched by the update — including rows that already held the new values — and therefore typically equals [`RowsMatched`](./RowsMatched.md). With `UseAffectedRows=true` it is the number of rows whose values actually changed.
+
+Unlike [`ExecuteNonQuery`](../SingleStoreCommand/ExecuteNonQuery.md), this value is not clamped to int.MaxValue; it is the exact count reported by the server.
 
 ## See Also
 

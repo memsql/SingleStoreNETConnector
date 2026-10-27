@@ -24,7 +24,7 @@ public sealed class SingleStoreBulkUpdateResult
 	/// <remarks>This never exceeds <see cref="RowsStaged"/>; <c>RowsStaged - RowsMatched</c> is the number of staged
 	/// rows that matched no destination row. Note that <see cref="RowsAffected"/> can still exceed this when the
 	/// destination key columns are not unique, because a single staged row can update several destination rows.</remarks>
-	public int? RowsMatched { get; }
+	public long? RowsMatched { get; }
 
 	/// <summary>
 	/// The number of rows affected by the <c>UPDATE</c>, as reported by the server.
@@ -32,14 +32,16 @@ public sealed class SingleStoreBulkUpdateResult
 	/// <remarks>The exact meaning depends on the connection's <see cref="SingleStoreConnectionStringBuilder.UseAffectedRows"/>
 	/// setting. With the default (<c>UseAffectedRows=false</c>) this is the number of rows <em>matched</em> by the update —
 	/// including rows that already held the new values — and therefore typically equals <see cref="RowsMatched"/>. With
-	/// <c>UseAffectedRows=true</c> it is the number of rows whose values actually <em>changed</em>.</remarks>
-	public int RowsAffected { get; }
+	/// <c>UseAffectedRows=true</c> it is the number of rows whose values actually <em>changed</em>.
+	/// <para>Unlike <see cref="SingleStoreCommand.ExecuteNonQuery"/>, this value is not clamped to <see cref="int.MaxValue"/>;
+	/// it is the exact count reported by the server.</para></remarks>
+	public long RowsAffected { get; }
 
 	internal SingleStoreBulkUpdateResult(
 		IReadOnlyList<SingleStoreError> warnings,
 		int rowsStaged,
-		int? rowsMatched,
-		int rowsAffected)
+		long? rowsMatched,
+		long rowsAffected)
 	{
 		Warnings = warnings;
 		RowsStaged = rowsStaged;
