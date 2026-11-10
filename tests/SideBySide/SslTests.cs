@@ -291,7 +291,9 @@ public class SslTests : IClassFixture<DatabaseFixture>
 #pragma warning disable SYSLIB0039 // Older TLS protocols are obsolete
 		var expectedProtocol = serverProtocol switch
 		{
+#if !NET462 && !NET472
 			"TLSv1.3" => SslProtocols.Tls13,
+#endif
 			"TLSv1.2" => SslProtocols.Tls12,
 			"TLSv1.1" => SslProtocols.Tls11,
 			"TLSv1" => SslProtocols.Tls,
