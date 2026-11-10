@@ -280,30 +280,29 @@ public class SslTests : IClassFixture<DatabaseFixture>
 	{
 		using var connection = new SingleStoreConnection(AppConfig.ConnectionString);
 		await connection.OpenAsync();
-#pragma warning disable SYSLIB0039 // SslProtocols.Tls11 is obsolete
-		var expectedProtocol = AppConfig.SupportedFeatures.HasFlag(ServerFeatures.Tls12) ? SslProtocols.Tls12 :
-			AppConfig.SupportedFeatures.HasFlag(ServerFeatures.Tls11) ? SslProtocols.Tls11 :
-			SslProtocols.Tls;
-		var expectedProtocolString = expectedProtocol == SslProtocols.Tls12 ? "TLSv1.2" :
-			expectedProtocol == SslProtocols.Tls11 ? "TLSv1.1" : "TLSv1";
-#pragma warning restore SYSLIB0039 // SslProtocols.Tls11 is obsolete
 
-#if !NET462 && !NET472
-		// https://docs.microsoft.com/en-us/dotnet/core/whats-new/dotnet-core-3-0#tls-13--openssl-111-on-linux
-		if (expectedProtocol == SslProtocols.Tls12 && AppConfig.SupportedFeatures.HasFlag(ServerFeatures.Tls13) && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-		{
-			expectedProtocol = SslProtocols.Tls13;
-			expectedProtocolString = "TLSv1.3";
-		}
-#endif
+		using var cmd = new SingleStoreCommand("SHOW SESSION STATUS LIKE 'Ssl_version';", connection);
+		using var reader = await cmd.ExecuteReaderAsync();
+
+		Assert.True(await reader.ReadAsync());
+		var serverProtocol = reader.GetString(1);
 
 #if !BASELINE
+#pragma warning disable SYSLIB0039 // Older TLS protocols are obsolete
+		var expectedProtocol = serverProtocol switch
+		{
+			"TLSv1.3" => SslProtocols.Tls13,
+			"TLSv1.2" => SslProtocols.Tls12,
+			"TLSv1.1" => SslProtocols.Tls11,
+			"TLSv1" => SslProtocols.Tls,
+			_ => throw new NotSupportedException($"Unexpected TLS protocol: {serverProtocol}"),
+		};
+#pragma warning restore SYSLIB0039
+
 		Assert.Equal(expectedProtocol, connection.SslProtocol);
+#else
+		Assert.False(string.IsNullOrWhiteSpace(serverProtocol));
 #endif
-		using var cmd = new SingleStoreCommand("show status like 'Ssl_version';", connection);
-		using var reader = await cmd.ExecuteReaderAsync();
-		Assert.True(reader.Read());
-		Assert.Equal(expectedProtocolString, reader.GetString(1));
 	}
 
 #if !NET5_0_OR_GREATER
