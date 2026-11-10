@@ -4,9 +4,11 @@
 
 ### Unreleased
 
+* **Possibly breaking** `SingleStoreDataReader.RecordsAffected`, `SingleStoreCommand.ExecuteNonQuery`, and `SingleStoreBatch.ExecuteNonQuery` now return `int.MaxValue` when the number of affected rows exceeds `int.MaxValue`, instead of throwing an `OverflowException`. SingleStore reports the table's row count as affected rows for some DDL statements (for example `ALTER TABLE ... ADD COLUMN`), so this could previously fail on tables with more than 2^31 rows: [#28](https://github.com/memsql/SingleStoreNETConnector/pull/28)
+  - Add `SingleStoreDataReader.RealRecordsAffected` to get the exact, unclamped count. Use `ExecuteReader()`, call `NextResult()` until it returns `false`, then read the property.
+
 * **Breaking** (experimental API) `SingleStoreBulkUpdateResult.RowsMatched` is now `long?` and `SingleStoreBulkUpdateResult.RowsAffected` is now `long`.
-  Previously, a bulk update whose match count exceeded `int.MaxValue` failed with an `OverflowException`, and the affected-row
-  count could not represent values above `int.MaxValue`. Both counts are now reported exactly.
+  Previously, a bulk update whose match count exceeded `int.MaxValue` failed with an `OverflowException`, and the affected-row count could not represent values above `int.MaxValue`. Both counts are now reported exactly.
 
 ### 1.4.1
 
