@@ -76,6 +76,7 @@ After each release, add a row for the new version rather than copying an older r
 
 | Driver Version | Release date | Supported engine versions | Target .NET frameworks                                          |
 | -------------- | ------------ | ------------------------- | --------------------------------------------------------------- |
+| 1.4.2          | 2026-11-11   | 8.9, 9.0, 10 RC           | Framework 4.6.2/4.7.1/4.8; Standard 2.0/2.1; .NET 6/8/9/10      |
 | 1.4.1          | 2026-07-28   | 8.9, 9.0, 9.1 RC          | Framework 4.6.2/4.7.1/4.8; Standard 2.0/2.1; .NET 6/8/9/10      |
 | 1.4.0          | 2026-05-26   | 8.7, 8.9, 9.0, 9.1 RC     | Framework 4.6.2/4.7.1/4.8; Standard 2.0/2.1; .NET 6/8/9/10      |
 | 1.3.0          | 2025-09-11   | 8.5, 8.7                  | Framework 4.6.2/4.7.1/4.8; Standard 2.0/2.1; .NET 6/8/9         |
