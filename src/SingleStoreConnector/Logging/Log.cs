@@ -393,19 +393,19 @@ internal static partial class Log
 	public static partial void StagedDataForBulkUpdate(ILogger logger, int rowsStaged, int warningCount);
 
 	[LoggerMessage(EventIds.QueriedMatchCountForBulkUpdate, LogLevel.Debug, "Queried match count for bulk update: RowsMatched={RowsMatched}")]
-	public static partial void QueriedMatchCountForBulkUpdate(ILogger logger, int rowsMatched);
+	public static partial void QueriedMatchCountForBulkUpdate(ILogger logger, long rowsMatched);
 
 	[LoggerMessage(EventIds.ExecutedBulkUpdate, LogLevel.Debug, "Executed bulk update: RowsUpdated={RowsUpdated}")]
-	public static partial void ExecutedBulkUpdate(ILogger logger, int rowsUpdated);
+	public static partial void ExecutedBulkUpdate(ILogger logger, long rowsUpdated);
 
 	[LoggerMessage(EventIds.CompletedBulkUpdate, LogLevel.Information, "Completed bulk update: Staged={Staged}, Matched={Matched}, Updated={Updated}, Duration={Duration}ms")]
-	public static partial void CompletedBulkUpdate(ILogger logger, int staged, int matched, int updated, long duration);
+	public static partial void CompletedBulkUpdate(ILogger logger, int staged, long matched, long updated, long duration);
 
 	[LoggerMessage(EventIds.ShardKeyMismatchForBulkUpdate, LogLevel.Warning, "Shard key mismatch for bulk update: Staging=[{StagingKey}], Target=[{TargetKey}]")]
 	public static partial void ShardKeyMismatchForBulkUpdate(ILogger logger, string stagingKey, string targetKey);
 
 	[LoggerMessage(EventIds.LargeUnmatchedCountForBulkUpdate, LogLevel.Warning, "Large unmatched count for bulk update: Staged={Staged}, Matched={Matched}, Unmatched={Unmatched}")]
-	public static partial void LargeUnmatchedCountForBulkUpdate(ILogger logger, int staged, int matched, int unmatched);
+	public static partial void LargeUnmatchedCountForBulkUpdate(ILogger logger, int staged, long matched, long unmatched);
 
 	[LoggerMessage(EventIds.FailedToDropStagingTableForBulkUpdate, LogLevel.Warning, "Failed to drop staging table {TempTableName} for bulk update: {ExceptionMessage}")]
 	public static partial void FailedToDropStagingTableForBulkUpdate(ILogger logger, Exception exception, string tempTableName, string exceptionMessage);
